@@ -16,12 +16,20 @@ import androidx.appcompat.app.AppCompatActivity
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicBoolean
 
 class ScanActivity : AppCompatActivity() {
 
-    private data class Found(val ip: String, val port: Int)
+    private data class Found(
+        val ip: String,
+        val ports: MutableSet<Int> = linkedSetOf(),
+        val onvifUrls: MutableSet<String> = linkedSetOf()
+    ) {
+        val port: Int? get() = ports.firstOrNull()
+    }
 
-    private val ports = listOf(554, 8554)
+    // Busca TCP complementar; dispositivos ONVIF são encontrados independentemente da porta.
+    private val ports = listOf(554, 8554, 10554, 8555, 7447)
     private lateinit var status: TextView
     private lateinit var progress: ProgressBar
     private lateinit var listView: ListView
@@ -29,6 +37,7 @@ class ScanActivity : AppCompatActivity() {
     private val found = mutableListOf<Found>()
     private var pool: ExecutorService? = null
     private var attempt = 0
+    private var discoveryThread: Thread? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -61,62 +70,99 @@ class ScanActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         pool?.shutdownNow()
+        discoveryThread?.interrupt()
     }
 
     private fun refreshList() {
-        val items = found.map { "${it.ip}   •   RTSP porta ${it.port}" }
+        val items = found.map { f ->
+            val services = mutableListOf<String>()
+            if (f.onvifUrls.isNotEmpty()) services.add("ONVIF")
+            if (f.ports.isNotEmpty()) services.add("TCP ${f.ports.joinToString(", ")}")
+            "${f.ip}   •   ${services.joinToString(" + ").ifEmpty { "Dispositivo" }}"
+        }
         listView.adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, items)
+    }
+
+    private fun addFound(ip: String, port: Int? = null, xaddrs: List<String> = emptyList()) {
+        val entry = found.firstOrNull { it.ip == ip }
+        if (entry != null) {
+            if (port != null) entry.ports.add(port)
+            entry.onvifUrls.addAll(xaddrs)
+        } else {
+            found.add(Found(ip, if (port == null) linkedSetOf() else linkedSetOf(port), xaddrs.toMutableSet()))
+        }
+        found.sortWith(compareBy { it.ip.split('.').fold(0L) { a, b -> (a shl 8) + (b.toLongOrNull() ?: 0L) } })
+        refreshList()
     }
 
     private fun startScan(auto: Boolean) {
         pool?.shutdownNow()
+        discoveryThread?.interrupt()
         if (!auto) attempt = 0
         found.clear()
         refreshList()
 
-        val prefix = NetUtil.localPrefix(this)
-        if (prefix == null) {
+        val range = NetUtil.scanRange(this)
+        if (range == null) {
             status.setText(R.string.sem_wifi)
             progress.progress = 0
             return
         }
+        val hosts = range.hosts
         status.text = getString(
-            if (auto) R.string.buscando_2 else R.string.buscando, "${prefix}1 - ${prefix}254"
+            if (auto) R.string.buscando_2 else R.string.buscando, range.description
         )
-        progress.max = 254
+        progress.max = maxOf(1, hosts.size)
         progress.progress = 0
 
-        val p = Executors.newFixedThreadPool(64)
-        pool = p
+        val worker = Executors.newFixedThreadPool(20)
+        pool = worker
         val done = AtomicInteger(0)
-        for (i in 1..254) {
-            val ip = "$prefix$i"
-            p.execute {
-                // Timeouts generosos: câmeras em economia de energia demoram a responder.
-                val openPort = ports.firstOrNull {
-                    RtspProbe.isPortOpen(ip, it, if (it == 554) 3000 else 1500)
+        val onvifDone = AtomicBoolean(false)
+        val finished = AtomicBoolean(false)
+
+        fun completeIfReady() {
+            if (pool !== worker || isFinishing || isDestroyed) return
+            if (done.get() != hosts.size || !onvifDone.get()) return
+            if (!finished.compareAndSet(false, true)) return
+            if (found.isEmpty() && attempt == 0) {
+                attempt++
+                startScan(true)
+            } else {
+                status.text = if (found.isEmpty()) getString(R.string.nenhuma)
+                    else getString(R.string.encontradas, found.size)
+                if (range.limited) status.append("\n" + getString(R.string.busca_limitada))
+                worker.shutdown()
+            }
+        }
+
+        // Executar WS-Discovery em paralelo com a varredura TCP.
+        discoveryThread = Thread {
+            val matches = WsDiscovery.search(applicationContext)
+            runOnUiThread {
+                if (pool !== worker || isFinishing || isDestroyed) return@runOnUiThread
+                matches.forEach { addFound(it.ip, xaddrs = it.xaddrs) }
+                onvifDone.set(true)
+                completeIfReady()
+            }
+        }.apply { name = "MinhaCamera-WSDiscovery"; start() }
+
+        for (ip in hosts) {
+            worker.execute {
+                if (Thread.currentThread().isInterrupted) return@execute
+                val openPorts = ports.filter { port ->
+                    RtspProbe.isPortOpen(ip, port, if (port == 554) 900 else 500)
                 }
-                val d = done.incrementAndGet()
+                val count = done.incrementAndGet()
                 runOnUiThread {
-                    if (pool !== p || isFinishing) return@runOnUiThread
-                    if (openPort != null) {
-                        found.add(Found(ip, openPort))
-                        found.sortBy { it.ip.substringAfterLast('.').toInt() }
-                        refreshList()
-                    }
-                    progress.progress = d
-                    if (d == 254) {
-                        if (found.isEmpty() && attempt == 0) {
-                            attempt = 1
-                            startScan(true) // segunda tentativa automática
-                        } else {
-                            status.text = if (found.isEmpty()) getString(R.string.nenhuma)
-                            else getString(R.string.encontradas, found.size)
-                        }
-                    }
+                    if (pool !== worker || isFinishing || isDestroyed) return@runOnUiThread
+                    openPorts.forEach { addFound(ip, port = it) }
+                    progress.progress = count
+                    completeIfReady()
                 }
             }
         }
+        if (hosts.isEmpty()) runOnUiThread { completeIfReady() }
     }
 
     // ---------- Câmera achada na busca ----------
@@ -129,7 +175,7 @@ class ScanActivity : AppCompatActivity() {
         etName.setText("Câmera ${f.ip.substringAfterLast('.')}")
 
         AlertDialog.Builder(this)
-            .setTitle("${f.ip}:${f.port}")
+            .setTitle(f.ip + (f.port?.let { ":$it" } ?: " (ONVIF)"))
             .setView(view)
             .setPositiveButton(R.string.testar_salvar) { _, _ ->
                 val name = etName.text.toString().trim().ifEmpty { "Câmera ${f.ip}" }
@@ -187,7 +233,7 @@ class ScanActivity : AppCompatActivity() {
             val pass = etPass.text.toString()
             dlg.dismiss()
             testAndSave(
-                Found(ipText, port),
+                Found(ipText, linkedSetOf(port)),
                 name.ifEmpty { "Câmera ${ipText.substringAfterLast('.')}" },
                 user, pass, normPath(etPath.text.toString())
             )
@@ -258,7 +304,7 @@ class ScanActivity : AppCompatActivity() {
 
             // 1) ONVIF: a própria câmera informa os fluxos de vídeo (H.264 primeiro).
             if (customPath.isEmpty()) {
-                val on = OnvifClient.findStreamUri(f.ip, user, pass)
+                val on = OnvifClient.findStreamUri(f.ip, user, pass, f.onvifUrls.toList())
                 details.append("ONVIF: ").append(on.log.ifEmpty { "sem resposta" }).append('\n')
                 val streams = OnvifClient.order(on.streams)
                 if (streams.isNotEmpty()) {
@@ -272,38 +318,46 @@ class ScanActivity : AppCompatActivity() {
                 }
             }
 
-            // 2) Teste dos caminhos conhecidos
+            // 2) Teste dos caminhos conhecidos em TODAS as portas encontradas.
+            // No caso de detecção exclusivamente ONVIF, usar portas RTSP padrão como fallback.
             if (okUrl == null) {
-                for ((i, path) in paths.withIndex()) {
-                    runOnUiThread {
-                        if (!isFinishing) dlg.setMessage(getString(R.string.testando_caminho, i + 1, total))
-                    }
-                    val r = RtspProbe.probe(f.ip, f.port, user, pass, path)
-                    if (i == 0) firstDebug = r.debug
-                    details.append(path).append("  →  ").append(r.detail).append('\n')
-                    when (r.status) {
-                        ProbeStatus.OK -> {
-                            okUrl = buildUrl(f.ip, f.port, user, pass, path)
-                            okAlts = altPaths(path).map { buildUrl(f.ip, f.port, user, pass, it) }
-                            break
+                val candidatePorts = f.ports.toList().ifEmpty { listOf(554, 8554) }
+                portLoop@ for (rtspPort in candidatePorts) {
+                    noReply = 0
+                    authFails = 0
+                    for ((i, path) in paths.withIndex()) {
+                        if (Thread.currentThread().isInterrupted) break@portLoop
+                        runOnUiThread {
+                            if (!isFinishing) dlg.setMessage("Porta $rtspPort: " + getString(R.string.testando_caminho, i + 1, total))
                         }
-                        ProbeStatus.AUTH_FAIL -> {
-                            noReply = 0
-                            authFails++
-                            // Para cedo: muitas senhas erradas podem bloquear a câmera.
-                            if (authFails >= 2) break
-                        }
-                        ProbeStatus.NOT_FOUND -> {
-                            authFails = 0
-                            noReply = 0
-                        }
-                        ProbeStatus.ERROR -> {
-                            authFails = 0
-                            if (r.detail.startsWith("sem resposta")) {
-                                noReply++
-                                if (noReply >= 3) break
-                            } else {
+                        val r = RtspProbe.probe(f.ip, rtspPort, user, pass, path)
+                        if (i == 0 && firstDebug.isEmpty()) firstDebug = r.debug
+                        details.append(":").append(rtspPort).append(path)
+                            .append("  →  ").append(r.detail).append('\n')
+                        when (r.status) {
+                            ProbeStatus.OK -> {
+                                okUrl = buildUrl(f.ip, rtspPort, user, pass, path)
+                                okAlts = altPaths(path).map { buildUrl(f.ip, rtspPort, user, pass, it) }
+                                break@portLoop
+                            }
+                            ProbeStatus.AUTH_FAIL -> {
                                 noReply = 0
+                                authFails++
+                                // Não multiplicar tentativas com credenciais incorretas.
+                                if (authFails >= 2) break@portLoop
+                            }
+                            ProbeStatus.NOT_FOUND -> {
+                                authFails = 0
+                                noReply = 0
+                            }
+                            ProbeStatus.ERROR -> {
+                                authFails = 0
+                                if (r.detail.startsWith("sem resposta")) {
+                                    noReply++
+                                    if (noReply >= 3) break
+                                } else {
+                                    noReply = 0
+                                }
                             }
                         }
                     }
@@ -337,8 +391,8 @@ class ScanActivity : AppCompatActivity() {
                             val p = customPath.ifEmpty { "/stream1" }
                             saveCamera(
                                 name,
-                                buildUrl(f.ip, f.port, user, pass, p),
-                                altPaths(p).map { buildUrl(f.ip, f.port, user, pass, it) }
+                                buildUrl(f.ip, f.port ?: 554, user, pass, p),
+                                altPaths(p).map { buildUrl(f.ip, f.port ?: 554, user, pass, it) }
                             )
                             finish()
                         }

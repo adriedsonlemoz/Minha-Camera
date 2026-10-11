@@ -28,14 +28,28 @@ object OnvifClient {
     private const val PWD_TYPE = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordDigest"
     private const val NONCE_ENC = "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary"
 
-    fun findStreamUri(ip: String, user: String, pass: String): Result {
+    fun findStreamUri(ip: String, user: String, pass: String, discoveredXaddrs: List<String> = emptyList()): Result {
         val log = StringBuilder()
-        for (port in PORTS) {
-            if (!RtspProbe.isPortOpen(ip, port, 600)) continue
-            val streams = tryPort(ip, port, user, pass, log)
+        // WS-Discovery fornece a URL real do serviço, não apenas a porta RTSP.
+        val urls = discoveredXaddrs.mapNotNull { raw ->
+            try {
+                val u = URL(raw)
+                if (u.protocol !in listOf("http", "https") || u.port !in -1..65535) null
+                else fixHost(raw, ip)
+            } catch (_: Exception) { null }
+        }.distinct()
+        for (url in urls) {
+            val streams = tryDeviceUrl(ip, url, user, pass, log)
             if (!streams.isNullOrEmpty()) return Result(streams, log.toString().trim())
         }
-        if (log.isEmpty()) log.append("nenhuma porta ONVIF aberta")
+        for (port in PORTS) {
+            if (!RtspProbe.isPortOpen(ip, port, 600)) continue
+            val deviceUrl = "http://$ip:$port/onvif/device_service"
+            if (deviceUrl in urls) continue
+            val streams = tryDeviceUrl(ip, deviceUrl, user, pass, log)
+            if (!streams.isNullOrEmpty()) return Result(streams, log.toString().trim())
+        }
+        if (log.isEmpty()) log.append("nenhum serviço ONVIF respondeu")
         return Result(emptyList(), log.toString().trim())
     }
 
@@ -46,9 +60,10 @@ object OnvifClient {
         return h264 + rest
     }
 
-    private fun tryPort(ip: String, port: Int, user: String, pass: String, log: StringBuilder): List<Stream>? {
-        val base = "http://$ip:$port"
-        val deviceUrl = "$base/onvif/device_service"
+    private fun tryDeviceUrl(ip: String, deviceUrl: String, user: String, pass: String, log: StringBuilder): List<Stream>? {
+        val endpoint = URL(deviceUrl)
+        val port = if (endpoint.port != -1) endpoint.port else endpoint.defaultPort
+        val base = "${endpoint.protocol}://$ip:$port"
         val offset = cameraTimeOffset(deviceUrl)
 
         val caps = soap(

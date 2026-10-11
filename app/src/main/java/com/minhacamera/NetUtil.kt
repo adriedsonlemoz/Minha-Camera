@@ -7,8 +7,8 @@ import android.net.NetworkCapabilities
 import java.net.Inet4Address
 
 object NetUtil {
+    data class ScanRange(val hosts: List<String>, val description: String, val limited: Boolean)
 
-    @Suppress("DEPRECATION")
     private fun wifiNetwork(ctx: Context): Network? {
         val cm = ctx.getSystemService(ConnectivityManager::class.java) ?: return null
         return cm.allNetworks.firstOrNull {
@@ -16,25 +16,56 @@ object NetUtil {
         }
     }
 
-    // Força o app a usar o Wi-Fi para falar com a câmera, mesmo que o Wi-Fi
-    // esteja "sem internet" e o Android prefira os dados móveis.
+    // Câmeras podem funcionar em Wi-Fi sem acesso à internet.
     fun bindToWifi(ctx: Context) {
         try {
             val cm = ctx.getSystemService(ConnectivityManager::class.java) ?: return
-            val n = wifiNetwork(ctx) ?: return
-            cm.bindProcessToNetwork(n)
+            cm.bindProcessToNetwork(wifiNetwork(ctx))
         } catch (_: Exception) {
         }
     }
 
-    // Ex.: "192.168.100." (3 primeiros números da rede + ponto), ou null sem Wi-Fi.
-    fun localPrefix(ctx: Context): String? {
+    private fun localAddress(ctx: Context): Pair<Long, Int>? {
         val cm = ctx.getSystemService(ConnectivityManager::class.java) ?: return null
-        val net = wifiNetwork(ctx) ?: cm.activeNetwork ?: return null
-        val lp = cm.getLinkProperties(net) ?: return null
-        val addr = lp.linkAddresses.map { it.address }
-            .firstOrNull { it is Inet4Address && !it.isLoopbackAddress } ?: return null
-        val parts = addr.hostAddress?.split(".") ?: return null
-        return if (parts.size == 4) parts.take(3).joinToString(".") + "." else null
+        val net = wifiNetwork(ctx) ?: return null
+        val link = cm.getLinkProperties(net) ?: return null
+        val address = link.linkAddresses.firstOrNull {
+            it.address is Inet4Address && !it.address.isLoopbackAddress
+        } ?: return null
+        val bytes = address.address.address
+        val ip = bytes.fold(0L) { acc, byte -> (acc shl 8) or (byte.toLong() and 255L) }
+        return ip to address.prefixLength
+    }
+
+    private fun ipString(value: Long): String =
+        (3 downTo 0).joinToString(".") { ((value ushr (it * 8)) and 255L).toString() }
+
+    // Mantido para preencher o formulário manual, não para determinar a rede de varredura.
+    fun localPrefix(ctx: Context): String? = localAddress(ctx)?.first?.let {
+        ipString(it).substringBeforeLast('.') + "."
+    }
+
+    /** Respeita a máscara DHCP. Em redes muito grandes, limita a busca TCP ao /24 local,
+     * mantendo WS-Discovery para encontrar equipamentos no restante da rede.
+     */
+    fun scanRange(ctx: Context, maximumHosts: Int = 1022): ScanRange? {
+        val (ip, prefix) = localAddress(ctx) ?: return null
+        if (prefix !in 1..30) return null
+        val mask = (0xffffffffL shl (32 - prefix)) and 0xffffffffL
+        val network = ip and mask
+        val broadcast = network or (mask.inv() and 0xffffffffL)
+        var first = network + 1
+        var last = broadcast - 1
+        var limited = false
+        if (last - first + 1 > maximumHosts) {
+            // Não saturar a rede tentando até 65.534 endereços de um /16.
+            val local24 = ip and 0xffffff00L
+            first = maxOf(first, local24 + 1)
+            last = minOf(last, local24 + 254)
+            limited = true
+        }
+        val hosts = if (last < first) emptyList() else (first..last)
+            .filter { it != ip }.map(::ipString)
+        return ScanRange(hosts, "${ipString(network)}/$prefix" + if (limited) " (TCP limitado ao /24 local)" else "", limited)
     }
 }

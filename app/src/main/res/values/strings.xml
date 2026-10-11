@@ -20,7 +20,8 @@
     <string name="buscando">Buscando em %1$s …</string>
     <string name="sem_wifi">Conecte-se ao Wi-Fi para buscar câmeras.</string>
     <string name="nenhuma">Nenhuma câmera encontrada. Confira se o celular está no mesmo Wi-Fi e se o RTSP está ativado, ou use Adicionar manualmente.</string>
-    <string name="encontradas">%1$d dispositivo(s) com RTSP encontrado(s). Toque em um para adicionar.</string>
+    <string name="encontradas">%1$d dispositivo(s) detectado(s) por ONVIF ou portas TCP. Toque em um para configurar.</string>
+    <string name="busca_limitada">Rede grande: a varredura TCP examinou somente o /24 local. A descoberta ONVIF continua abrangendo os dispositivos que responderem ao multicast.</string>
     <string name="testar_salvar">Testar e salvar</string>
     <string name="testando">Testando câmera</string>
     <string name="testando_caminho">Testando caminho %1$d de %2$d …</string>
@@ -47,4 +48,6 @@
     <string name="erro_login">A câmera recusou o login. Confira o usuário e a senha (toque e segure na câmera da lista > Editar).</string>
     <string name="erro_caminho">O caminho do vídeo não existe nesta câmera. Use Editar na lista ou refaça pelo Buscar câmeras.</string>
     <string name="erro_generico">Não foi possível abrir o vídeo desta câmera. Verifique se o celular está no mesmo Wi-Fi e se o RTSP está ativado.</string>
+    <string name="novidades">Novidades e versões</string>
+    <string name="novidades_text">Versão 1.4.1 (código 11)\n• Busca ONVIF WS-Discovery por multicast UDP.\n• Busca TCP conforme a máscara da rede e mais portas.\n• Conciliação de dispositivos ONVIF e RTSP por IP.\n• Testes RTSP em todas as portas detectadas.\n• Corrigidos a leitura do corpo RTSP em bytes e o fallback de autenticação.\n\nVersão 1.4.0 (código 10)\n• Cliente ONVIF para consultar fluxos, reprodução RTSP e fluxos alternativos.\n\nLimitação conhecida: certos fluxos H.265 podem falhar no Media3 (sprop-vps).</string>
 </resources>

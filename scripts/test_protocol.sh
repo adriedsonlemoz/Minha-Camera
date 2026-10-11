@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+BUILD="$(mktemp -d)"
+trap 'rm -rf "$BUILD"' EXIT
+kotlinc \
+  "$ROOT/tests/protocol-stubs/AndroidStubs.kt" \
+  "$ROOT/tests/protocol-stubs/ContextStub.kt" \
+  "$ROOT/tests/protocol-stubs/WifiStub.kt" \
+  "$ROOT/tests/protocol-stubs/NetworkStub.kt" \
+  "$ROOT/app/src/main/java/com/minhacamera/NetUtil.kt" \
+  "$ROOT/app/src/main/java/com/minhacamera/OnvifClient.kt" \
+  "$ROOT/app/src/main/java/com/minhacamera/RtspProbe.kt" \
+  "$ROOT/app/src/main/java/com/minhacamera/WsDiscovery.kt" \
+  "$ROOT/tests/ProtocolSmoke.kt" \
+  -include-runtime -d "$BUILD/tests.jar"
+java -jar "$BUILD/tests.jar"

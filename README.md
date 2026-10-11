@@ -1,44 +1,42 @@
 # Minha Câmera
 
-Aplicativo Android nativo em Kotlin para ver câmeras IP via RTSP. Busca câmeras na rede Wi-Fi, testa automaticamente os caminhos de vídeo (Intelbras, Hikvision, Tapo e outras), ONVIF, login Digest/Basic, adição manual por IP e gera o APK com GitHub Actions. Player Media3/ExoPlayer.
+**Versão atual: 1.4.1 (versionCode 11)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**.
 
-## Recursos
+Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.1 concentra as alterações na descoberta automática e autenticação. Consulte [CHANGELOG.md](CHANGELOG.md) e [notas de release](docs/RELEASE_NOTES.md).
 
-- **Buscar câmeras:** varre a faixa de IP do Wi-Fi (portas RTSP 554 e 8554) e lista os dispositivos encontrados. Se a primeira busca não achar nada, faz uma segunda tentativa sozinha.
-- **ONVIF:** o app pergunta à própria câmera qual é o endereço exato do vídeo (portas 80, 8080, 2020 e outras), sem precisar adivinhar.
-- **Teste automático de caminhos:** se o ONVIF não responder, toque na câmera, informe usuário (já vem `admin`) e senha, e o app testa os caminhos de vídeo mais comuns até achar o que funciona. Para cedo se a senha estiver errada, para não bloquear a câmera.
-- **Adicionar manualmente:** o botão **+** já vem com o começo do IP da sua rede (ex.: `192.168.100.`); é só completar. Também aceita uma URL `rtsp://...` completa no campo IP.
-- **Player ao vivo:** RTP sobre TCP e buffer pequeno para baixa latência.
-- **Lista de câmeras:** toque para abrir, segure para **editar** (nome e endereço) ou excluir. A senha não aparece na lista.
-- **Fluxos alternativos:** o app guarda também o fluxo secundário da câmera e, se o principal falhar, troca sozinho para ele (preferindo H.264).
-- **Erros em português:** mensagens claras com a solução, e os detalhes técnicos em letra pequena abaixo.
-- Seta e botão **Voltar** em todas as telas de busca.
+## Descoberta automática
+
+- **ONVIF WS-Discovery:** envia probes multicast UDP a `239.255.255.250:3702`, recebe `ProbeMatch`, identifica o IP de quem respondeu e aproveita os `XAddrs` para consultar o serviço da câmera com credenciais.
+- **Varredura TCP complementar:** usa prefixo/máscara IPv4 obtidos do Wi-Fi para testar 554, 8554, 10554, 8555 e 7447. Consolida por IP sem perder outras portas do mesmo dispositivo.
+- **Proteção da rede:** limita a concorrência a 20 tarefas; em sub-redes com mais de 1022 hosts, varre por TCP apenas o bloco /24 local, informando essa limitação ao usuário.
+- **Fallback:** se não encontrar dispositivos, realiza uma segunda rodada. Multicast depende das regras de roteador, isolamento do Wi-Fi e configuração ONVIF da câmera.
+
+## Recursos de câmera
+
+- **Consulta ONVIF Media:** com usuário e senha, consulta os perfis e URLs RTSP usando a URL anunciada na descoberta ou portas ONVIF conhecidas.
+- **RTSP:** tenta caminhos comuns para Intelbras, Hikvision, Tapo e outras, com autenticação Digest/Basic. Lê respostas em bytes conforme `Content-Length`.
+- **Manual:** permite cadastrar IP/porta/caminho ou URL RTSP completa pelo botão `+`.
+- **Player:** usa Media3/ExoPlayer e tenta fluxos alternativos ao detectar erro. Algumas câmeras H.265/HEVC ainda geram `missing sprop-vps`; configure fluxo H.264 ou secundário se necessário.
+- **Histórico:** menu superior "Novidades e versões".
 
 ## Como usar
 
-1. Deixe o RTSP ativado na câmera e o celular no mesmo Wi-Fi.
-2. Toque em **Buscar câmeras** (ou em **+** para digitar o IP).
-3. Informe a senha da câmera (a mesma do RTSP/NVR; o usuário padrão é `admin`).
-4. A câmera é salva e aparece na tela inicial.
+1. Ligue a câmera e conecte o telefone ao mesmo Wi-Fi, sem isolamento entre clientes.
+2. Abra **Buscar câmeras** ou **+** para configurar manualmente.
+3. Toque na câmera encontrada, informe as credenciais RTSP/ONVIF e teste.
+4. Se a descoberta falhar, verifique as portas da câmera, Wi-Fi e ONVIF, ou use `rtsp://usuario:senha@IP:554/caminho`.
 
-Formato manual da URL: `rtsp://usuario:senha@IP:554/caminho` (o caminho varia por marca).
+## GitHub Actions
 
-## Gerar o APK pelo GitHub Actions
+O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, compila `assembleRelease` e envia o arquivo `MinhaCamera-1.4.1.apk` em **Actions > Artifacts**. O release usa a chave de debug do ambiente de build. O ZIP de código-fonte não contém um APK pré-compilado.
 
-1. Envie o conteúdo do projeto para a branch `main` do seu repositório.
-2. O workflow `.github/workflows/build-apk.yml` compila a cada push (ou manualmente em **Actions > Build APK > Run workflow**).
-3. Em **Actions > execução > Artifacts** há um único item: o APK solto, sem ZIP, com o nome `<NomeDoApp>-<versão>.apk`, sem acento e sem espaço, por exemplo `MinhaCamera-1.3.1.apk`.
+Para atualizar, siga [docs/VERSIONING.md](docs/VERSIONING.md), execute `python3 scripts/check_version.py` e, onde houver `kotlinc`, `bash scripts/test_protocol.sh`; depois sincronize versões, documentos e histórico e confirme o build no GitHub.
 
-O nome vem de `app_name` em `app/src/main/res/values/strings.xml` e a versão de `versionName` em `app/build.gradle.kts` (suba a cada entrega). O APK sai assinado com a chave de debug, então instala direto.
+## Limitações e segurança
 
-## Limitações
+- O sucesso da descoberta não garante que o dispositivo exponha um stream RTSP suportado.
+- ONVIF pode anunciar IP/porta diferentes dos esperados; o app usa o IP do dispositivo que respondeu ao probe.
+- Senhas em URLs RTSP são armazenadas em preferências locais sem criptografia no projeto de entrada; correção pendente. Evite exportar dados do app e compartilhá-los.
+- Compatibilidade H.265 ampliada via LibVLC ainda não implementada.
 
-- **H.265 (HEVC):** muitas câmeras enviam H.265 sem o parâmetro `sprop-vps` no SDP e o player Media3 não abre esse caso (erro "missing sprop-vps"). Solução: mudar a codificação do vídeo da câmera para **H.264** no app dela, ou usar o fluxo secundário.
-
-## Desenvolvimento
-
-Abra a pasta no Android Studio; ele baixa o Gradle e sincroniza sozinho.
-
-- Linguagem: Kotlin · minSdk 24 · targetSdk 34
-- Player: AndroidX Media3 (ExoPlayer + RTSP)
-- Pacote: `com.minhacamera`
+Pacote: `com.minhacamera` · minSdk 24 · targetSdk 34 · Media3 1.3.1.

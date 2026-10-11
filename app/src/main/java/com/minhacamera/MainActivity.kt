@@ -3,6 +3,8 @@ package com.minhacamera
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.view.Menu
+import android.view.MenuItem
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.ArrayAdapter
@@ -53,6 +55,26 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.fabScan).setOnClickListener {
             startActivity(Intent(this, ScanActivity::class.java))
         }
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menu.add(0, 1001, 0, R.string.novidades)
+        return true
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == 1001) {
+            val version = try {
+                packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
+            } catch (_: Exception) { "?" }
+            AlertDialog.Builder(this)
+                .setTitle(getString(R.string.novidades) + " • $version")
+                .setMessage(R.string.novidades_text)
+                .setPositiveButton(android.R.string.ok, null)
+                .show()
+            return true
+        }
+        return super.onOptionsItemSelected(item)
     }
 
     override fun onResume() {

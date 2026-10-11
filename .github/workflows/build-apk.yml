@@ -27,6 +27,9 @@ jobs:
         with:
           gradle-version: '8.7'
 
+      - name: Verificar versionamento
+        run: python3 scripts/check_version.py
+
       - name: Compilar APK release
         run: gradle assembleRelease --no-daemon --stacktrace
 

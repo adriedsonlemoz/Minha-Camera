@@ -1,8 +1,8 @@
 package com.minhacamera
 
 import android.util.Base64
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -79,16 +79,27 @@ object RtspProbe {
         out.flush()
     }
 
-    private fun readReply(reader: BufferedReader): Reply? {
-        val statusLine = reader.readLine() ?: return null
+    // Protocolo RTSP usa Content-Length em BYTES, não em caracteres UTF-8.
+    private fun readLine(input: InputStream): String? {
+        val bytes = ByteArrayOutputStream()
+        while (bytes.size() < 8192) {
+            val b = input.read()
+            if (b < 0) return if (bytes.size() == 0) null else bytes.toString("ISO-8859-1")
+            if (b == 10) return bytes.toString("ISO-8859-1").trimEnd('\r')
+            bytes.write(b)
+        }
+        return null
+    }
+
+    private fun readReply(input: InputStream): Reply? {
+        val statusLine = readLine(input) ?: return null
+        if (!statusLine.startsWith("RTSP/", ignoreCase = true)) return null
         val code = statusLine.split(" ").getOrNull(1)?.toIntOrNull() ?: return null
         val authHeaders = mutableListOf<String>()
-        val raw = StringBuilder(statusLine)
         var length = 0
-        while (true) {
-            val line = reader.readLine() ?: break
+        for (i in 0..100) {
+            val line = readLine(input) ?: return null
             if (line.isEmpty()) break
-            raw.append('\n').append(line)
             if (line.startsWith("WWW-Authenticate:", ignoreCase = true)) {
                 authHeaders.add(line.substringAfter(":").trim())
             }
@@ -96,17 +107,17 @@ object RtspProbe {
                 length = line.substringAfter(":").trim().toIntOrNull() ?: 0
             }
         }
-        // Consome o corpo para manter a conexão alinhada.
-        if (length in 1..8192) {
-            val buf = CharArray(length)
-            var n = 0
-            while (n < length) {
-                val r = reader.read(buf, n, length - n)
-                if (r < 0) break
-                n += r
-            }
+        // O corpo de respostas ao DESCRIBE pode conter SDP não ASCII.
+        // Ler bytes exatos também evita corromper a próxima resposta na mesma conexão.
+        if (length !in 0..262144) return null
+        var remaining = length
+        val buf = ByteArray(4096)
+        while (remaining > 0) {
+            val n = input.read(buf, 0, minOf(buf.size, remaining))
+            if (n < 0) return null
+            remaining -= n
         }
-        return Reply(code, authHeaders, raw.toString())
+        return Reply(code, authHeaders, statusLine)
     }
 
     // Uma tentativa completa em UMA conexão: DESCRIBE sem login -> desafio -> DESCRIBE com login.
@@ -121,15 +132,15 @@ object RtspProbe {
                 s.connect(InetSocketAddress(host, port), 3000)
                 s.soTimeout = 4000
                 val out = s.getOutputStream()
-                val reader = BufferedReader(InputStreamReader(s.getInputStream()))
+                val input = s.getInputStream()
                 send(out, uri, 1, null)
-                val r1 = readReply(reader)
+                val r1 = readReply(input)
                 first = r1
                 if (r1 != null && r1.code == 401) {
                     val header = buildAuth(r1.authHeaders, user, pass, uri, variant)
                     if (header != null) {
                         send(out, uri, 2, header)
-                        second = readReply(reader)
+                        second = readReply(input)
                     }
                 }
             }
@@ -141,46 +152,54 @@ object RtspProbe {
     fun probe(host: String, port: Int, user: String, pass: String, path: String): ProbeResult {
         val uri = "rtsp://$host:$port$path"
         val dbg = StringBuilder()
+        var loginRefused = false
+        var hadChallenge = false
         var lastCode = -1
 
-        // Variante 0: Digest padrão · 1: Digest sem qop/com algorithm · 2: Basic
+        // Tenta Digest com qop, Digest legado e Basic (somente quando anunciado).
+        // Respostas 401 de uma variante não impedem tentar outra compatível.
         for (variant in 0..2) {
             val (r1, r2) = attempt(host, port, uri, user, pass, variant)
             if (r1 == null) {
                 if (variant == 0) return ProbeResult(ProbeStatus.ERROR, "sem resposta")
-                break
+                continue
             }
             if (variant == 0) {
                 dbg.append("desafio: ")
-                    .append(r1.authHeaders.joinToString(" | ").ifEmpty { r1.raw.replace("\n", " | ") }.take(300))
+                    .append(r1.authHeaders.joinToString(" + ") { it.substringBefore(' ') }.ifEmpty { "não enviado" })
                     .append('\n')
             }
             when (r1.code) {
                 200 -> return ProbeResult(ProbeStatus.OK, "OK")
                 404, 454 -> return ProbeResult(ProbeStatus.NOT_FOUND, "não existe (${r1.code})", dbg.toString())
-                401 -> {}
+                401 -> hadChallenge = true
+                403 -> return ProbeResult(ProbeStatus.AUTH_FAIL, "acesso proibido (403)", dbg.toString())
                 else -> return ProbeResult(ProbeStatus.ERROR, "resposta ${r1.code}", dbg.toString())
             }
             if (r2 == null) {
-                dbg.append("v$variant: sem resposta ao login\n")
+                dbg.append("v$variant: autenticação indisponível ou sem resposta\n")
                 continue
             }
-            dbg.append("v$variant → ").append(r2.raw.replace("\n", " | ").take(250)).append('\n')
+            dbg.append("v$variant → ").append(r2.raw.take(100)).append('\n')
             when (r2.code) {
                 200 -> return ProbeResult(ProbeStatus.OK, "OK")
-                401, 403 -> return ProbeResult(ProbeStatus.AUTH_FAIL, "login recusado (${r2.code})", dbg.toString())
+                401, 403 -> loginRefused = true
                 404, 454 -> return ProbeResult(ProbeStatus.NOT_FOUND, "não existe (${r2.code})", dbg.toString())
                 else -> lastCode = r2.code
             }
         }
-        val detail = if (lastCode == -1) "401 (login sem resposta)" else "401 → $lastCode"
-        return ProbeResult(ProbeStatus.ERROR, detail, dbg.toString())
+        return when {
+            loginRefused -> ProbeResult(ProbeStatus.AUTH_FAIL, "login recusado", dbg.toString())
+            hadChallenge -> ProbeResult(ProbeStatus.ERROR, "desafio de autenticação sem resposta compatível", dbg.toString())
+            else -> ProbeResult(ProbeStatus.ERROR, if (lastCode == -1) "sem resposta" else "resposta $lastCode", dbg.toString())
+        }
     }
 
     private fun buildAuth(
         headers: List<String>, user: String, pass: String, uri: String, variant: Int
     ): String? {
         if (variant == 2) {
+            if (headers.none { it.startsWith("Basic", ignoreCase = true) }) return null
             return "Basic " + Base64.encodeToString("$user:$pass".toByteArray(), Base64.NO_WRAP)
         }
         val digest = headers.firstOrNull { it.startsWith("Digest", ignoreCase = true) }
@@ -205,9 +224,6 @@ object RtspProbe {
             }
             p["opaque"]?.let { sb.append(", opaque=\"$it\"") }
             return sb.toString()
-        }
-        if (headers.any { it.startsWith("Basic", ignoreCase = true) }) {
-            return "Basic " + Base64.encodeToString("$user:$pass".toByteArray(), Base64.NO_WRAP)
         }
         return null
     }
