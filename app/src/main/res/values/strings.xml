@@ -36,4 +36,6 @@
     <string name="voltar">Voltar</string>
     <string name="ip_invalido">IP inválido. Complete os números, ex.: 192.168.100.209</string>
     <string name="buscando_2">Segunda tentativa em %1$s …</string>
+    <string name="consultando_onvif">Consultando a câmera (ONVIF) …</string>
+    <string name="detalhes_tecnicos">Detalhes técnicos (1º caminho):</string>
 </resources>

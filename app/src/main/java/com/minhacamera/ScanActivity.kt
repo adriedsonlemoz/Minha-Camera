@@ -94,7 +94,7 @@ class ScanActivity : AppCompatActivity() {
             p.execute {
                 // Timeouts generosos: câmeras em economia de energia demoram a responder.
                 val openPort = ports.firstOrNull {
-                    RtspProbe.isPortOpen(ip, it, if (it == 554) 1500 else 1000)
+                    RtspProbe.isPortOpen(ip, it, if (it == 554) 3000 else 1500)
                 }
                 val d = done.incrementAndGet()
                 runOnUiThread {
@@ -212,57 +212,80 @@ class ScanActivity : AppCompatActivity() {
         val total = paths.size
         val dlg = AlertDialog.Builder(this)
             .setTitle(R.string.testando)
-            .setMessage(getString(R.string.testando_caminho, 1, total))
+            .setMessage(getString(R.string.consultando_onvif))
             .setCancelable(false)
             .create()
         dlg.show()
 
         Thread {
             var okPath: String? = null
+            var okPort = f.port
             var authFails = 0
             var noReply = 0
+            var firstDebug = ""
             val details = StringBuilder()
-            for ((i, path) in paths.withIndex()) {
-                runOnUiThread {
-                    if (!isFinishing) dlg.setMessage(getString(R.string.testando_caminho, i + 1, total))
+
+            // 1) ONVIF: a própria câmera informa o endereço exato do vídeo.
+            if (customPath.isEmpty()) {
+                val on = OnvifClient.findStreamUri(f.ip, user, pass)
+                details.append("ONVIF: ").append(on.log.ifEmpty { "sem resposta" }).append('\n')
+                val u = on.uri
+                if (u != null) {
+                    val parsed = Uri.parse(u)
+                    okPort = if (parsed.port != -1) parsed.port else 554
+                    okPath = (parsed.encodedPath ?: "/") +
+                        (parsed.encodedQuery?.let { "?$it" } ?: "")
                 }
-                val r = RtspProbe.probe(f.ip, f.port, user, pass, path)
-                details.append(path).append("  →  ").append(r.detail).append('\n')
-                when (r.status) {
-                    ProbeStatus.OK -> {
-                        okPath = path
-                        break
+            }
+
+            // 2) Teste dos caminhos conhecidos
+            if (okPath == null) {
+                for ((i, path) in paths.withIndex()) {
+                    runOnUiThread {
+                        if (!isFinishing) dlg.setMessage(getString(R.string.testando_caminho, i + 1, total))
                     }
-                    ProbeStatus.AUTH_FAIL -> {
-                        noReply = 0
-                        authFails++
-                        // Para cedo: muitas senhas erradas podem bloquear a câmera.
-                        if (authFails >= 2) break
-                    }
-                    ProbeStatus.NOT_FOUND -> {
-                        authFails = 0
-                        noReply = 0
-                    }
-                    ProbeStatus.ERROR -> {
-                        authFails = 0
-                        if (r.detail.startsWith("sem resposta")) {
-                            noReply++
-                            if (noReply >= 3) break
-                        } else {
+                    val r = RtspProbe.probe(f.ip, f.port, user, pass, path)
+                    if (i == 0) firstDebug = r.debug
+                    details.append(path).append("  →  ").append(r.detail).append('\n')
+                    when (r.status) {
+                        ProbeStatus.OK -> {
+                            okPath = path
+                            break
+                        }
+                        ProbeStatus.AUTH_FAIL -> {
                             noReply = 0
+                            authFails++
+                            // Para cedo: muitas senhas erradas podem bloquear a câmera.
+                            if (authFails >= 2) break
+                        }
+                        ProbeStatus.NOT_FOUND -> {
+                            authFails = 0
+                            noReply = 0
+                        }
+                        ProbeStatus.ERROR -> {
+                            authFails = 0
+                            if (r.detail.startsWith("sem resposta")) {
+                                noReply++
+                                if (noReply >= 3) break
+                            } else {
+                                noReply = 0
+                            }
                         }
                     }
                 }
             }
+
             val foundPath = okPath
+            val foundPort = okPort
             val wrongLogin = authFails >= 2
             val silent = noReply >= 3
-            val report = details.toString()
+            val report = details.toString() +
+                (if (firstDebug.isNotEmpty()) "\n" + getString(R.string.detalhes_tecnicos) + "\n" + firstDebug else "")
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 dlg.dismiss()
                 if (foundPath != null) {
-                    saveCamera(f, name, user, pass, foundPath)
+                    saveCamera(Found(f.ip, foundPort), name, user, pass, foundPath)
                     finish()
                 } else {
                     val msg = when {

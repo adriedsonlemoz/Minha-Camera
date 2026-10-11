@@ -77,7 +77,8 @@ class PlayerActivity : AppCompatActivity() {
 
             override fun onPlayerError(error: PlaybackException) {
                 progress.visibility = View.GONE
-                errorText.text = getString(R.string.erro_conexao, error.errorCodeName)
+                val cause = error.cause?.let { "\n${it.javaClass.simpleName}: ${it.message ?: ""}" } ?: ""
+                errorText.text = getString(R.string.erro_conexao, error.errorCodeName + cause)
                 errorText.visibility = View.VISIBLE
             }
         })

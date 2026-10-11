@@ -1,11 +1,12 @@
 # Minha Câmera
 
-Aplicativo Android nativo em Kotlin para ver câmeras IP via RTSP. Busca câmeras na rede Wi-Fi, testa automaticamente os caminhos de vídeo (Intelbras, Hikvision, Tapo e outras), suporta login Digest/Basic, adição manual por IP e gera o APK com GitHub Actions. Player Media3/ExoPlayer.
+Aplicativo Android nativo em Kotlin para ver câmeras IP via RTSP. Busca câmeras na rede Wi-Fi, testa automaticamente os caminhos de vídeo (Intelbras, Hikvision, Tapo e outras), ONVIF, login Digest/Basic, adição manual por IP e gera o APK com GitHub Actions. Player Media3/ExoPlayer.
 
 ## Recursos
 
 - **Buscar câmeras:** varre a faixa de IP do Wi-Fi (portas RTSP 554 e 8554) e lista os dispositivos encontrados. Se a primeira busca não achar nada, faz uma segunda tentativa sozinha.
-- **Teste automático de caminhos:** toque na câmera, informe usuário (já vem `admin`) e senha, e o app testa os caminhos de vídeo mais comuns até achar o que funciona. Para cedo se a senha estiver errada, para não bloquear a câmera.
+- **ONVIF:** o app pergunta à própria câmera qual é o endereço exato do vídeo (portas 80, 8080, 2020 e outras), sem precisar adivinhar.
+- **Teste automático de caminhos:** se o ONVIF não responder, toque na câmera, informe usuário (já vem `admin`) e senha, e o app testa os caminhos de vídeo mais comuns até achar o que funciona. Para cedo se a senha estiver errada, para não bloquear a câmera.
 - **Adicionar manualmente:** o botão **+** já vem com o começo do IP da sua rede (ex.: `192.168.100.`); é só completar. Também aceita uma URL `rtsp://...` completa no campo IP.
 - **Player ao vivo:** RTP sobre TCP e buffer pequeno para baixa latência.
 - **Lista de câmeras:** toque para abrir, segure para excluir. A senha não aparece na lista.
