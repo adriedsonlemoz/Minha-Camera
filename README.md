@@ -1,8 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.1 (versionCode 11)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**.
+**Versão atual: 1.4.2 (versionCode 12)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
 
-Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.1 concentra as alterações na descoberta automática e autenticação. Consulte [CHANGELOG.md](CHANGELOG.md) e [notas de release](docs/RELEASE_NOTES.md).
+Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.2 acrescenta fallback LibVLC e identificação do codec por SDP à descoberta ONVIF da 1.4.1. Consulte [CHANGELOG.md](CHANGELOG.md) e [notas de release](docs/RELEASE_NOTES.md).
 
 ## Descoberta automática
 
@@ -16,7 +16,8 @@ Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.1 concent
 - **Consulta ONVIF Media:** com usuário e senha, consulta os perfis e URLs RTSP usando a URL anunciada na descoberta ou portas ONVIF conhecidas.
 - **RTSP:** tenta caminhos comuns para Intelbras, Hikvision, Tapo e outras, com autenticação Digest/Basic. Lê respostas em bytes conforme `Content-Length`.
 - **Manual:** permite cadastrar IP/porta/caminho ou URL RTSP completa pelo botão `+`.
-- **Player:** usa Media3/ExoPlayer e tenta fluxos alternativos ao detectar erro. Algumas câmeras H.265/HEVC ainda geram `missing sprop-vps`; configure fluxo H.264 ou secundário se necessário.
+- **Player:** usa Media3/ExoPlayer primeiro e, caso todos os fluxos falhem, tenta LibVLC 3.7.7 para compatibilidade adicional com RTSP/HEVC. O menu da tela de vídeo permite alternar manualmente os motores. Falhas H.265 ainda são possíveis dependendo do SDP, do codec enviado e do decodificador.
+- **Codec por SDP:** interpreta `RTSP DESCRIBE`; prioriza o secundário H.264 somente quando confirmado, em vez de assumir que o nome do caminho indica o codec.
 - **Histórico:** menu superior "Novidades e versões".
 
 ## Como usar
@@ -28,7 +29,7 @@ Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.1 concent
 
 ## GitHub Actions
 
-O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, compila `assembleRelease` e envia o arquivo `MinhaCamera-1.4.1.apk` em **Actions > Artifacts**. O release usa a chave de debug do ambiente de build. O ZIP de código-fonte não contém um APK pré-compilado.
+O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, compila `assembleRelease` e envia o arquivo `MinhaCamera-1.4.2.apk` em **Actions > Artifacts**. O release usa a chave de debug do ambiente de build: **isso não garante a mesma assinatura em execuções diferentes**, portanto uma instalação sobre uma versão anterior pode ser rejeitada pelo Android. Para distribuir atualizações instaláveis sem perder dados, configurar uma chave de assinatura estável protegida por GitHub Secrets. O ZIP de código-fonte não contém um APK pré-compilado.
 
 Para atualizar, siga [docs/VERSIONING.md](docs/VERSIONING.md), execute `python3 scripts/check_version.py` e, onde houver `kotlinc`, `bash scripts/test_protocol.sh`; depois sincronize versões, documentos e histórico e confirme o build no GitHub.
 
@@ -36,7 +37,8 @@ Para atualizar, siga [docs/VERSIONING.md](docs/VERSIONING.md), execute `python3 
 
 - O sucesso da descoberta não garante que o dispositivo exponha um stream RTSP suportado.
 - ONVIF pode anunciar IP/porta diferentes dos esperados; o app usa o IP do dispositivo que respondeu ao probe.
-- Senhas em URLs RTSP são armazenadas em preferências locais sem criptografia no projeto de entrada; correção pendente. Evite exportar dados do app e compartilhá-los.
-- Compatibilidade H.265 ampliada via LibVLC ainda não implementada.
+- Senhas em URLs RTSP ainda são armazenadas em preferências locais sem criptografia. O backup Android foi desabilitado em 1.4.2 como mitigação; a proteção com criptografia continua pendente. Evite compartilhar exportações/relatórios que possam conter URLs.
+- LibVLC adiciona bibliotecas nativas e aumenta o download/armazenamento; sua distribuição está sujeita aos termos aplicáveis da licença LGPL (ver [VideoLAN](https://www.videolan.org/legal.html)).
+- Para testar H.265 real é necessário compilar e executar no Android. Os testes simulados não são garantia de compatibilidade.
 
-Pacote: `com.minhacamera` · minSdk 24 · targetSdk 34 · Media3 1.3.1.
+Pacote: `com.minhacamera` · minSdk 24 · targetSdk 34 · Media3 1.3.1 · LibVLC 3.7.7.

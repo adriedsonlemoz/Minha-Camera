@@ -1,5 +1,22 @@
 # Histórico de versões
 
+## 1.4.2+12 | 2026-10-11
+
+### Implementado
+- Motor LibVLC 3.7.7 como fallback automático após falhas do Media3, inclusive quando há fluxos H.265/HEVC.
+- Menu do player permite escolher manualmente Media3 ou LibVLC.
+- Extração do codec de vídeo do SDP retornado por `RTSP DESCRIBE`.
+- Prioriza substream H.264 somente quando detectado efetivamente na resposta SDP, mantendo outros caminhos como alternativas.
+- Timeout de 15 segundos para inicialização no LibVLC, prevenção de callbacks duplicados, descarte de recursos nativos e ocultação de URLs RTSP nos detalhes de falha.
+- Backup Android desativado devido ao armazenamento legado de credenciais em URLs.
+- Testes simulados adicionais de SDP, DESCRIBE H.265 e ausência de falso positivo em áudio.
+
+### Limitações
+- Código-fonte sem APK compilado; integração LibVLC ainda depende de build e testes no dispositivo.
+- H.265 não é garantido para toda câmera. LibVLC aumenta significativamente o tamanho do APK.
+- Criptografia das credenciais em repouso ainda pendente.
+
+
 ## 1.4.1+11 | 2026-10-11
 
 ### Corrigido

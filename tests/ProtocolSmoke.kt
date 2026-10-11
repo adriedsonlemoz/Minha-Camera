@@ -111,7 +111,52 @@ private fun checkOnvifAdvertisedEndpoint() {
     } finally { server.stop(0) }
 }
 
+
+private fun checkSdpCodec() {
+    val hevc = """v=0
+m=audio 0 RTP/AVP 0
+m=video 0 RTP/AVP 96
+a=rtpmap:96 H265/90000
+a=fmtp:96 sprop-vps=AAAA;sprop-sps=BBBB;sprop-pps=CCCC
+""".trimIndent()
+    val h264 = """v=0
+m=video 0 RTP/AVP 98
+a=rtpmap:98 H264/90000
+m=audio 0 RTP/AVP 97
+a=rtpmap:97 MPEG4-GENERIC/48000
+""".trimIndent()
+    val audioOnly = "m=audio 0 RTP/AVP 96\na=rtpmap:96 H264/90000"
+    check(RtspCodec.videoCodec(hevc) == "H265")
+    check(RtspCodec.videoCodec(h264) == "H264")
+    check(RtspCodec.videoCodec(audioOnly) == null)
+    check(RtspCodec.videoCodec("") == null)
+    println("OK: SDP identifica somente o codec de vídeo")
+}
+
+private fun checkRtspSdpProbe() {
+    ServerSocket(0).use { server ->
+        val thread = Thread {
+            server.accept().use { socket ->
+                socket.soTimeout = 3000
+                socket.readRequest()
+                val sdp = "v=0\r\nm=video 0 RTP/AVP 96\r\na=rtpmap:96 H265/90000\r\n"
+                val bytes = sdp.toByteArray(Charsets.UTF_8)
+                val header = "RTSP/1.0 200 OK\r\nCSeq: 1\r\nContent-Type: application/sdp\r\nContent-Length: ${bytes.size}\r\n\r\n"
+                socket.getOutputStream().write(header.toByteArray() + bytes)
+            }
+        }
+        thread.start()
+        val probe = RtspProbe.probe("127.0.0.1", server.localPort, "admin", "", "/stream1")
+        check(probe.status == ProbeStatus.OK && probe.videoCodec == "H265") { "$probe" }
+        thread.join(5000)
+        check(!thread.isAlive)
+        println("OK: RTSP DESCRIBE lê SDP H.265 corretamente")
+    }
+}
+
 fun main() {
+    checkSdpCodec()
+    checkRtspSdpProbe()
     checkSubnets()
     checkDigestFallback()
     checkDiscoveryXml()

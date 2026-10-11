@@ -11,8 +11,8 @@ android {
         applicationId = "com.minhacamera"
         minSdk = 24
         targetSdk = 34
-        versionCode = 11
-        versionName = "1.4.1"
+        versionCode = 12
+        versionName = "1.4.2"
     }
 
     buildTypes {
@@ -43,4 +43,6 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.3.1")
     implementation("androidx.media3:media3-exoplayer-rtsp:1.3.1")
     implementation("androidx.media3:media3-ui:1.3.1")
+    // Fallback HEVC/RTSP; LibVLC incorpora binários nativos e aumenta o APK.
+    implementation("org.videolan.android:libvlc-all:3.7.7")
 }

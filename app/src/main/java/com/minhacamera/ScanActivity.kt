@@ -333,11 +333,30 @@ class ScanActivity : AppCompatActivity() {
                         val r = RtspProbe.probe(f.ip, rtspPort, user, pass, path)
                         if (i == 0 && firstDebug.isEmpty()) firstDebug = r.debug
                         details.append(":").append(rtspPort).append(path)
-                            .append("  →  ").append(r.detail).append('\n')
+                            .append("  →  ").append(r.detail)
+                            .append(if (r.videoCodec != null) " [${r.videoCodec}]" else "")
+                            .append('\n')
                         when (r.status) {
                             ProbeStatus.OK -> {
-                                okUrl = buildUrl(f.ip, rtspPort, user, pass, path)
-                                okAlts = altPaths(path).map { buildUrl(f.ip, rtspPort, user, pass, it) }
+                                val primary = buildUrl(f.ip, rtspPort, user, pass, path)
+                                val altCandidates = altPaths(path)
+                                // Uma resposta 200 não garante H.264: ler o SDP e
+                                // priorizar o secundário quando ele CONFIRMA H.264.
+                                val verifiedH264 = if (customPath.isEmpty() && r.videoCodec == "H265") {
+                                    altCandidates.firstOrNull { candidate ->
+                                        val check = RtspProbe.probe(f.ip, rtspPort, user, pass, candidate)
+                                        details.append(":").append(rtspPort).append(candidate)
+                                            .append(" → ").append(check.detail)
+                                            .append(" [").append(check.videoCodec ?: "?").append("]\n")
+                                        check.status == ProbeStatus.OK && check.videoCodec == "H264"
+                                    }
+                                } else null
+                                okUrl = verifiedH264?.let { buildUrl(f.ip, rtspPort, user, pass, it) } ?: primary
+                                okAlts = (listOf(primary) + altCandidates.map {
+                                    buildUrl(f.ip, rtspPort, user, pass, it)
+                                }).filter { it != okUrl }.distinct()
+                                if (r.videoCodec == "H265" && verifiedH264 == null)
+                                    warn = getString(R.string.aviso_h265)
                                 break@portLoop
                             }
                             ProbeStatus.AUTH_FAIL -> {

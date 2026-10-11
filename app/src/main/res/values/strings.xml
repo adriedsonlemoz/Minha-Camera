@@ -44,10 +44,14 @@
     <string name="tentar_novamente">Tentar de novo</string>
     <string name="tentando_outro">Tentando outro fluxo (%1$d/%2$d) …</string>
     <string name="aviso_h265">Aviso: esta câmera transmite em H.265, que o app pode não abrir. Se o vídeo falhar, mude a câmera para H.264.</string>
-    <string name="erro_h265">Esta câmera está transmitindo em H.265 (HEVC) e este app ainda não abre esse formato.\n\nSolução: no aplicativo da câmera, mude a codificação do vídeo para H.264 (em Configurações > Vídeo ou Qualidade).</string>
+    <string name="erro_h265">Falha ao reproduzir este fluxo H.265/HEVC mesmo após tentar o LibVLC. A câmera pode estar enviando parâmetros SDP incompletos ou um vídeo incompatível com o decodificador.\n\nExperimente habilitar H.264 ou outro perfil na câmera e refazer a busca.</string>
     <string name="erro_login">A câmera recusou o login. Confira o usuário e a senha (toque e segure na câmera da lista > Editar).</string>
     <string name="erro_caminho">O caminho do vídeo não existe nesta câmera. Use Editar na lista ou refaça pelo Buscar câmeras.</string>
     <string name="erro_generico">Não foi possível abrir o vídeo desta câmera. Verifique se o celular está no mesmo Wi-Fi e se o RTSP está ativado.</string>
+    <string name="usar_media3">Reproduzir com Media3</string>
+    <string name="usar_vlc">Reproduzir com LibVLC</string>
+    <string name="engine_fluxo">%1$s • fluxo %2$d/%3$d</string>
+    <string name="erro_sem_fluxos">Nenhum endereço RTSP válido foi informado.</string>
     <string name="novidades">Novidades e versões</string>
-    <string name="novidades_text">Versão 1.4.1 (código 11)\n• Busca ONVIF WS-Discovery por multicast UDP.\n• Busca TCP conforme a máscara da rede e mais portas.\n• Conciliação de dispositivos ONVIF e RTSP por IP.\n• Testes RTSP em todas as portas detectadas.\n• Corrigidos a leitura do corpo RTSP em bytes e o fallback de autenticação.\n\nVersão 1.4.0 (código 10)\n• Cliente ONVIF para consultar fluxos, reprodução RTSP e fluxos alternativos.\n\nLimitação conhecida: certos fluxos H.265 podem falhar no Media3 (sprop-vps).</string>
+    <string name="novidades_text">Versão 1.4.2 (código 12)\n• Fallback automático Media3 → LibVLC para fluxos RTSP e H.265.\n• Seleção de fluxo secundário H.264 por codec confirmado no SDP.\n• Escolha manual do motor pelo menu da reprodução.\n• Melhor diagnóstico sem expor credenciais na tela de erro.\n\nVersão 1.4.1 (código 11)\n• Busca ONVIF WS-Discovery por multicast UDP.\n• Busca TCP conforme a máscara da rede e mais portas.\n• Conciliação de dispositivos ONVIF e RTSP por IP.\n• Testes RTSP em todas as portas detectadas.\n• Corrigidos a leitura do corpo RTSP em bytes e o fallback de autenticação.\n\nVersão 1.4.0 (código 10)\n• Cliente ONVIF para consultar fluxos, reprodução RTSP e fluxos alternativos.\n\nObservação: H.265 ainda depende do codec e das informações enviadas pela câmera. Testes reais pendentes.</string>
 </resources>

@@ -11,7 +11,9 @@ import java.security.SecureRandom
 
 enum class ProbeStatus { OK, AUTH_FAIL, NOT_FOUND, ERROR }
 
-data class ProbeResult(val status: ProbeStatus, val detail: String, val debug: String = "")
+data class ProbeResult(
+    val status: ProbeStatus, val detail: String, val debug: String = "", val videoCodec: String? = null
+)
 
 object RtspProbe {
 
@@ -65,7 +67,7 @@ object RtspProbe {
         false
     }
 
-    private class Reply(val code: Int, val authHeaders: List<String>, val raw: String)
+    private class Reply(val code: Int, val authHeaders: List<String>, val raw: String, val sdp: String)
 
     private fun send(out: OutputStream, uri: String, cseq: Int, auth: String?) {
         val req = StringBuilder()
@@ -111,13 +113,15 @@ object RtspProbe {
         // Ler bytes exatos também evita corromper a próxima resposta na mesma conexão.
         if (length !in 0..262144) return null
         var remaining = length
+        val body = ByteArrayOutputStream(minOf(length, 8192))
         val buf = ByteArray(4096)
         while (remaining > 0) {
             val n = input.read(buf, 0, minOf(buf.size, remaining))
             if (n < 0) return null
+            body.write(buf, 0, n)
             remaining -= n
         }
-        return Reply(code, authHeaders, statusLine)
+        return Reply(code, authHeaders, statusLine, body.toString("UTF-8"))
     }
 
     // Uma tentativa completa em UMA conexão: DESCRIBE sem login -> desafio -> DESCRIBE com login.
@@ -170,7 +174,7 @@ object RtspProbe {
                     .append('\n')
             }
             when (r1.code) {
-                200 -> return ProbeResult(ProbeStatus.OK, "OK")
+                200 -> return ProbeResult(ProbeStatus.OK, "OK", videoCodec = RtspCodec.videoCodec(r1.sdp))
                 404, 454 -> return ProbeResult(ProbeStatus.NOT_FOUND, "não existe (${r1.code})", dbg.toString())
                 401 -> hadChallenge = true
                 403 -> return ProbeResult(ProbeStatus.AUTH_FAIL, "acesso proibido (403)", dbg.toString())
@@ -182,7 +186,7 @@ object RtspProbe {
             }
             dbg.append("v$variant → ").append(r2.raw.take(100)).append('\n')
             when (r2.code) {
-                200 -> return ProbeResult(ProbeStatus.OK, "OK")
+                200 -> return ProbeResult(ProbeStatus.OK, "OK", videoCodec = RtspCodec.videoCodec(r2.sdp))
                 401, 403 -> loginRefused = true
                 404, 454 -> return ProbeResult(ProbeStatus.NOT_FOUND, "não existe (${r2.code})", dbg.toString())
                 else -> lastCode = r2.code

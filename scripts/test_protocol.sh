@@ -11,6 +11,7 @@ kotlinc \
   "$ROOT/app/src/main/java/com/minhacamera/NetUtil.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/OnvifClient.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/RtspProbe.kt" \
+  "$ROOT/app/src/main/java/com/minhacamera/RtspCodec.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/WsDiscovery.kt" \
   "$ROOT/tests/ProtocolSmoke.kt" \
   -include-runtime -d "$BUILD/tests.jar"
