@@ -7,6 +7,9 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.view.Gravity
+import android.widget.LinearLayout
+import androidx.media3.common.VideoSize
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -57,6 +60,7 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var recordTimer: TextView
     private lateinit var toolbar: MaterialToolbar
     private lateinit var viewport: FrameLayout
+    private lateinit var videoClip: FrameLayout
     private lateinit var videoContainer: FrameLayout
     private var urls: List<String> = emptyList()
     private var index = 0
@@ -67,7 +71,10 @@ class PlayerActivity : AppCompatActivity() {
     private var failedGeneration = -1
     private var videoReady = false
     private var fullscreen = false
-    private var displayMode = 0 // full frame, fill, upper crop, lower crop
+    private var displayMode = 0 // full frame, upper half, lower half; never zoom
+    private var videoAspect = 0.0
+    private var identifying = false
+    private var identityThread: Thread? = null
     private var recordPending = false
     private var recordingSession: File? = null
     private var recordingPlayer: VlcMediaPlayer? = null
@@ -99,18 +106,19 @@ class PlayerActivity : AppCompatActivity() {
         recordButton = findViewById(R.id.btnRecord)
         recordTimer = findViewById(R.id.recordTimer)
         viewport = findViewById(R.id.videoViewport)
+        videoClip = findViewById(R.id.videoClip)
         videoContainer = findViewById(R.id.videoContainer)
         val main = intent.getStringExtra("url").orEmpty()
         val alternatives = intent.getStringArrayExtra("alts")?.toList().orEmpty()
         urls = (listOf(main) + alternatives).filter { it.startsWith("rtsp://", true) }.distinct()
-        displayMode = savedInstanceState?.getInt("displayMode") ?: 0
+        displayMode = (savedInstanceState?.getInt("displayMode") ?: 0).coerceIn(0, 2)
         fullscreen = savedInstanceState?.getBoolean("fullscreen") ?: false
         findViewById<View>(R.id.btnRetry).setOnClickListener { resetAndPlay(Engine.MEDIA3) }
         recordButton.setOnClickListener { onRecordClick() }
         findViewById<View>(R.id.btnRecordings).setOnClickListener { startActivity(Intent(this, RecordingsActivity::class.java)) }
         findViewById<View>(R.id.btnDisplay).setOnClickListener {
             AlertDialog.Builder(this).setTitle(R.string.exibicao_video).setSingleChoiceItems(arrayOf(
-                getString(R.string.imagem_inteira), getString(R.string.imagem_preencher),
+                getString(R.string.imagem_inteira),
                 getString(R.string.imagem_superior), getString(R.string.imagem_inferior)
             ), displayMode) { dialog, which -> displayMode = which; applyDisplayMode(); dialog.dismiss() }.show()
         }
@@ -121,6 +129,7 @@ class PlayerActivity : AppCompatActivity() {
         onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
             override fun handleOnBackPressed() { if (fullscreen) { fullscreen = false; applyFullscreen() } else finish() }
         })
+        configureControls()
         applyFullscreen()
     }
     override fun onSaveInstanceState(outState: Bundle) {
@@ -129,12 +138,14 @@ class PlayerActivity : AppCompatActivity() {
     }
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        configureControls()
         viewport.post { applyDisplayMode(); applyFullscreen() }
     }
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menu.add(0, 2001, 0, R.string.usar_media3)
         menu.add(0, 2002, 1, R.string.usar_vlc)
         menu.add(0, 2003, 2, R.string.informacoes_tecnicas)
+        menu.add(0, 2004, 3, R.string.identificar_camera)
         return true
     }
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
@@ -143,6 +154,7 @@ class PlayerActivity : AppCompatActivity() {
         2003 -> { AlertDialog.Builder(this).setTitle(R.string.informacoes_tecnicas).setMessage(getString(
             R.string.engine_fluxo, if (engine == Engine.MEDIA3) "Media3" else "LibVLC", index+1, urls.size
         )).setPositiveButton(android.R.string.ok, null).show(); true }
+        2004 -> { identifyCamera(); true }
         else -> super.onOptionsItemSelected(item)
     }
     override fun onSupportNavigateUp(): Boolean { if (fullscreen) { fullscreen=false; applyFullscreen() } else finish(); return true }
@@ -153,6 +165,7 @@ class PlayerActivity : AppCompatActivity() {
         releasePlayers()
         super.onStop()
     }
+    override fun onDestroy() { identityThread?.interrupt(); identityThread = null; super.onDestroy() }
     private fun applyFullscreen() {
         toolbar.visibility = if (fullscreen) View.GONE else View.VISIBLE
         val controller = WindowInsetsControllerCompat(window, window.decorView)
@@ -162,16 +175,74 @@ class PlayerActivity : AppCompatActivity() {
         } else controller.show(WindowInsetsCompat.Type.systemBars())
         findViewById<MaterialButton>(R.id.btnFullscreen).setText(if (fullscreen) R.string.sair_tela_cheia else R.string.tela_cheia)
     }
+    private fun configureControls() {
+        val landscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val controls = findViewById<LinearLayout>(R.id.playerControls)
+        controls.orientation = if (landscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
+        for (id in listOf(R.id.controlsPrimary, R.id.controlsSecondary)) {
+            findViewById<LinearLayout>(id).layoutParams = LinearLayout.LayoutParams(
+                if (landscape) 0 else LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT, if (landscape) 1f else 0f)
+        }
+        toolbar.layoutParams = toolbar.layoutParams.apply {
+            height = ((if (landscape) 48 else 56) * resources.displayMetrics.density).toInt()
+        }
+        supportActionBar?.subtitle = if (landscape) null else getString(R.string.monitoramento_vivo)
+    }
+    private fun setVideoAspect(width: Int, height: Int, pixelRatio: Double = 1.0, rotated: Boolean = false) {
+        if (width <= 0 || height <= 0 || pixelRatio <= 0 || !pixelRatio.isFinite()) return
+        val raw = width.toDouble() * pixelRatio / height
+        val aspect = if (rotated) 1.0 / raw else raw
+        if (kotlin.math.abs(aspect - videoAspect) > 0.0001) { videoAspect = aspect; applyDisplayMode() }
+    }
+    private fun readVlcVideoSize(player: VlcMediaPlayer) {
+        runCatching {
+            val track = player.currentVideoTrack ?: return
+            val sar = if (track.sarNum > 0 && track.sarDen > 0) track.sarNum.toDouble()/track.sarDen else 1.0
+            setVideoAspect(track.width, track.height, sar, track.orientation >= 4)
+        }
+    }
     private fun applyDisplayMode() {
-        val h = viewport.height
-        if (h <= 0) return
-        val cropHalf = displayMode >= 2
+        val frame = if (displayMode > 0) VideoGeometry.fitHalf(viewport.width, viewport.height, videoAspect, displayMode == 2) else null
+        val clipParams = videoClip.layoutParams as FrameLayout.LayoutParams
+        val clipWidth = frame?.width ?: FrameLayout.LayoutParams.MATCH_PARENT
+        val clipHeight = frame?.clipHeight ?: FrameLayout.LayoutParams.MATCH_PARENT
+        if (clipParams.width != clipWidth || clipParams.height != clipHeight || clipParams.gravity != Gravity.CENTER) {
+            clipParams.width = clipWidth; clipParams.height = clipHeight; clipParams.gravity = Gravity.CENTER
+            videoClip.layoutParams = clipParams
+        }
         val params = videoContainer.layoutParams as FrameLayout.LayoutParams
-        val targetHeight = if (cropHalf) h*2 else FrameLayout.LayoutParams.MATCH_PARENT
-        if (params.height != targetHeight) { params.height = targetHeight; videoContainer.layoutParams = params }
-        videoContainer.translationY = if (displayMode == 3) -h.toFloat() else 0f
-        exoView.resizeMode = if (displayMode == 0) AspectRatioFrameLayout.RESIZE_MODE_FIT else AspectRatioFrameLayout.RESIZE_MODE_ZOOM
-        runCatching { vlcPlayer?.setVideoScale(if (displayMode == 0) VlcMediaPlayer.ScaleType.SURFACE_BEST_FIT else VlcMediaPlayer.ScaleType.SURFACE_FIT_SCREEN) }
+        val width = frame?.width ?: FrameLayout.LayoutParams.MATCH_PARENT
+        val height = frame?.videoHeight ?: FrameLayout.LayoutParams.MATCH_PARENT
+        if (params.width != width || params.height != height || params.gravity != (Gravity.TOP or Gravity.CENTER_HORIZONTAL)) {
+            params.width = width; params.height = height; params.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            videoContainer.layoutParams = params
+        }
+        videoContainer.translationY = frame?.videoTop ?: 0f
+        exoView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+        runCatching { vlcPlayer?.setVideoScale(VlcMediaPlayer.ScaleType.SURFACE_BEST_FIT) }
+    }
+    private fun identifyCamera() {
+        if (identifying) return
+        val uri = Uri.parse(urls.getOrNull(index) ?: return)
+        val host = uri.host ?: return
+        val auth = uri.encodedUserInfo.orEmpty()
+        val user = Uri.decode(auth.substringBefore(':'))
+        val pass = Uri.decode(auth.substringAfter(':', ""))
+        identifying = true
+        val dialog = AlertDialog.Builder(this).setTitle(R.string.identificar_camera)
+            .setMessage(R.string.identificando_camera).setPositiveButton(android.R.string.ok, null).show()
+        val app = applicationContext
+        identityThread = Thread {
+            val result = runCatching {
+                val endpoints = WsDiscovery.search(app).filter { it.ip == host }.flatMap { it.xaddrs }
+                OnvifClient.identify(host, user, pass, endpoints)
+            }.getOrElse { getString(R.string.identificacao_indisponivel) }
+            runOnUiThread {
+                identifying = false
+                if (!isFinishing && !isDestroyed && dialog.isShowing) dialog.setMessage(result)
+            }
+        }.also { it.start() }
     }
     private fun resetAndPlay(startEngine: Engine) {
         recordPending = false; index = 0; engine = startEngine
@@ -204,7 +275,7 @@ class PlayerActivity : AppCompatActivity() {
     private fun playCurrent() {
         val url = urls.getOrNull(index)
         val current = ++generation; failedGeneration = -1
-        releasePlayers(); videoReady = false; errorBox.visibility = View.GONE
+        releasePlayers(); videoReady = false; videoAspect = 0.0; applyDisplayMode(); errorBox.visibility = View.GONE
         if (url == null) { showFailure(); return }
         loading(if (failures.isEmpty()) R.string.aguarde_imagem else R.string.conexao_alternativa)
         exoView.visibility = if (engine == Engine.MEDIA3) View.VISIBLE else View.GONE
@@ -223,6 +294,10 @@ class PlayerActivity : AppCompatActivity() {
                 .createMediaSource(MediaItem.fromUri(url))
             val next = ExoPlayer.Builder(this).setLoadControl(loadControl).build(); exo = next
             next.addListener(object : Player.Listener {
+                override fun onVideoSizeChanged(size: VideoSize) {
+                    if (active && generation == current) setVideoAspect(size.width, size.height,
+                        size.pixelWidthHeightRatio.toDouble(), size.unappliedRotationDegrees % 180 != 0)
+                }
                 override fun onRenderedFirstFrame() { if (active && generation == current) videoAvailable() }
                 override fun onPlaybackStateChanged(state: Int) {
                     if (!active || generation != current) return
@@ -259,6 +334,7 @@ class PlayerActivity : AppCompatActivity() {
                     }
                     if (!active || generation != current || engine != Engine.VLC) return@runOnUiThread
                     when (eventType) {
+                        VlcMediaPlayer.Event.Vout -> readVlcVideoSize(next)
                         VlcMediaPlayer.Event.Buffering -> {
                             if (event.buffering < 100f) loading(if (videoReady) R.string.buffer_imagem else R.string.aguarde_imagem)
                             else if (videoReady) videoAvailable()
@@ -274,6 +350,7 @@ class PlayerActivity : AppCompatActivity() {
             // Playing means input is running; actual displayed pictures gate the loading screen.
             fun awaitPicture() {
                 if (!active || generation != current || videoReady || vlcPlayer !== next) return
+                readVlcVideoSize(next)
                 val displayed = runCatching {
                     val currentMedia = next.media
                     try { currentMedia?.stats?.displayedPictures ?: 0 } finally { currentMedia?.release() }

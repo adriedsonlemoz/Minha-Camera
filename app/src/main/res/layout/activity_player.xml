@@ -1,9 +1,11 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@color/player_background">
  <com.google.android.material.appbar.MaterialToolbar android:id="@+id/playerToolbar" android:layout_width="match_parent" android:layout_height="56dp" android:background="@color/player_panel" app:titleTextColor="@color/player_text" app:subtitleTextColor="@color/player_muted" app:navigationIcon="@drawable/ic_back" app:navigationIconTint="@color/player_text" />
  <FrameLayout android:id="@+id/videoViewport" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:clipChildren="true" android:clipToPadding="true" android:background="#000000">
+  <FrameLayout android:id="@+id/videoClip" android:layout_width="match_parent" android:layout_height="match_parent" android:layout_gravity="center" android:clipChildren="true" android:clipToPadding="true">
   <FrameLayout android:id="@+id/videoContainer" android:layout_width="match_parent" android:layout_height="match_parent">
    <androidx.media3.ui.PlayerView android:id="@+id/playerView" android:layout_width="match_parent" android:layout_height="match_parent" app:resize_mode="fit" app:use_controller="false" />
    <org.videolan.libvlc.util.VLCVideoLayout android:id="@+id/vlcView" android:layout_width="match_parent" android:layout_height="match_parent" android:visibility="gone" />
+  </FrameLayout>
   </FrameLayout>
   <TextView android:id="@+id/engineText" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="top|start" android:layout_margin="12dp" android:background="@drawable/player_badge" android:paddingStart="14dp" android:paddingEnd="14dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:textColor="@color/live_accent" android:textStyle="bold" android:textSize="12sp" />
   <TextView android:id="@+id/recordTimer" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="top|end" android:layout_margin="12dp" android:background="@drawable/player_badge" android:padding="10dp" android:textColor="#FFAAA7" android:textStyle="bold" android:visibility="gone" />

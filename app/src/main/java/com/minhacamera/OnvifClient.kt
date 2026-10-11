@@ -53,6 +53,33 @@ object OnvifClient {
         return Result(emptyList(), log.toString().trim())
     }
 
+    /** Read-only device identity and advertised services; does not move the camera. */
+    fun identify(ip: String, user: String, pass: String, discoveredXaddrs: List<String> = emptyList()): String {
+        val discovered = discoveredXaddrs.mapNotNull { raw -> runCatching {
+            val u = URL(raw)
+            if (u.protocol in listOf("http", "https") && u.port in -1..65535) fixHost(raw, ip) else null
+        }.getOrNull() }.distinct()
+        val candidates = discovered + PORTS.filter { RtspProbe.isPortOpen(ip, it, 600) }
+            .map { "http://$ip:$it/onvif/device_service" }
+        var refused = false
+        for (url in candidates.distinct()) {
+            if (Thread.currentThread().isInterrupted) break
+            val offset = cameraTimeOffset(url)
+            val info = soap(url, user, pass, offset, "<GetDeviceInformation xmlns=\"$NS_DEV\"/>")
+            if (info.code == 401 || info.body.contains("NotAuthorized", true)) { refused = true; continue }
+            val services = soap(url, user, pass, offset, "<GetServices xmlns=\"$NS_DEV\"><IncludeCapability>false</IncludeCapability></GetServices>")
+            val caps = soap(url, user, pass, offset, "<GetCapabilities xmlns=\"$NS_DEV\"><Category>All</Category></GetCapabilities>")
+            val result = OnvifIdentity.parse(if (info.code == 200) info.body else "", if (services.code == 200) services.body else "", if (caps.code == 200) caps.body else "") ?: continue
+            fun value(text: String) = text.ifBlank { "Não informado" }
+            fun announced(flag: Boolean) = if (flag) "Anunciado pela câmera" else "Não anunciado nesta resposta"
+            return "Fabricante: ${value(result.manufacturer)}\nModelo: ${value(result.model)}\nFirmware: ${value(result.firmware)}\n\n" +
+                "Movimentação (PTZ): ${announced(result.ptz)}\nGravações: ${announced(result.recording)}\nBusca de histórico: ${announced(result.search)}\nReprodução histórica: ${announced(result.replay)}\n\n" +
+                "Identidade fornecida pelo firmware, que pode ser genérica. Serviço anunciado não comprova operação: controle e histórico precisam de testes adicionais. Esta consulta não identifica automaticamente qual lente se move."
+        }
+        return if (refused) "A câmera recusou o login ONVIF. As credenciais podem ser diferentes das usadas no RTSP. Não foi possível identificar os serviços."
+        else "Não foi possível identificar a câmera via ONVIF. Isso não prova ausência de PTZ ou histórico: o Yoosee pode usar outro protocolo. Nenhum modelo foi presumido."
+    }
+
     // H.264 primeiro (o player abre direto), depois os outros formatos; maior resolução antes.
     fun order(streams: List<Stream>): List<Stream> {
         val h264 = streams.filter { it.encoding.contains("264") }.sortedByDescending { it.width * it.height }

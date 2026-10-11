@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.8 (versionCode 18)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.9 (versionCode 19)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+A 1.4.9 reorganiza os controles ao girar o celular, mostra cada lente inteira sem zoom e adiciona **Identificar câmera e serviços** ao menu do player. A identidade e os serviços são os informados pelo ONVIF; não identifica qual lente tem motor nem implementa histórico do Yoosee. Veja [validação 1.4.9](docs/PLAYER_FIT_VALIDATION.md).
 
 Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.8 organiza o cadastro RTSP em lista, renova o player e adiciona gravação local e biblioteca por dia. Mantém APKs por arquitetura, ONVIF, RTSP, H.264/H.265, Media3 e LibVLC. Consulte [CHANGELOG.md](CHANGELOG.md), [notas de release](docs/RELEASE_NOTES.md) e [validação do build](docs/BUILD_VALIDATION.md).
 
@@ -32,15 +34,15 @@ Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.8 organiz
 
 O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara Android SDK 36 e executa `gradle testProtocol testReleaseUnitTest assembleRelease` uma única vez, com cache. Publica cada APK individualmente, sem ZIP, em **Actions > Artifacts**:
 
-- `MinhaCamera-1.4.8-universal.apk`: todas as quatro ABIs, para distribuição geral.
-- `MinhaCamera-1.4.8-armeabi-v7a.apk`: Android ARM de 32 bits.
-- `MinhaCamera-1.4.8-arm64-v8a.apk`: Android ARM de 64 bits.
-- `MinhaCamera-1.4.8-x86_64.apk`: Android Intel de 64 bits/emuladores.
-- `MinhaCamera-1.4.8-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
+- `MinhaCamera-1.4.9-universal.apk`: todas as quatro ABIs, para distribuição geral.
+- `MinhaCamera-1.4.9-armeabi-v7a.apk`: Android ARM de 32 bits.
+- `MinhaCamera-1.4.9-arm64-v8a.apk`: Android ARM de 64 bits.
+- `MinhaCamera-1.4.9-x86_64.apk`: Android Intel de 64 bits/emuladores.
+- `MinhaCamera-1.4.9-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
 
-Todos têm `com.minhacamera`, versão 1.4.8, código 18 e a mesma assinatura dentro do build. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
+No workflow assinado, todos têm `com.minhacamera`, versão 1.4.9, código 19 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
 
-A configuração release continua usando a chave debug do ambiente. **Não há garantia de continuidade com a assinatura de execuções anteriores**. Para atualização sem desinstalar/perder dados, recuperar a chave original e comparar seu certificado com o APK instalado; não basta trocar por uma nova chave. Nenhum Secret ou keystore foi adicionado. O build local desta entrega foi aprovado, mas **seu certificado difere do APK 1.4.6 do Actions**; portanto os APKs locais são de validação e não atualizam aquela instalação. A publicação remota foi impedida por 403. Veja [resultados e impedimentos](docs/BUILD_VALIDATION.md).
+A configuração release continua usando a chave debug do ambiente. **Não há garantia de continuidade com a assinatura de execuções anteriores**. Para atualização sem desinstalar/perder dados, recuperar a chave original e comparar seu certificado com o APK instalado; não basta trocar por uma nova chave. Nenhum Secret ou keystore foi adicionado. Na entrega histórica 1.4.7, **o certificado local diferia do APK 1.4.6 do Actions**. Na validação atual 1.4.9 não havia chave privada disponível: a assinatura foi desabilitada apenas por um init script externo, sem modificar esta configuração ou gerar chave nova. Os APKs locais `-unsigned.apk` não são instaláveis diretamente e não têm continuidade de assinatura comprovada. A publicação remota continua impedida por 403. Veja [resultados e impedimentos](docs/BUILD_VALIDATION.md).
 O cache de tarefas é habilitado com `org.gradle.caching=true`; o `gradle/actions/setup-gradle@v6` restaura/salva o Gradle User Home após um job concluído. A execução não deve ser cancelada assim que aparecer `BUILD SUCCESSFUL`, porque ainda faltam nomear/publicar o APK e finalizar o cache. O primeiro build pode continuar demorado, e mudanças no projeto invalidam parte do cache. A mensagem `BUILD SUCCESSFUL in 2m 8s` do build #9 foi seguida de cancelamento externo, antes de publicar o APK.
 
 Para atualizar, siga [docs/VERSIONING.md](docs/VERSIONING.md), execute `python3 scripts/check_version.py`, `python3 scripts/check_build_config.py` e, onde houver `kotlinc`, `bash scripts/test_protocol.sh`; depois sincronize versões, documentos e histórico e confirme o build no GitHub.
@@ -61,6 +63,6 @@ No player: **Gravar** → **Iniciar gravação**. Se necessário, o app conecta 
 
 **Gravações** reúne vídeos deste celular por dia, com abrir em player externo, compartilhar, salvar cópia e excluir. Os originais ficam na pasta privada do app, sem permissões de armazenamento abrangentes. **Salvar cópia** usa o seletor Android e preserva o arquivo fora do app; desinstalar remove os originais privados. Não busca dias antigos do cartão SD/NVR da câmera.
 
-**Imagem** oferece imagem inteira, preenchimento com recorte, metade superior e metade inferior para câmeras que juntam duas lentes em um único fluxo. São recortes de visualização; a gravação salva o fluxo completo. **Tela cheia** esconde a barra superior e barras do sistema. Não há controle PTZ nem seleção física de lentes implementados.
+**Imagem** oferece imagem inteira, lente superior inteira e lente inferior inteira, sempre sem zoom para câmeras que juntam duas lentes em um único fluxo. Somente a outra metade é ocultada; a lente escolhida mantém todas as bordas e a proporção, com barras quando necessário. A gravação salva o fluxo completo. **Tela cheia** esconde a barra superior e barras do sistema. Não há controle PTZ nem seleção física de lentes implementados.
 
-Resultados da 1.4.8 em [UI_RECORDING_VALIDATION.md](docs/UI_RECORDING_VALIDATION.md). O comprovante anterior [BUILD_VALIDATION.md](docs/BUILD_VALIDATION.md) se refere somente à 1.4.7.
+Resultados atuais em [PLAYER_FIT_VALIDATION.md](docs/PLAYER_FIT_VALIDATION.md). Histórico da 1.4.8 em [UI_RECORDING_VALIDATION.md](docs/UI_RECORDING_VALIDATION.md). O comprovante anterior [BUILD_VALIDATION.md](docs/BUILD_VALIDATION.md) se refere somente à 1.4.7.

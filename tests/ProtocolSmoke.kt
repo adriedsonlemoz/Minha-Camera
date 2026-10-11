@@ -155,6 +155,8 @@ private fun checkRtspSdpProbe() {
 }
 
 fun main() {
+    checkVideoGeometry()
+    checkOnvifIdentity()
     checkRecordingFiles()
     checkSdpCodec()
     checkRtspSdpProbe()
@@ -186,4 +188,52 @@ private fun checkRecordingFiles() {
         check(java.io.File(foreign, "outside.ts").exists())
         println("OK: gravações preservam bytes, removem nomes sensíveis e rejeitam pastas externas/arquivos vazios")
     } finally { root.deleteRecursively(); outside.deleteRecursively() }
+}
+
+private fun checkVideoGeometry() {
+    for ((vw, vh) in listOf(690 to 1150, 1485 to 450, 320 to 240, 240 to 320)) {
+        for (aspect in listOf(640.0/720, 1.0, 1920.0/2160, 0.5, 2.0)) {
+            val upper = VideoGeometry.fitHalf(vw, vh, aspect, false)!!
+            val lower = VideoGeometry.fitHalf(vw, vh, aspect, true)!!
+            val selectedHeight = upper.clipHeight
+            check(upper.width <= vw && selectedHeight <= vh)
+            check(upper.videoTop == 0f && upper.videoHeight == selectedHeight * 2)
+            check(lower.videoTop + selectedHeight == 0f && lower.videoTop + lower.videoHeight == selectedHeight.toFloat())
+            check(upper.width == lower.width && upper.videoHeight == lower.videoHeight && upper.clipHeight == lower.clipHeight)
+            check(kotlin.math.abs(upper.width.toDouble() / selectedHeight - aspect*2) < 0.03)
+        }
+    }
+    check(VideoGeometry.fitHalf(0, 500, 1.0, false) == null)
+    check(VideoGeometry.fitHalf(500, 500, Double.NaN, false) == null)
+    println("OK: lente inteira sem perda de bordas em retrato/horizontal, duas metades e proporções diferentes")
+}
+
+private fun checkOnvifIdentity() {
+    val info = "<s:Envelope xmlns:s=\"urn:soap\" xmlns:d=\"http://www.onvif.org/ver10/device/wsdl\"><s:Body><d:GetDeviceInformationResponse><d:Manufacturer>Fabricante de teste</d:Manufacturer><d:Model>Modelo simulado</d:Model><d:FirmwareVersion>1.0</d:FirmwareVersion></d:GetDeviceInformationResponse></s:Body></s:Envelope>"
+    val services = "<Envelope><GetServicesResponse><Service><Namespace>http://www.onvif.org/ver20/ptz/wsdl</Namespace></Service><Service><Namespace>http://www.onvif.org/ver10/replay/wsdl</Namespace></Service></GetServicesResponse></Envelope>"
+    val parsed = OnvifIdentity.parse(info, services, "<Envelope/>")!!
+    check(parsed.manufacturer == "Fabricante de teste" && parsed.model == "Modelo simulado")
+    check(parsed.ptz && parsed.replay && !parsed.recording && !parsed.search)
+    check(OnvifIdentity.parse("<Envelope/>", "<Envelope/>", "<Envelope/>") == null)
+    check(OnvifIdentity.parse("<!DOCTYPE foo [<!ENTITY x SYSTEM 'file:///etc/passwd'>]><GetDeviceInformationResponse/>", "<Envelope/>", "<Envelope/>") == null)
+    check(OnvifIdentity.parse("<Envelope/>", "<Envelope/>", "<GetCapabilitiesResponse><Capabilities><PTZ/></Capabilities></GetCapabilitiesResponse>")!!.ptz)
+    val server = com.sun.net.httpserver.HttpServer.create(java.net.InetSocketAddress("127.0.0.1", 0), 0)
+    val requests = mutableListOf<String>()
+    server.createContext("/identity") { exchange ->
+        val request = exchange.requestBody.bufferedReader().readText(); requests.add(request)
+        val body = when {
+            request.contains("GetDeviceInformation") -> info
+            request.contains("GetServices") -> services
+            else -> "<Envelope/>"
+        }.toByteArray()
+        exchange.sendResponseHeaders(200, body.size.toLong()); exchange.responseBody.use { it.write(body) }
+    }
+    server.start()
+    try {
+        val result = OnvifClient.identify("127.0.0.1", "lab", "synthetic", listOf("http://127.0.0.1:${server.address.port}/identity"))
+        check(result.contains("Modelo simulado") && result.contains("Movimentação (PTZ): Anunciado"))
+        check(result.contains("Busca de histórico: Não anunciado"))
+        check(requests.size == 4 && requests.none { it.contains("ContinuousMove") || it.contains("Set") })
+    } finally { server.stop(0) }
+    println("OK: identificação ONVIF HTTP simulada, serviços reais da resposta, sem mover câmera ou inferir fabricante")
 }

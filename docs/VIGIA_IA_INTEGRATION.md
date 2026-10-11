@@ -1,6 +1,6 @@
 # Descobertas do Minha Câmera úteis para o Vigia IA
 
-Atualizado em **1.4.8+18** (2026-10-11).
+Atualizado em **1.4.9+19** (2026-10-11).
 
 Este material serve como registro técnico: **não significa que o Vigia IA foi modificado**.
 
@@ -81,3 +81,11 @@ Os testes simulados da 1.4.2 validam o **parser SDP e a sondagem RTSP**, não a 
 - FileProvider + ACTION_CREATE_DOCUMENT oferecem compartilhamento/exportação sem acesso amplo ao armazenamento.
 - Separar gravação local da reprodução de histórico no cartão/NVR e de serviços 24h. Sessão de Activity termina em onStop; um serviço exige outro ciclo de vida e validação própria.
 - Biblioteca por dia e atualização após finalização devem observar conclusão assíncrona, sem bloquear a thread do player.
+
+## Rotação, enquadramento e identidade (1.4.9)
+
+- Com Activity `configChanges`, recursos `layout-land` não são reinflados: reorganizar controles existentes ao receber rotação preserva player e gravação.
+- FIT do fluxo inteiro e FIT da metade selecionada têm geometrias diferentes. Calcular pelo tamanho do decoder, SAR e orientação; nunca usar zoom para isolar uma lente. Testar invariantes de contenção nas duas orientações.
+- GetDeviceInformation informa identidade de firmware, frequentemente genérica. GetServices/GetCapabilities anunciam PTZ, recording/search/replay, mas anúncio não é teste funcional ou certificação.
+- A câmera JT-9686 do usuário funciona com Yoosee e RTSP, e permite movimento/histórico no aplicativo original. Isso não comprova que esses recursos estejam expostos no ONVIF. Não determinar a lente móvel pelo nome do modelo; é necessária configuração de fontes/perfis e teste funcional separado.
+- Não adicionar SDK de fornecedor ou protocolo presumido antes de evidência do dispositivo. Consulta somente leitura primeiro; credenciais de ONVIF e RTSP podem diferir.

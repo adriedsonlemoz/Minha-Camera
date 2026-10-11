@@ -1,5 +1,12 @@
 # Histórico de versões
 
+## 1.4.9+19 — 2026-10-11
+- Corrigido layout de controles durante rotação sem recriar o player: uma linha compacta na horizontal, duas em retrato.
+- Ícones próximos ao texto, barra menor em horizontal e remoção do zoom que cortava a imagem.
+- Cada metade do vídeo empilhado cabe inteira pela proporção real informada pelo decoder, incluindo SAR/orientação; só a outra lente fica fora da área visível.
+- Consulta manual ONVIF de fabricante/modelo/firmware e serviços PTZ, gravação, busca e replay anunciados. Não envia movimentos nem presume suporte pelo nome Yoosee.
+- Novos testes de geometria e identificação ONVIF simulada. Limites e build em PLAYER_FIT_VALIDATION.md.
+
 ## 1.4.8+18 | 2026-10-11
 
 - Novo tema azul, campos contornados e compactos, RTSP em dropdown editável nos três formulários.
