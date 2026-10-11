@@ -1,6 +1,6 @@
 # Descobertas do Minha Câmera úteis para o Vigia IA
 
-Atualizado em **1.4.7+17** (2026-10-11).
+Atualizado em **1.4.8+18** (2026-10-11).
 
 Este material serve como registro técnico: **não significa que o Vigia IA foi modificado**.
 
@@ -70,3 +70,14 @@ Os testes simulados da 1.4.2 validam o **parser SDP e a sondagem RTSP**, não a 
 - O versionCode crescente não resolve uma chave de assinatura diferente. Preservar a chave original é requisito para atualizar e manter dados.
 - Centralizar testes/assemble em uma execução e publicar artefatos por arquivo evita recompilar todo o app por arquitetura.
 - Tamanhos reais e limites de testes deste projeto estão em BUILD_VALIDATION.md; não constituem medidas do Vigia IA.
+
+## Interface e gravação local (1.4.8)
+
+- Expor sugestões de RTSP em dropdown editável evita dezenas de chips e conserva caminhos personalizados.
+- STATE_READY/Playing não garante quadro visível. No Media3 usar onRenderedFirstFrame; no LibVLC consultar displayedPictures da mídia, mantendo timeout/fallback.
+- Duas lentes podem ser um único vídeo empilhado. Recortar o viewport não cria dois streams nem controle PTZ; manter opção de imagem completa.
+- LibVLC 3.7.7 fornece record(directory), record(null) e RecordChanged. Usar confirmação nativa e não mostrar sucesso apenas pelo clique.
+- Arquivos nativos podem ter nomes derivados do URL. Manter em sessão privada e renomear antes de exportar; preservar extensão/conteúdo, incluindo HEVC.
+- FileProvider + ACTION_CREATE_DOCUMENT oferecem compartilhamento/exportação sem acesso amplo ao armazenamento.
+- Separar gravação local da reprodução de histórico no cartão/NVR e de serviços 24h. Sessão de Activity termina em onStop; um serviço exige outro ciclo de vida e validação própria.
+- Biblioteca por dia e atualização após finalização devem observar conclusão assíncrona, sem bloquear a thread do player.

@@ -1,4 +1,8 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.MinhaCamera" parent="Theme.Material3.DayNight" />
+ <style name="Theme.MinhaCamera" parent="Theme.Material3.DayNight">
+  <item name="colorPrimary">@color/brand_primary</item><item name="colorOnPrimary">@color/brand_on_primary</item><item name="colorSecondary">@color/brand_secondary</item><item name="colorSurface">@color/app_surface</item><item name="colorOnSurface">@color/app_text</item><item name="android:colorBackground">@color/app_background</item><item name="android:windowBackground">@color/app_background</item><item name="android:statusBarColor">@color/brand_primary</item><item name="android:navigationBarColor">@color/app_background</item><item name="android:windowLightStatusBar">false</item>
+ </style>
+ <style name="Theme.MinhaCamera.Player" parent="Theme.Material3.DayNight.NoActionBar">
+  <item name="colorPrimary">@color/live_accent</item><item name="colorOnPrimary">@color/player_background</item><item name="colorSurface">@color/player_panel</item><item name="colorOnSurface">@color/player_text</item><item name="android:windowBackground">@color/player_background</item><item name="android:statusBarColor">@color/player_background</item><item name="android:navigationBarColor">@color/player_background</item><item name="android:windowLightStatusBar">false</item><item name="android:windowLightNavigationBar">false</item>
+ </style>
 </resources>

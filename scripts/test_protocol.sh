@@ -13,6 +13,7 @@ kotlinc \
   "$ROOT/app/src/main/java/com/minhacamera/RtspProbe.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/RtspCodec.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/WsDiscovery.kt" \
+  "$ROOT/app/src/main/java/com/minhacamera/RecordingFiles.kt" \
   "$ROOT/tests/ProtocolSmoke.kt" \
   -include-runtime -d "$BUILD/tests.jar"
 java -jar "$BUILD/tests.jar"

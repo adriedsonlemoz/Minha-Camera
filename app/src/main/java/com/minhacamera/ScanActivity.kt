@@ -178,7 +178,7 @@ class ScanActivity : AppCompatActivity() {
         val btnPastePass = view.findViewById<MaterialButton>(R.id.btnPastePass)
         etName.setText("Câmera ${f.ip.substringAfterLast('.')}")
         CameraFormUi.setupPasswordTools(this, etPass, btnCopyPass, btnPastePass)
-        CameraFormUi.setupPathSuggestions(this, etPath, view.findViewById(R.id.chipPaths))
+        CameraFormUi.setupPathSuggestions(this, etPath)
 
         AlertDialog.Builder(this)
             .setTitle(f.ip + (f.port?.let { ":$it" } ?: " (ONVIF)"))
@@ -208,7 +208,7 @@ class ScanActivity : AppCompatActivity() {
         etIp.setText(NetUtil.localPrefix(this) ?: "")
         etIp.setSelection(etIp.text?.length ?: 0)
         CameraFormUi.setupPasswordTools(this, etPass, btnCopyPass, btnPastePass)
-        CameraFormUi.setupPathSuggestions(this, etPath, view.findViewById(R.id.chipPaths))
+        CameraFormUi.setupPathSuggestions(this, etPath)
 
         val dlg = AlertDialog.Builder(this)
             .setTitle(R.string.adicionar_manual)

@@ -60,10 +60,14 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menu.add(0, 1001, 0, R.string.novidades)
+        menu.add(0, 1002, 1, R.string.gravacoes)
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == 1002) {
+            startActivity(Intent(this, RecordingsActivity::class.java)); return true
+        }
         if (item.itemId == 1001) {
             val version = try {
                 packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
@@ -161,7 +165,7 @@ class MainActivity : AppCompatActivity() {
         etUser.setText(parsed.user.ifBlank { "admin" })
         etPass.setText(parsed.pass)
         CameraFormUi.setupPasswordTools(this, etPass, btnCopyPass, btnPastePass)
-        CameraFormUi.setupPathSuggestions(this, etPath, view.findViewById(R.id.chipPaths), parsed.path)
+        CameraFormUi.setupPathSuggestions(this, etPath, parsed.path)
 
         val dlg = AlertDialog.Builder(this)
             .setTitle(R.string.editar_camera)

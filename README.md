@@ -1,8 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.7 (versionCode 17)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.8 (versionCode 18)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
 
-Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.7 gera APKs por arquitetura, mantendo ONVIF, RTSP, H.264/H.265, Media3 e LibVLC. Consulte [CHANGELOG.md](CHANGELOG.md), [notas de release](docs/RELEASE_NOTES.md) e [validação do build](docs/BUILD_VALIDATION.md).
+Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.8 organiza o cadastro RTSP em lista, renova o player e adiciona gravação local e biblioteca por dia. Mantém APKs por arquitetura, ONVIF, RTSP, H.264/H.265, Media3 e LibVLC. Consulte [CHANGELOG.md](CHANGELOG.md), [notas de release](docs/RELEASE_NOTES.md) e [validação do build](docs/BUILD_VALIDATION.md).
 
 ## Descoberta automática
 
@@ -32,13 +32,13 @@ Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.7 gera AP
 
 O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara Android SDK 36 e executa `gradle testProtocol testReleaseUnitTest assembleRelease` uma única vez, com cache. Publica cada APK individualmente, sem ZIP, em **Actions > Artifacts**:
 
-- `MinhaCamera-1.4.7-universal.apk`: todas as quatro ABIs, para distribuição geral.
-- `MinhaCamera-1.4.7-armeabi-v7a.apk`: Android ARM de 32 bits.
-- `MinhaCamera-1.4.7-arm64-v8a.apk`: Android ARM de 64 bits.
-- `MinhaCamera-1.4.7-x86_64.apk`: Android Intel de 64 bits/emuladores.
-- `MinhaCamera-1.4.7-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
+- `MinhaCamera-1.4.8-universal.apk`: todas as quatro ABIs, para distribuição geral.
+- `MinhaCamera-1.4.8-armeabi-v7a.apk`: Android ARM de 32 bits.
+- `MinhaCamera-1.4.8-arm64-v8a.apk`: Android ARM de 64 bits.
+- `MinhaCamera-1.4.8-x86_64.apk`: Android Intel de 64 bits/emuladores.
+- `MinhaCamera-1.4.8-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
 
-Todos têm `com.minhacamera`, versão 1.4.7, código 17 e a mesma assinatura dentro do build. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
+Todos têm `com.minhacamera`, versão 1.4.8, código 18 e a mesma assinatura dentro do build. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
 
 A configuração release continua usando a chave debug do ambiente. **Não há garantia de continuidade com a assinatura de execuções anteriores**. Para atualização sem desinstalar/perder dados, recuperar a chave original e comparar seu certificado com o APK instalado; não basta trocar por uma nova chave. Nenhum Secret ou keystore foi adicionado. O build local desta entrega foi aprovado, mas **seu certificado difere do APK 1.4.6 do Actions**; portanto os APKs locais são de validação e não atualizam aquela instalação. A publicação remota foi impedida por 403. Veja [resultados e impedimentos](docs/BUILD_VALIDATION.md).
 O cache de tarefas é habilitado com `org.gradle.caching=true`; o `gradle/actions/setup-gradle@v6` restaura/salva o Gradle User Home após um job concluído. A execução não deve ser cancelada assim que aparecer `BUILD SUCCESSFUL`, porque ainda faltam nomear/publicar o APK e finalizar o cache. O primeiro build pode continuar demorado, e mudanças no projeto invalidam parte do cache. A mensagem `BUILD SUCCESSFUL in 2m 8s` do build #9 foi seguida de cancelamento externo, antes de publicar o APK.
@@ -54,3 +54,13 @@ Para atualizar, siga [docs/VERSIONING.md](docs/VERSIONING.md), execute `python3 
 - Para testar H.265 real é necessário compilar e executar no Android. Os testes simulados não são garantia de compatibilidade.
 
 Pacote: `com.minhacamera` · minSdk 24 · targetSdk 34 · compileSdk 36 · AGP 8.11.1 · Gradle 8.13 · Kotlin 2.2.20 · Media3 1.3.1 · LibVLC 3.7.7.
+
+## Gravação e vídeo com duas lentes
+
+No player: **Gravar** → **Iniciar gravação**. Se necessário, o app conecta o mesmo URL atual pelo LibVLC, espera a primeira imagem e pede gravação nativa; não abre uma segunda conexão em paralelo nem transcodifica. **Parar** finaliza o arquivo. Um contador REC aparece somente após confirmação nativa. O app verifica espaço livre durante a sessão e encerra a gravação quando o player é interrompido ou a tela fica em segundo plano. Não é gravação 24h/serviço de fundo.
+
+**Gravações** reúne vídeos deste celular por dia, com abrir em player externo, compartilhar, salvar cópia e excluir. Os originais ficam na pasta privada do app, sem permissões de armazenamento abrangentes. **Salvar cópia** usa o seletor Android e preserva o arquivo fora do app; desinstalar remove os originais privados. Não busca dias antigos do cartão SD/NVR da câmera.
+
+**Imagem** oferece imagem inteira, preenchimento com recorte, metade superior e metade inferior para câmeras que juntam duas lentes em um único fluxo. São recortes de visualização; a gravação salva o fluxo completo. **Tela cheia** esconde a barra superior e barras do sistema. Não há controle PTZ nem seleção física de lentes implementados.
+
+Resultados da 1.4.8 em [UI_RECORDING_VALIDATION.md](docs/UI_RECORDING_VALIDATION.md). O comprovante anterior [BUILD_VALIDATION.md](docs/BUILD_VALIDATION.md) se refere somente à 1.4.7.

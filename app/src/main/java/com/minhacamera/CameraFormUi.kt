@@ -7,8 +7,6 @@ import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.Toast
 import com.google.android.material.button.MaterialButton
-import com.google.android.material.chip.Chip
-import com.google.android.material.chip.ChipGroup
 import com.google.android.material.textfield.TextInputEditText
 
 object CameraFormUi {
@@ -40,20 +38,14 @@ object CameraFormUi {
     fun setupPathSuggestions(
         context: Context,
         pathView: AutoCompleteTextView,
-        chipGroup: ChipGroup,
         initialValue: String = DEFAULT_PATH
     ) {
-        pathView.setAdapter(ArrayAdapter(context, android.R.layout.simple_list_item_1, pathSuggestions))
+        pathView.setAdapter(ArrayAdapter(context, R.layout.item_rtsp_path, pathSuggestions))
         pathView.setText(initialValue.ifBlank { DEFAULT_PATH }, false)
-        chipGroup.removeAllViews()
-        pathSuggestions.forEach { suggestion ->
-            val chip = Chip(context).apply {
-                text = suggestion
-                isCheckable = false
-                setOnClickListener { pathView.setText(suggestion, false) }
-            }
-            chipGroup.addView(chip)
-        }
+        pathView.threshold = 0
+        // Lista completa também ao tocar no campo, sem exigir digitação prévia.
+        pathView.setOnClickListener { pathView.showDropDown() }
+
     }
 
     fun setupPasswordTools(

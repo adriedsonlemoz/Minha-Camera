@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 1.4.8+18 | 2026-10-11
+
+- Novo tema azul, campos contornados e compactos, RTSP em dropdown editável nos três formulários.
+- Player escuro com carregamento até imagem exibida, botões por orientação, tela cheia e recortes para duas lentes.
+- Gravação local no player LibVLC ativo, confirmação nativa, contador, controle de espaço e encerramento ao sair.
+- Biblioteca por dia, abrir/compartilhar/exportar pelo Android e excluir; sem permissão ampla de armazenamento.
+- Mantidos fallback Media3/LibVLC, HEVC, ONVIF, RTSP, cadastro e APKs por ABI.
+- Validação e limites documentados em docs/UI_RECORDING_VALIDATION.md.
+
 ## 1.4.7+17 | 2026-10-11
 
 - ABI splits habilitados: Universal, armeabi-v7a, arm64-v8a, x86_64 e x86, preservando todas as arquiteturas do LibVLC 3.7.7.

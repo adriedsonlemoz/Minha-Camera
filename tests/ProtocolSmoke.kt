@@ -155,6 +155,7 @@ private fun checkRtspSdpProbe() {
 }
 
 fun main() {
+    checkRecordingFiles()
     checkSdpCodec()
     checkRtspSdpProbe()
     checkSubnets()
@@ -162,4 +163,27 @@ fun main() {
     checkDiscoveryXml()
     checkOnvifAdvertisedEndpoint()
     println("Testes simulados de protocolo concluídos")
+}
+
+
+private fun checkRecordingFiles() {
+    val root = java.nio.file.Files.createTempDirectory("camera-recording-test").toFile()
+    val outside = java.nio.file.Files.createTempDirectory("outside-recording-test").toFile()
+    try {
+        val session = java.io.File(root, ".session-test").apply { mkdirs() }
+        val body = byteArrayOf(1, 3, 5, 7, 9)
+        // Synthetic bytes test filesystem behavior, not decoding a real video.
+        java.io.File(session, "rtsp___private_user_private_password_camera.ts").writeBytes(body)
+        java.io.File(session, "empty.mp4").writeBytes(byteArrayOf())
+        check(RecordingFiles.clips(root).isEmpty())
+        val clips = RecordingFiles.finish(root, session)
+        check(clips.size == 1 && clips[0].readBytes().contentEquals(body))
+        check(clips[0].extension == "ts" && !clips[0].name.contains("private"))
+        check(RecordingFiles.clips(root) == clips && !session.exists())
+        val foreign = java.io.File(outside, ".session-foreign").apply { mkdirs() }
+        java.io.File(foreign, "outside.ts").writeBytes(body)
+        check(runCatching { RecordingFiles.finish(root, foreign) }.isFailure)
+        check(java.io.File(foreign, "outside.ts").exists())
+        println("OK: gravações preservam bytes, removem nomes sensíveis e rejeitam pastas externas/arquivos vazios")
+    } finally { root.deleteRecursively(); outside.deleteRecursively() }
 }
