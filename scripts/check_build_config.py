@@ -36,6 +36,12 @@ try:
         errors.append('Verificar a disponibilidade de sdkmanager antes da instalação.')
     if 'yes | sdkmanager --licenses' in actions:
         errors.append('Não ignorar falhas de sdkmanager na aceitação de licenças.')
+    if 'org.gradle.caching=true' not in (root / 'gradle.properties').read_text():
+        errors.append('Habilitar org.gradle.caching=true para aproveitar o cache entre builds.')
+    if 'gradle/actions/setup-gradle@v6' not in actions:
+        errors.append('Utilizar setup-gradle@v6 para caching e evitar Node 20 legado.')
+    if '--build-cache' not in actions:
+        errors.append('O workflow deve executar o Gradle com --build-cache.')
     if target != 34:
         errors.append('Esta correção deve preservar targetSdk 34 até revisão de compatibilidade em runtime.')
     if errors:

@@ -1,31 +1,32 @@
-# Minha Câmera 1.4.5 (versionCode 15)
+# Minha Câmera 1.4.6 (versionCode 16)
 
 **Data:** 2026-10-11
 
-## Problema corrigido no build GitHub Actions #8
+## Motivo: build #9 demorando e cancelado
 
-O job terminou com **exit code 127**, pois `sdkmanager` não estava disponível no `PATH` do runner Ubuntu. O erro ocorreu no passo "Instalar Android SDK 36 e Build Tools", antes da inicialização do Gradle.
+O log mostrou que a compilação funcionou (`BUILD SUCCESSFUL in 2m 8s`, às 05:00:45 UTC), mas o job foi cancelado logo após. O ZIP de logs não informa quem ou o que iniciou o cancelamento, portanto não atribuir a causa ao código.
 
-## Mudanças aplicadas
+### Tempos observados no build #9 (aproximados)
+- Preparação do Android SDK e instalação da plataforma: **13 s**.
+- Gradle: **2 min 8 s** (configuração aproximada ~54 s, tarefas ~75 s).
+- Também houve download do Gradle 8.13 (~137 MB), embora parte das dependências já tivesse cache.
 
-- Adicionado `android-actions/setup-android@v4` ANTES de executar `sdkmanager`. A ação configura o diretório SDK, fornece as ferramentas de linha de comando e aceita as licenças.
-- Removido o comando antigo `yes | sdkmanager --licenses > /dev/null || true`, que escondia falhas e não preparava o executável.
-- A instalação de `platforms;android-36` e `build-tools;35.0.0` agora verifica `command -v sdkmanager`, a versão do utilitário e a existência do `android.jar` após instalar.
-- Modernizadas as ações `actions/checkout@v7` e `actions/setup-java@v6`, usando JDK 17 como antes.
-- `scripts/check_build_config.py` agora verifica a presença e a ordem da preparação do Android SDK no workflow.
-- Versionamento sincronizado para **1.4.5+15**.
+## Alterações
 
-## Validação
+1. Habilitada cache de tarefas Gradle via `org.gradle.caching=true` e `--build-cache`.
+2. Atualizada a ação `gradle/actions/setup-gradle@v4` para `@v6`, que gerencia Gradle User Home e build cache em jobs completos.
+3. Adicionada medição de tempo do processo Gradle no passo de compilação.
+4. Mantido LibVLC 3.7.7, sem sacrificar a compatibilidade H.265 para reduzir tempo de maneira não comprovada.
+5. Sincronizada a sequência de versões 1.4.6+16.
 
-- Testes simulados de rede/protocolo e verificações de versionamento e configuração de build: executar `bash scripts/test_protocol.sh`, `python3 scripts/check_version.py` e `python3 scripts/check_build_config.py`.
-- **APK não compilado neste ambiente**. A correção específica do build #8 ainda deve ser confirmada numa nova execução de Actions.
+## Teste esperado
 
-## Próximo teste
+1. Publique o código e execute o workflow sem cancelá-lo após `BUILD SUCCESSFUL`.
+2. Espere os passos Nomear APK, Publicar APK e pós-etapas concluírem; baixe o artefato na execução concluída.
+3. Execute um segundo build a partir do mesmo código para comparar os tempos (o primeiro pode povoar o cache).
+4. Compare `Tempo do Gradle:` no log e procure `FROM-CACHE` nas tarefas.
+5. Se continuar lento, exporte o ZIP dos dois logs completos para identificar quais tarefas continuam custosas.
 
-1. Atualize o código da branch principal com a versão 1.4.5.
-2. Execute **Actions → Build APK → Run workflow**.
-3. Confirme a execução da etapa "Preparar Android SDK" e a instalação `platforms;android-36`.
-4. Confira a etapa `gradle assembleRelease` e, se houver nova falha, guarde seu log para análise.
-5. Se gerar o APK, confirme assinatura, instalação e reprodução das câmeras no telefone.
+## Limites de validação
 
-**Nota:** o APK release ainda usa chave de debug gerada no runner; futuras atualizações exigem assinatura estável para preservar os dados do aplicativo. Não foram adicionados Secrets de assinatura nesta correção.
+Não foi possível executar o Android Gradle Plugin com SDK real neste ambiente. A melhoria de tempo ainda depende de medições no GitHub Actions. O APK continua sendo assinado pela configuração debug do runner; a assinatura estável permanece pendente.

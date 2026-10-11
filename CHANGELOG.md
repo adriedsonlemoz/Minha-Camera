@@ -1,5 +1,20 @@
 # Histórico de versões
 
+## 1.4.6+16 | 2026-10-11
+
+### Diagnóstico do build #9 e otimização do CI
+- Confirmado no log: `BUILD SUCCESSFUL in 2m 8s`, seguido de `The operation was canceled`; o cancelamento foi posterior à compilação e anterior à publicação do APK.
+- Medições do build #9: cerca de 13 s para setup/instalação do SDK, ~54 s para configuração do Gradle e ~75 s para executar tarefas/empacotar. Não há base para afirmar que o LibVLC isoladamente dobrou o tempo.
+- Habilitado `org.gradle.caching=true` e `--build-cache` para reutilização de saídas de tarefas elegíveis em builds futuros.
+- Atualizado `gradle/actions/setup-gradle@v6` para modernizar o cache do Gradle User Home, incluindo cache local de tarefas.
+- Acrescentada medição de duração do Gradle no log do workflow.
+- Preservadas as bibliotecas, o suporte LibVLC para H.265 e `compileSdk=36`, sem restringir ABIs.
+
+### Limitações
+- Ganho de tempo não medido neste ambiente; primeiro build e alterações que invalidam cache continuam podendo demorar.
+- Não cancelar o workflow após `BUILD SUCCESSFUL`: a publicação do artefato e a persistência do cache acontecem depois.
+- Novo build completo e teste Android real pendentes.
+
 ## 1.4.5+15 | 2026-10-11
 
 ### Corrigido

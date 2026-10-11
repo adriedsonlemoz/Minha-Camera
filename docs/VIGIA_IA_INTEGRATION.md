@@ -1,6 +1,6 @@
 # Descobertas do Minha Câmera úteis para o Vigia IA
 
-Atualizado em **1.4.5+15** (2026-10-11).
+Atualizado em **1.4.6+16** (2026-10-11).
 
 Este material serve como registro técnico: **não significa que o Vigia IA foi modificado**.
 
@@ -52,3 +52,11 @@ Os testes simulados da 1.4.2 validam o **parser SDP e a sondagem RTSP**, não a 
 - Não presumir que executáveis do Android SDK estejam no `PATH` de imagens de runners. Instalar e inicializar `sdkmanager` explicitamente antes de solicitar plataformas Android.
 - Verificar as pré-condições do ambiente (SDK, JDK, Gradle e caminhos) no CI, com erros visíveis, em vez de mascará-los com `|| true`.
 - O build #8 não iniciou o compilador Kotlin/Android; seu erro não permite concluir nada sobre estabilidade de RTSP/HEVC ou do player no dispositivo.
+
+
+## Desempenho e cache da compilação Android (1.4.6)
+
+- O build #9 do Minha Câmera compilou em 2m08s no Gradle, mas a execução do GitHub Actions foi cancelada antes de publicar o APK.
+- Não tomar aumento de tempo do CI como indicação automática de problema de runtime do LibVLC; são métricas diferentes.
+- Testar cache Gradle (`org.gradle.caching=true`, `setup-gradle@v6`) entre builds completos antes de remover dependências necessárias ao H.265.
+- Guardar tempos de diferentes builds (com e sem cache) para mensurar otimizações antes de transportar a estratégia ao Vigia IA.

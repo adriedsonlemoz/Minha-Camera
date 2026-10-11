@@ -37,9 +37,10 @@ jobs:
           sdkmanager --install "platforms;android-36" "build-tools;35.0.0"
           test -f "${ANDROID_HOME}/platforms/android-36/android.jar"
 
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: '8.13'
+          # O cache inclui dependências e o cache local de tarefas do Gradle.
 
       - name: Verificar versionamento e compatibilidade do build
         run: |
@@ -47,9 +48,14 @@ jobs:
           python3 scripts/check_build_config.py
 
       - name: Compilar APK release
-        run: gradle assembleRelease --no-daemon --stacktrace
+        shell: bash
+        run: |
+          set -euo pipefail
+          SECONDS=0
+          gradle assembleRelease --no-daemon --build-cache --console=plain --stacktrace
+          echo "Tempo do Gradle: ${SECONDS}s"
 
-      # Nome final: <app_name sem acento e sem espaço>-<versionName>.apk  (ex.: MinhaCamera-1.4.5.apk)
+      # Nome final: <app_name sem acento e sem espaço>-<versionName>.apk  (ex.: MinhaCamera-1.4.6.apk)
       - name: Nomear APK
         id: apk
         run: |
