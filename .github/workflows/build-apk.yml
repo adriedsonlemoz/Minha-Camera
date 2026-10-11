@@ -30,13 +30,14 @@ jobs:
       - name: Compilar APK release
         run: gradle assembleRelease --no-daemon --stacktrace
 
-      # Nome final: <app_name de strings.xml> V<versionName>.apk
+      # Nome final: <app_name sem acento e sem espaço>-<versionName>.apk  (ex.: MinhaCamera-1.3.1.apk)
       - name: Nomear APK
         id: apk
         run: |
           NAME=$(grep 'name="app_name"' app/src/main/res/values/strings.xml | sed 's/.*">\(.*\)<\/string>.*/\1/')
+          SLUG=$(python3 -c "import sys,re,unicodedata; n=unicodedata.normalize('NFKD',sys.argv[1]).encode('ascii','ignore').decode(); print(re.sub(r'[^A-Za-z0-9]+','',n))" "$NAME")
           VERSION=$(grep 'versionName' app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
-          FILE="${NAME} V${VERSION}.apk"
+          FILE="${SLUG}-${VERSION}.apk"
           mkdir -p dist
           cp app/build/outputs/apk/release/app-release.apk "dist/${FILE}"
           echo "path=dist/${FILE}" >> "$GITHUB_OUTPUT"

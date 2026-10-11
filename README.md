@@ -25,7 +25,7 @@ Formato manual da URL: `rtsp://usuario:senha@IP:554/caminho` (o caminho varia po
 
 1. Envie o conteúdo do projeto para a branch `main` do seu repositório.
 2. O workflow `.github/workflows/build-apk.yml` compila a cada push (ou manualmente em **Actions > Build APK > Run workflow**).
-3. Em **Actions > execução > Artifacts** há um único item: o APK solto, sem ZIP, com o nome `<nome do app> V<versão>.apk`, por exemplo `Minha Câmera V1.2.2.apk`.
+3. Em **Actions > execução > Artifacts** há um único item: o APK solto, sem ZIP, com o nome `<NomeDoApp>-<versão>.apk`, sem acento e sem espaço, por exemplo `MinhaCamera-1.3.1.apk`.
 
 O nome vem de `app_name` em `app/src/main/res/values/strings.xml` e a versão de `versionName` em `app/build.gradle.kts` (suba a cada entrega). O APK sai assinado com a chave de debug, então instala direto.
 
