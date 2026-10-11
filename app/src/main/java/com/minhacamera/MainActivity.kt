@@ -3,9 +3,12 @@ package com.minhacamera
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
 import android.widget.ArrayAdapter
+import android.widget.EditText
 import android.widget.ListView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.floatingactionbutton.FloatingActionButton
@@ -30,14 +33,16 @@ class MainActivity : AppCompatActivity() {
         refresh()
 
         listView.setOnItemClickListener { _, _, pos, _ ->
+            val c = cams[pos]
             startActivity(
                 Intent(this, PlayerActivity::class.java)
-                    .putExtra("name", cams[pos].name)
-                    .putExtra("url", cams[pos].url)
+                    .putExtra("name", c.name)
+                    .putExtra("url", c.url)
+                    .putExtra("alts", c.alts.toTypedArray())
             )
         }
         listView.setOnItemLongClickListener { _, _, pos, _ ->
-            confirmDelete(pos)
+            showOptions(pos)
             true
         }
 
@@ -70,6 +75,46 @@ class MainActivity : AppCompatActivity() {
             "rtsp://$host$port${u.path ?: ""}"
         } catch (_: Exception) {
             url
+        }
+    }
+
+    private fun showOptions(pos: Int) {
+        val options = arrayOf(getString(R.string.editar), getString(R.string.excluir))
+        AlertDialog.Builder(this)
+            .setTitle(cams[pos].name)
+            .setItems(options) { _, which ->
+                if (which == 0) showEditDialog(pos) else confirmDelete(pos)
+            }
+            .show()
+    }
+
+    private fun showEditDialog(pos: Int) {
+        val c = cams[pos]
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_camera, null)
+        val etName = view.findViewById<EditText>(R.id.etName)
+        val etUrl = view.findViewById<EditText>(R.id.etUrl)
+        etName.setText(c.name)
+        etUrl.setText(c.url)
+
+        val dlg = AlertDialog.Builder(this)
+            .setTitle(R.string.editar_camera)
+            .setView(view)
+            .setPositiveButton(R.string.salvar, null)
+            .setNegativeButton(R.string.cancelar, null)
+            .create()
+        dlg.show()
+        dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val url = etUrl.text.toString().trim()
+            if (!url.startsWith("rtsp://", ignoreCase = true)) {
+                Toast.makeText(this, R.string.url_invalida, Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+            val name = etName.text.toString().trim().ifEmpty { c.name }
+            // Se o endereço mudou, os fluxos alternativos antigos deixam de valer.
+            cams[pos] = Camera(name, url, if (url == c.url) c.alts else emptyList())
+            store.save(cams)
+            refresh()
+            dlg.dismiss()
         }
     }
 

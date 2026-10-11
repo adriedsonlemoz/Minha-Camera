@@ -14,7 +14,8 @@ import java.util.TimeZone
 // Pergunta à própria câmera (ONVIF) qual é o endereço RTSP do vídeo.
 object OnvifClient {
 
-    class Result(val uri: String?, val log: String)
+    class Stream(val uri: String, val encoding: String, val width: Int, val height: Int)
+    class Result(val streams: List<Stream>, val log: String)
     private class Resp(val code: Int, val body: String)
 
     private val PORTS = listOf(80, 8080, 2020, 8000, 5000, 8899, 8888, 8081)
@@ -31,14 +32,21 @@ object OnvifClient {
         val log = StringBuilder()
         for (port in PORTS) {
             if (!RtspProbe.isPortOpen(ip, port, 600)) continue
-            val uri = tryPort(ip, port, user, pass, log)
-            if (uri != null) return Result(uri, log.toString().trim())
+            val streams = tryPort(ip, port, user, pass, log)
+            if (!streams.isNullOrEmpty()) return Result(streams, log.toString().trim())
         }
         if (log.isEmpty()) log.append("nenhuma porta ONVIF aberta")
-        return Result(null, log.toString().trim())
+        return Result(emptyList(), log.toString().trim())
     }
 
-    private fun tryPort(ip: String, port: Int, user: String, pass: String, log: StringBuilder): String? {
+    // H.264 primeiro (o player abre direto), depois os outros formatos; maior resolução antes.
+    fun order(streams: List<Stream>): List<Stream> {
+        val h264 = streams.filter { it.encoding.contains("264") }.sortedByDescending { it.width * it.height }
+        val rest = streams.filter { !it.encoding.contains("264") }.sortedByDescending { it.width * it.height }
+        return h264 + rest
+    }
+
+    private fun tryPort(ip: String, port: Int, user: String, pass: String, log: StringBuilder): List<Stream>? {
         val base = "http://$ip:$port"
         val deviceUrl = "$base/onvif/device_service"
         val offset = cameraTimeOffset(deviceUrl)
@@ -65,19 +73,35 @@ object OnvifClient {
         for (url in candidates) {
             val prof = soap(url, user, pass, offset, "<GetProfiles xmlns=\"$NS_MEDIA\"/>")
             log.append(", perfis ${prof.code}")
-            val token = Regex("<(?:\\w+:)?Profiles[^>]*token=[\"']([^\"']+)[\"']")
-                .find(prof.body)?.groupValues?.get(1) ?: continue
-            val body = "<GetStreamUri xmlns=\"$NS_MEDIA\"><StreamSetup>" +
-                "<Stream xmlns=\"$NS_SCHEMA\">RTP-Unicast</Stream>" +
-                "<Transport xmlns=\"$NS_SCHEMA\"><Protocol>RTSP</Protocol></Transport>" +
-                "</StreamSetup><ProfileToken>${xml(token)}</ProfileToken></GetStreamUri>"
-            val su = soap(url, user, pass, offset, body)
-            log.append(", uri ${su.code}")
-            val uri = Regex("<(?:\\w+:)?Uri>([^<]+)<").find(su.body)
-                ?.groupValues?.get(1)?.trim()?.replace("&amp;", "&")
-            if (!uri.isNullOrEmpty()) {
-                log.append(" OK\n")
-                return uri
+            val blocks = Regex(
+                "<(?:\\w+:)?Profiles\\b[^>]*token=[\"']([^\"']+)[\"'][^>]*>(.*?)</(?:\\w+:)?Profiles>",
+                RegexOption.DOT_MATCHES_ALL
+            ).findAll(prof.body).toList()
+            if (blocks.isEmpty()) continue
+
+            val streams = mutableListOf<Stream>()
+            for (b in blocks.take(4)) {
+                val token = b.groupValues[1]
+                val inner = b.groupValues[2]
+                val enc = Regex("<(?:\\w+:)?Encoding>\\s*([^<\\s]+)\\s*<").find(inner)
+                    ?.groupValues?.get(1)?.uppercase() ?: "?"
+                val w = Regex("<(?:\\w+:)?Width>\\s*(\\d+)\\s*<").find(inner)
+                    ?.groupValues?.get(1)?.toIntOrNull() ?: 0
+                val h = Regex("<(?:\\w+:)?Height>\\s*(\\d+)\\s*<").find(inner)
+                    ?.groupValues?.get(1)?.toIntOrNull() ?: 0
+                val body = "<GetStreamUri xmlns=\"$NS_MEDIA\"><StreamSetup>" +
+                    "<Stream xmlns=\"$NS_SCHEMA\">RTP-Unicast</Stream>" +
+                    "<Transport xmlns=\"$NS_SCHEMA\"><Protocol>RTSP</Protocol></Transport>" +
+                    "</StreamSetup><ProfileToken>${xml(token)}</ProfileToken></GetStreamUri>"
+                val su = soap(url, user, pass, offset, body)
+                val uri = Regex("<(?:\\w+:)?Uri>([^<]+)<").find(su.body)
+                    ?.groupValues?.get(1)?.trim()?.replace("&amp;", "&")
+                if (!uri.isNullOrEmpty()) streams.add(Stream(uri, enc, w, h))
+            }
+            log.append(", fluxos ${streams.size}")
+            if (streams.isNotEmpty()) {
+                log.append(" [").append(streams.joinToString { "${it.encoding} ${it.width}x${it.height}" }).append("] OK\n")
+                return streams
             }
         }
         log.append('\n')

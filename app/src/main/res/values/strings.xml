@@ -2,7 +2,7 @@
 <resources>
     <string name="app_name">Minha Câmera</string>
     <string name="minhas_cameras">Minhas câmeras</string>
-    <string name="lista_vazia">Toque em + para adicionar manualmente ou em Buscar câmeras para achar na rede.\nSegure um item para excluir.</string>
+    <string name="lista_vazia">Toque em + para adicionar manualmente ou em Buscar câmeras para achar na rede.\nSegure um item para editar ou excluir.</string>
     <string name="nova_camera">Nova câmera</string>
     <string name="nome">Nome</string>
     <string name="usuario">Usuário</string>
@@ -38,4 +38,13 @@
     <string name="buscando_2">Segunda tentativa em %1$s …</string>
     <string name="consultando_onvif">Consultando a câmera (ONVIF) …</string>
     <string name="detalhes_tecnicos">Detalhes técnicos (1º caminho):</string>
+    <string name="editar">Editar</string>
+    <string name="editar_camera">Editar câmera</string>
+    <string name="tentar_novamente">Tentar de novo</string>
+    <string name="tentando_outro">Tentando outro fluxo (%1$d/%2$d) …</string>
+    <string name="aviso_h265">Aviso: esta câmera transmite em H.265, que o app pode não abrir. Se o vídeo falhar, mude a câmera para H.264.</string>
+    <string name="erro_h265">Esta câmera está transmitindo em H.265 (HEVC) e este app ainda não abre esse formato.\n\nSolução: no aplicativo da câmera, mude a codificação do vídeo para H.264 (em Configurações > Vídeo ou Qualidade).</string>
+    <string name="erro_login">A câmera recusou o login. Confira o usuário e a senha (toque e segure na câmera da lista > Editar).</string>
+    <string name="erro_caminho">O caminho do vídeo não existe nesta câmera. Use Editar na lista ou refaça pelo Buscar câmeras.</string>
+    <string name="erro_generico">Não foi possível abrir o vídeo desta câmera. Verifique se o celular está no mesmo Wi-Fi e se o RTSP está ativado.</string>
 </resources>

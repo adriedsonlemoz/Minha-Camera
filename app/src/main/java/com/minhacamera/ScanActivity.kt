@@ -199,10 +199,40 @@ class ScanActivity : AppCompatActivity() {
         return if (t.isEmpty() || t.startsWith("/")) t else "/$t"
     }
 
-    private fun saveCamera(f: Found, name: String, user: String, pass: String, path: String) {
-        val url = "rtsp://${Uri.encode(user)}:${Uri.encode(pass)}@${f.ip}:${f.port}$path"
+    private fun buildUrl(ip: String, port: Int, user: String, pass: String, path: String) =
+        "rtsp://${Uri.encode(user)}:${Uri.encode(pass)}@$ip:$port$path"
+
+    // Separa porta e caminho (com query) de um endereço RTSP devolvido pela câmera.
+    private fun splitUri(u: String): Pair<Int, String> {
+        val p = Uri.parse(u)
+        val port = if (p.port != -1) p.port else 554
+        val path = (p.encodedPath ?: "/") + (p.encodedQuery?.let { "?$it" } ?: "")
+        return Pair(port, path)
+    }
+
+    // Caminhos do fluxo secundário (geralmente H.264 e mais leve) para tentar se o principal falhar.
+    private fun altPaths(path: String): List<String> {
+        val out = mutableListOf<String>()
+        fun add(p: String) {
+            if (p != path) out.add(p)
+        }
+        when {
+            path.contains("subtype=0") -> add(path.replace("subtype=0", "subtype=1"))
+            path.endsWith("/Streaming/Channels/101") -> add("/Streaming/Channels/102")
+            path == "/stream1" -> add("/stream2")
+            path == "/onvif1" -> add("/onvif2")
+            path == "/live/ch00_0" -> add("/live/ch00_1")
+            path == "/h264Preview_01_main" -> add("/h264Preview_01_sub")
+            path == "/11" -> add("/12")
+            path == "/ch1/main" -> add("/ch1/sub")
+            path.contains("/live/main") -> add(path.replace("main", "sub"))
+        }
+        return out
+    }
+
+    private fun saveCamera(name: String, url: String, alts: List<String>) {
         val list = store.load()
-        list.add(Camera(name, url))
+        list.add(Camera(name, url, alts))
         store.save(list)
         Toast.makeText(this, getString(R.string.salva, name), Toast.LENGTH_LONG).show()
     }
@@ -218,28 +248,32 @@ class ScanActivity : AppCompatActivity() {
         dlg.show()
 
         Thread {
-            var okPath: String? = null
-            var okPort = f.port
+            var okUrl: String? = null
+            var okAlts: List<String> = emptyList()
+            var warn = ""
             var authFails = 0
             var noReply = 0
             var firstDebug = ""
             val details = StringBuilder()
 
-            // 1) ONVIF: a própria câmera informa o endereço exato do vídeo.
+            // 1) ONVIF: a própria câmera informa os fluxos de vídeo (H.264 primeiro).
             if (customPath.isEmpty()) {
                 val on = OnvifClient.findStreamUri(f.ip, user, pass)
                 details.append("ONVIF: ").append(on.log.ifEmpty { "sem resposta" }).append('\n')
-                val u = on.uri
-                if (u != null) {
-                    val parsed = Uri.parse(u)
-                    okPort = if (parsed.port != -1) parsed.port else 554
-                    okPath = (parsed.encodedPath ?: "/") +
-                        (parsed.encodedQuery?.let { "?$it" } ?: "")
+                val streams = OnvifClient.order(on.streams)
+                if (streams.isNotEmpty()) {
+                    val urls = streams.map { st ->
+                        val (pt, ph) = splitUri(st.uri)
+                        buildUrl(f.ip, pt, user, pass, ph)
+                    }
+                    okUrl = urls.first()
+                    okAlts = urls.drop(1)
+                    if (!streams.first().encoding.contains("264")) warn = getString(R.string.aviso_h265)
                 }
             }
 
             // 2) Teste dos caminhos conhecidos
-            if (okPath == null) {
+            if (okUrl == null) {
                 for ((i, path) in paths.withIndex()) {
                     runOnUiThread {
                         if (!isFinishing) dlg.setMessage(getString(R.string.testando_caminho, i + 1, total))
@@ -249,7 +283,8 @@ class ScanActivity : AppCompatActivity() {
                     details.append(path).append("  →  ").append(r.detail).append('\n')
                     when (r.status) {
                         ProbeStatus.OK -> {
-                            okPath = path
+                            okUrl = buildUrl(f.ip, f.port, user, pass, path)
+                            okAlts = altPaths(path).map { buildUrl(f.ip, f.port, user, pass, it) }
                             break
                         }
                         ProbeStatus.AUTH_FAIL -> {
@@ -275,8 +310,9 @@ class ScanActivity : AppCompatActivity() {
                 }
             }
 
-            val foundPath = okPath
-            val foundPort = okPort
+            val foundUrl = okUrl
+            val foundAlts = okAlts
+            val foundWarn = warn
             val wrongLogin = authFails >= 2
             val silent = noReply >= 3
             val report = details.toString() +
@@ -284,8 +320,9 @@ class ScanActivity : AppCompatActivity() {
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 dlg.dismiss()
-                if (foundPath != null) {
-                    saveCamera(Found(f.ip, foundPort), name, user, pass, foundPath)
+                if (foundUrl != null) {
+                    saveCamera(name, foundUrl, foundAlts)
+                    if (foundWarn.isNotEmpty()) Toast.makeText(this, foundWarn, Toast.LENGTH_LONG).show()
                     finish()
                 } else {
                     val msg = when {
@@ -297,7 +334,12 @@ class ScanActivity : AppCompatActivity() {
                         .setMessage(getString(msg) + "\n\n" + report)
                         .setPositiveButton(android.R.string.ok, null)
                         .setNeutralButton(R.string.salvar_mesmo_assim) { _, _ ->
-                            saveCamera(f, name, user, pass, customPath.ifEmpty { "/stream1" })
+                            val p = customPath.ifEmpty { "/stream1" }
+                            saveCamera(
+                                name,
+                                buildUrl(f.ip, f.port, user, pass, p),
+                                altPaths(p).map { buildUrl(f.ip, f.port, user, pass, it) }
+                            )
                             finish()
                         }
                         .show()
