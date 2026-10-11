@@ -1,32 +1,31 @@
-# Minha Câmera 1.4.4 (versionCode 14)
+# Minha Câmera 1.4.5 (versionCode 15)
 
 **Data:** 2026-10-11
 
-## Falha corrigida (GitHub Actions: Build APK #7)
+## Problema corrigido no build GitHub Actions #8
 
-O workflow falhou na tarefa `:app:checkReleaseAarMetadata`: `org.videolan.android:libvlc-all:3.7.7` exige **Android API 36**, mas a versão 1.4.3 compilava com API 34 e AGP 8.5.2.
+O job terminou com **exit code 127**, pois `sdkmanager` não estava disponível no `PATH` do runner Ubuntu. O erro ocorreu no passo "Instalar Android SDK 36 e Build Tools", antes da inicialização do Gradle.
 
-### Alterações
+## Mudanças aplicadas
 
-- `compileSdk = 36`, mantendo `minSdk = 24` e `targetSdk = 34`.
-- Android Gradle Plugin **8.11.1**, Gradle **8.13**, Kotlin Gradle Plugin **2.2.20** e Java **17**.
-- Workflow GitHub Actions instala a plataforma **android-36** e as Build Tools **35.0.0**.
-- Regex que mascara URLs RTSP nos detalhes de erro corrigida para evitar uma falha de sintaxe Kotlin após a etapa de metadados.
-- Adicionado o teste preventivo `python3 scripts/check_build_config.py` ao pipeline.
+- Adicionado `android-actions/setup-android@v4` ANTES de executar `sdkmanager`. A ação configura o diretório SDK, fornece as ferramentas de linha de comando e aceita as licenças.
+- Removido o comando antigo `yes | sdkmanager --licenses > /dev/null || true`, que escondia falhas e não preparava o executável.
+- A instalação de `platforms;android-36` e `build-tools;35.0.0` agora verifica `command -v sdkmanager`, a versão do utilitário e a existência do `android.jar` após instalar.
+- Modernizadas as ações `actions/checkout@v7` e `actions/setup-java@v6`, usando JDK 17 como antes.
+- `scripts/check_build_config.py` agora verifica a presença e a ordem da preparação do Android SDK no workflow.
+- Versionamento sincronizado para **1.4.5+15**.
 
-### Verificações realizadas
+## Validação
 
-- Verificação de versionamento e configuração de build.
-- Testes de protocolo simulados ONVIF, RTSP, autenticação e SDP.
-- Validação sintática dos XMLs e do workflow.
+- Testes simulados de rede/protocolo e verificações de versionamento e configuração de build: executar `bash scripts/test_protocol.sh`, `python3 scripts/check_version.py` e `python3 scripts/check_build_config.py`.
+- **APK não compilado neste ambiente**. A correção específica do build #8 ainda deve ser confirmada numa nova execução de Actions.
 
-**Não foi executado o build completo do APK neste ambiente.** A correção remove a incompatibilidade demonstrada pelo log, mas requer nova execução do GitHub Actions para confirmar a compilação de todas as etapas.
+## Próximo teste
 
-### Próxima validação no GitHub
+1. Atualize o código da branch principal com a versão 1.4.5.
+2. Execute **Actions → Build APK → Run workflow**.
+3. Confirme a execução da etapa "Preparar Android SDK" e a instalação `platforms;android-36`.
+4. Confira a etapa `gradle assembleRelease` e, se houver nova falha, guarde seu log para análise.
+5. Se gerar o APK, confirme assinatura, instalação e reprodução das câmeras no telefone.
 
-1. Envie os arquivos desta versão ao repositório com a estrutura original.
-2. Inicie **Actions > Build APK > Run workflow** (ou faça push na branch principal).
-3. Confirme que `:app:checkReleaseAarMetadata` passa e `assembleRelease` termina sem erros.
-4. Teste a instalação, a descoberta de câmeras e a reprodução H.264/H.265 no dispositivo.
-
-**Assinatura:** o workflow continua usando assinatura debug. Os Secrets de assinatura estável mencionados anteriormente só serão usados se o Gradle/workflow forem configurados explicitamente para isso. Uma chave diferente não atualiza um APK previamente instalado sem desinstalação.
+**Nota:** o APK release ainda usa chave de debug gerada no runner; futuras atualizações exigem assinatura estável para preservar os dados do aplicativo. Não foram adicionados Secrets de assinatura nesta correção.

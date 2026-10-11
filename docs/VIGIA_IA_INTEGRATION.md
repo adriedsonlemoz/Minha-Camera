@@ -1,6 +1,6 @@
 # Descobertas do Minha Câmera úteis para o Vigia IA
 
-Atualizado em **1.4.4+14** (2026-10-11).
+Atualizado em **1.4.5+15** (2026-10-11).
 
 Este material serve como registro técnico: **não significa que o Vigia IA foi modificado**.
 
@@ -45,3 +45,10 @@ Os testes simulados da 1.4.2 validam o **parser SDP e a sondagem RTSP**, não a 
 - Para o protótipo Kotlin/Android, foram alinhados AGP 8.11.1, Gradle 8.13 e Kotlin 2.2.20 e instalada a plataforma 36 no CI. Na integração futura do Vigia IA, avaliar a matriz de versões do Flutter, do plugin Android Gradle e dos plugins nativos, sem copiar cegamente os números desta release.
 - `compileSdk` é independente de `targetSdk`; manter o comportamento de runtime conhecido até validar eventuais exigências de atualização.
 - A correção do padrão Regex de ocultação de URL reforça a importância de incluir compilação completa no CI antes de declarar uma versão validada.
+
+
+## Integração contínua Android (1.4.5)
+
+- Não presumir que executáveis do Android SDK estejam no `PATH` de imagens de runners. Instalar e inicializar `sdkmanager` explicitamente antes de solicitar plataformas Android.
+- Verificar as pré-condições do ambiente (SDK, JDK, Gradle e caminhos) no CI, com erros visíveis, em vez de mascará-los com `|| true`.
+- O build #8 não iniciou o compilador Kotlin/Android; seu erro não permite concluir nada sobre estabilidade de RTSP/HEVC ou do player no dispositivo.

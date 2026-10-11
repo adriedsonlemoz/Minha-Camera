@@ -1,5 +1,18 @@
 # Histórico de versões
 
+## 1.4.5+15 | 2026-10-11
+
+### Corrigido
+- Build GitHub Actions #8 falhou na instalação do Android SDK com `sdkmanager: command not found` (exit code 127); a compilação Gradle não foi iniciada.
+- Incluída `android-actions/setup-android@v4` para instalar/configurar ferramentas de linha de comando do SDK, preparar o `PATH` e aceitar licenças antes da execução de `sdkmanager`.
+- Instalação de `platforms;android-36` e `build-tools;35.0.0` passa a verificar a existência de `sdkmanager` e do `android.jar` da API 36, sem suprimir falhas.
+- Ações do GitHub `checkout` e `setup-java` atualizadas para versões atuais com Node 24 (`v7` e `v6`, respectivamente), preservando JDK 17.
+- Ampliado `scripts/check_build_config.py` para prevenir regressão de ordem das etapas ou uso de `sdkmanager` sem preparação.
+
+### Mantido
+- `compileSdk=36`, `targetSdk=34`, `minSdk=24`, AGP 8.11.1, Gradle 8.13, Kotlin 2.2.20 e LibVLC 3.7.7.
+- A compilação APK e o teste de câmera real continuam pendentes da próxima execução do GitHub Actions.
+
 ## 1.4.4+14 | 2026-10-11
 
 ### Corrigido

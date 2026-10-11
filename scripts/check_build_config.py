@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evita a incompatibilidade LibVLC x SDK/AGP observada no build #7."""
+"""Evita incompatibilidade de SDK/AGP (build #7) e ausência de sdkmanager (build #8)."""
 from pathlib import Path
 import re
 import sys
@@ -28,6 +28,14 @@ try:
         errors.append('Conjunto validado neste projeto: AGP 8.11.1 / Gradle 8.13 / Kotlin 2.2.20. Revisar a matriz de compatibilidade antes de atualizar.')
     if '"platforms;android-36"' not in actions:
         errors.append('GitHub Actions precisa instalar a plataforma android-36.')
+    setup_sdk = actions.find('uses: android-actions/setup-android@v4')
+    install_sdk = actions.find('sdkmanager --install "platforms;android-36"')
+    if setup_sdk == -1 or install_sdk <= setup_sdk:
+        errors.append('Preparar Android SDK com setup-android@v4 ANTES de executar sdkmanager.')
+    if 'command -v sdkmanager' not in actions:
+        errors.append('Verificar a disponibilidade de sdkmanager antes da instalação.')
+    if 'yes | sdkmanager --licenses' in actions:
+        errors.append('Não ignorar falhas de sdkmanager na aceitação de licenças.')
     if target != 34:
         errors.append('Esta correção deve preservar targetSdk 34 até revisão de compatibilidade em runtime.')
     if errors:

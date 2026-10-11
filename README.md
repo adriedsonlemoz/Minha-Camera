@@ -1,8 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.4 (versionCode 14)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.5 (versionCode 15)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
 
-Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.4 corrige as versões do sistema de build para permitir compilar o LibVLC 3.7.7 com Android API 36, mantendo o cadastro e a lista de câmeras reformulados na versão 1.4.3. Consulte [CHANGELOG.md](CHANGELOG.md) e [notas de release](docs/RELEASE_NOTES.md).
+Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.5 corrige a preparação do Android SDK no GitHub Actions: instala e disponibiliza o sdkmanager antes de instalar a API 36. Mantém a configuração AGP/Gradle/Kotlin da 1.4.4 e o cadastro reformulado da 1.4.3. Consulte [CHANGELOG.md](CHANGELOG.md) e [notas de release](docs/RELEASE_NOTES.md).
 
 ## Descoberta automática
 
@@ -30,7 +30,7 @@ Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.4 corrige
 
 ## GitHub Actions
 
-O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, instala a plataforma Android 36, compila `assembleRelease` e envia o arquivo `MinhaCamera-1.4.4.apk` em **Actions > Artifacts**. O release usa a chave de debug do ambiente de build: **isso não garante a mesma assinatura em execuções diferentes**, portanto uma instalação sobre uma versão anterior pode ser rejeitada pelo Android. Para distribuir atualizações instaláveis sem perder dados, configurar uma chave de assinatura estável protegida por GitHub Secrets. O ZIP de código-fonte não contém um APK pré-compilado.
+O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara as ferramentas do Android SDK com `android-actions/setup-android@v4`, instala a plataforma Android 36, compila `assembleRelease` e envia o arquivo `MinhaCamera-1.4.5.apk` em **Actions > Artifacts**. O release usa a chave de debug do ambiente de build: **isso não garante a mesma assinatura em execuções diferentes**, portanto uma instalação sobre uma versão anterior pode ser rejeitada pelo Android. Para distribuir atualizações instaláveis sem perder dados, configurar uma chave de assinatura estável protegida por GitHub Secrets. O ZIP de código-fonte não contém um APK pré-compilado.
 
 Para atualizar, siga [docs/VERSIONING.md](docs/VERSIONING.md), execute `python3 scripts/check_version.py`, `python3 scripts/check_build_config.py` e, onde houver `kotlinc`, `bash scripts/test_protocol.sh`; depois sincronize versões, documentos e histórico e confirme o build no GitHub.
 

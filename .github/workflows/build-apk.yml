@@ -12,19 +12,30 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '17'
 
-      # O runner ubuntu-latest já traz o Android SDK; só aceitamos as licenças.
-      - name: Aceitar licenças do Android SDK
-        run: yes | sdkmanager --licenses > /dev/null || true
+      # Não presumir que sdkmanager esteja no PATH do runner (build #8, exit 127).
+      # Esta ação instala as ferramentas de linha de comando, configura o SDK/PATH
+      # e aceita as licenças antes de chamar sdkmanager.
+      - name: Preparar Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: 'false'
 
       - name: Instalar Android SDK 36 e Build Tools
-        run: sdkmanager --install "platforms;android-36" "build-tools;35.0.0"
+        shell: bash
+        run: |
+          set -euo pipefail
+          command -v sdkmanager
+          sdkmanager --version
+          sdkmanager --install "platforms;android-36" "build-tools;35.0.0"
+          test -f "${ANDROID_HOME}/platforms/android-36/android.jar"
 
       - uses: gradle/actions/setup-gradle@v4
         with:
@@ -38,7 +49,7 @@ jobs:
       - name: Compilar APK release
         run: gradle assembleRelease --no-daemon --stacktrace
 
-      # Nome final: <app_name sem acento e sem espaço>-<versionName>.apk  (ex.: MinhaCamera-1.4.4.apk)
+      # Nome final: <app_name sem acento e sem espaço>-<versionName>.apk  (ex.: MinhaCamera-1.4.5.apk)
       - name: Nomear APK
         id: apk
         run: |
