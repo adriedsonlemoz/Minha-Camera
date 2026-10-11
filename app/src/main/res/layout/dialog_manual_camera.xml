@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <EditText
+            android:id="@+id/etName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/nome"
+            android:inputType="textCapSentences" />
+
+        <EditText
+            android:id="@+id/etIp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/ip_hint"
+            android:inputType="textUri" />
+
+        <EditText
+            android:id="@+id/etPort"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/porta"
+            android:inputType="number"
+            android:text="554" />
+
+        <EditText
+            android:id="@+id/etUser"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/usuario"
+            android:inputType="text"
+            android:text="admin" />
+
+        <EditText
+            android:id="@+id/etPass"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/senha"
+            android:inputType="textPassword" />
+
+        <EditText
+            android:id="@+id/etPath"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="@string/caminho_hint"
+            android:inputType="textUri" />
+    </LinearLayout>
+</ScrollView>
