@@ -1,8 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.3 (versionCode 13)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.4 (versionCode 14)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
 
-Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.3 repagina o cadastro e a lista de câmeras salvas, preservando as melhorias de descoberta ONVIF, identificação de codecs por SDP e fallback LibVLC introduzidas nas versões anteriores. Consulte [CHANGELOG.md](CHANGELOG.md) e [notas de release](docs/RELEASE_NOTES.md).
+Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.4 corrige as versões do sistema de build para permitir compilar o LibVLC 3.7.7 com Android API 36, mantendo o cadastro e a lista de câmeras reformulados na versão 1.4.3. Consulte [CHANGELOG.md](CHANGELOG.md) e [notas de release](docs/RELEASE_NOTES.md).
 
 ## Descoberta automática
 
@@ -30,9 +30,9 @@ Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.3 repagin
 
 ## GitHub Actions
 
-O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, compila `assembleRelease` e envia o arquivo `MinhaCamera-1.4.3.apk` em **Actions > Artifacts**. O release usa a chave de debug do ambiente de build: **isso não garante a mesma assinatura em execuções diferentes**, portanto uma instalação sobre uma versão anterior pode ser rejeitada pelo Android. Para distribuir atualizações instaláveis sem perder dados, configurar uma chave de assinatura estável protegida por GitHub Secrets. O ZIP de código-fonte não contém um APK pré-compilado.
+O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, instala a plataforma Android 36, compila `assembleRelease` e envia o arquivo `MinhaCamera-1.4.4.apk` em **Actions > Artifacts**. O release usa a chave de debug do ambiente de build: **isso não garante a mesma assinatura em execuções diferentes**, portanto uma instalação sobre uma versão anterior pode ser rejeitada pelo Android. Para distribuir atualizações instaláveis sem perder dados, configurar uma chave de assinatura estável protegida por GitHub Secrets. O ZIP de código-fonte não contém um APK pré-compilado.
 
-Para atualizar, siga [docs/VERSIONING.md](docs/VERSIONING.md), execute `python3 scripts/check_version.py` e, onde houver `kotlinc`, `bash scripts/test_protocol.sh`; depois sincronize versões, documentos e histórico e confirme o build no GitHub.
+Para atualizar, siga [docs/VERSIONING.md](docs/VERSIONING.md), execute `python3 scripts/check_version.py`, `python3 scripts/check_build_config.py` e, onde houver `kotlinc`, `bash scripts/test_protocol.sh`; depois sincronize versões, documentos e histórico e confirme o build no GitHub.
 
 ## Limitações e segurança
 
@@ -42,4 +42,4 @@ Para atualizar, siga [docs/VERSIONING.md](docs/VERSIONING.md), execute `python3 
 - LibVLC adiciona bibliotecas nativas e aumenta o download/armazenamento; sua distribuição está sujeita aos termos aplicáveis da licença LGPL (ver [VideoLAN](https://www.videolan.org/legal.html)).
 - Para testar H.265 real é necessário compilar e executar no Android. Os testes simulados não são garantia de compatibilidade.
 
-Pacote: `com.minhacamera` · minSdk 24 · targetSdk 34 · Media3 1.3.1 · LibVLC 3.7.7.
+Pacote: `com.minhacamera` · minSdk 24 · targetSdk 34 · compileSdk 36 · AGP 8.11.1 · Gradle 8.13 · Kotlin 2.2.20 · Media3 1.3.1 · LibVLC 3.7.7.

@@ -79,7 +79,12 @@ Experimente habilitar H.264 ou outro perfil na câmera e refazer a busca.</strin
     <string name="com_alternativos">%1$d fluxo(s) alternativo(s)</string>
     <string name="resumo_camera_salva">Usuário: %1$s • Caminho: %2$s • %3$s</string>
 
-    <string name="novidades_text">Versão 1.4.3 (código 13)
+    <string name="novidades_text">Versão 1.4.4 (código 14)
+• Corrigida a configuração de build: Android API 36, Gradle, AGP e Kotlin compatíveis com LibVLC 3.7.7.
+• Corrigido mascaramento de URL RTSP que poderia interromper a compilação Kotlin.
+• Verificação preventiva do SDK/Gradle no GitHub Actions.
+
+Versão 1.4.3 (código 13)
 • Repaginada a tela de câmeras salvas com cartões e ações rápidas.
 • Botão para copiar o endereço RTSP completo com usuário e senha.
 • Edição reformulada com IP, porta, usuário, senha e sugestões de caminho.

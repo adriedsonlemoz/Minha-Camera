@@ -5,14 +5,14 @@ plugins {
 
 android {
     namespace = "com.minhacamera"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.minhacamera"
         minSdk = 24
         targetSdk = 34
-        versionCode = 13
-        versionName = "1.4.3"
+        versionCode = 14
+        versionName = "1.4.4"
     }
 
     buildTypes {

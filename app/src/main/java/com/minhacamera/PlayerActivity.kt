@@ -258,5 +258,5 @@ class PlayerActivity : AppCompatActivity() {
 
     // Exceções de players podem incluir a URL RTSP com usuário e senha.
     private fun maskCredentials(input: String): String =
-        input.replace(Regex("(?i)rtsp://[^\\s\\"'<>]+"), "rtsp://[endereço oculto]")
+        input.replace(Regex("""(?i)rtsp://[^\s"'<>]+"""), "rtsp://[endereço oculto]")
 }

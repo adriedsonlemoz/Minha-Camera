@@ -1,6 +1,6 @@
 # Descobertas do Minha Câmera úteis para o Vigia IA
 
-Atualizado em **1.4.3+13** (2026-10-11).
+Atualizado em **1.4.4+14** (2026-10-11).
 
 Este material serve como registro técnico: **não significa que o Vigia IA foi modificado**.
 
@@ -38,3 +38,10 @@ Os testes simulados da 1.4.2 validam o **parser SDP e a sondagem RTSP**, não a 
 - Recurso de copiar o RTSP completo com credenciais acelera testes cruzados com players externos, NVRs e outras telas do ecossistema.
 - Sugestões rápidas de caminho com opção **Default** servem como modelo para uma UX híbrida no Vigia IA: simples para iniciantes, mas sem bloquear ajustes manuais.
 - O tratamento explícito da senha (ver/copiar/colar) melhora a usabilidade, mas reforça a necessidade de segurança reforçada no armazenamento quando a abordagem for levada ao Vigia IA.
+
+## Compatibilidade de ferramentas Android (1.4.4)
+
+- O build #7 do Minha Câmera falhou porque `libvlc-all:3.7.7` requer `compileSdk >= 36`, mas o projeto estava em API 34/AGP 8.5.2.
+- Para o protótipo Kotlin/Android, foram alinhados AGP 8.11.1, Gradle 8.13 e Kotlin 2.2.20 e instalada a plataforma 36 no CI. Na integração futura do Vigia IA, avaliar a matriz de versões do Flutter, do plugin Android Gradle e dos plugins nativos, sem copiar cegamente os números desta release.
+- `compileSdk` é independente de `targetSdk`; manter o comportamento de runtime conhecido até validar eventuais exigências de atualização.
+- A correção do padrão Regex de ocultação de URL reforça a importância de incluir compilação completa no CI antes de declarar uma versão validada.

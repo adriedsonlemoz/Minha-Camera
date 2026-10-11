@@ -1,5 +1,22 @@
 # Histórico de versões
 
+## 1.4.4+14 | 2026-10-11
+
+### Corrigido
+- Falha confirmada no build GitHub Actions #7 (`:app:checkReleaseAarMetadata`): LibVLC 3.7.7 exige `compileSdk >= 36`, enquanto a versão anterior usava 34 e AGP 8.5.2.
+- Atualizados `compileSdk` para 36, Android Gradle Plugin para 8.11.1, Gradle para 8.13 e Kotlin Gradle Plugin para 2.2.20, um conjunto compatível documentado pelos fornecedores.
+- Workflow instala explicitamente `platforms;android-36` e `build-tools;35.0.0` antes da compilação.
+- Corrigida uma string de regex malformada em `PlayerActivity.kt`, no mascaramento de credenciais RTSP, que poderia provocar novo erro na compilação Kotlin.
+- Adicionado `scripts/check_build_config.py` e sua execução no GitHub Actions para prevenir regressões de versões do SDK/Gradle.
+
+### Mantido
+- `minSdk=24` e `targetSdk=34`: aumentar `compileSdk` não altera o comportamento-alvo do Android.
+- LibVLC para fallback H.265, descoberta ONVIF e cadastro de câmeras existente.
+
+### Validação
+- Regressão de protocolos, validação do versionamento, verificação estática de configuração de build e XML.
+- É necessário recompilar no GitHub Actions para confirmar o APK: sem Android SDK ou acesso às dependências neste ambiente.
+
 ## 1.4.3+13 | 2026-10-11
 
 ### Implementado

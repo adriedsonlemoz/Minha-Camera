@@ -1,27 +1,32 @@
-# Minha Câmera 1.4.3 (versionCode 13)
+# Minha Câmera 1.4.4 (versionCode 14)
 
 **Data:** 2026-10-11
 
-## Alterações
+## Falha corrigida (GitHub Actions: Build APK #7)
 
-- **Repaginada a lista principal:** as câmeras salvas agora aparecem em cartões com resumo mais útil e ações rápidas para **Abrir**, **Copiar RTSP** e acessar **Mais** opções.
-- **Copiar endereço com senha:** cada câmera salva pode copiar o endereço RTSP completo, com usuário e senha, para poupar tempo em testes, compartilhamento controlado e integração com outros aplicativos.
-- **Formulários mais práticos:** a configuração de câmeras encontradas, a adição manual e a edição de câmeras salvas ganharam campos mais organizados, com nome, IP/URL, porta, usuário, senha e caminho RTSP.
-- **Senha mais acessível:** os formulários permitem **ver/ocultar**, **copiar** e **colar** a senha diretamente.
-- **Sugestões de caminho RTSP:** o campo de caminho oferece opções rápidas (por exemplo `/stream1`, `/onvif1`, `/Streaming/Channels/101`) e a opção **Default**, que preserva a descoberta automática quando nenhum caminho específico for escolhido.
+O workflow falhou na tarefa `:app:checkReleaseAarMetadata`: `org.videolan.android:libvlc-all:3.7.7` exige **Android API 36**, mas a versão 1.4.3 compilava com API 34 e AGP 8.5.2.
 
-## Validação
+### Alterações
 
-- Revisão estática dos arquivos Kotlin/XML e sincronização dos metadados de versão.
-- Não foi compilado um APK Android neste ambiente, pois o Android SDK/Gradle e as dependências Maven não estão disponíveis aqui.
+- `compileSdk = 36`, mantendo `minSdk = 24` e `targetSdk = 34`.
+- Android Gradle Plugin **8.11.1**, Gradle **8.13**, Kotlin Gradle Plugin **2.2.20** e Java **17**.
+- Workflow GitHub Actions instala a plataforma **android-36** e as Build Tools **35.0.0**.
+- Regex que mascara URLs RTSP nos detalhes de erro corrigida para evitar uma falha de sintaxe Kotlin após a etapa de metadados.
+- Adicionado o teste preventivo `python3 scripts/check_build_config.py` ao pipeline.
 
-## Roteiro de teste no Android
+### Verificações realizadas
 
-1. Compilar via GitHub Actions e instalar a atualização assinada com a mesma chave da versão anterior.
-2. Buscar uma câmera na rede e verificar o novo diálogo: ver/ocultar, copiar e colar senha; escolher caminho sugerido e salvar.
-3. Adicionar uma câmera manualmente e testar a opção **Default** versus um caminho sugerido.
-4. Na tela **Minhas câmeras**, usar **Copiar RTSP** e colar o endereço em outro local para confirmar que usuário e senha foram copiados.
-5. Editar uma câmera salva para alterar senha, porta e caminho, confirmando persistência e reprodução.
-6. Confirmar que o player continua reproduzindo as câmeras já salvas, inclusive as que dependem do fallback Media3/LibVLC.
+- Verificação de versionamento e configuração de build.
+- Testes de protocolo simulados ONVIF, RTSP, autenticação e SDP.
+- Validação sintática dos XMLs e do workflow.
 
-**Integração Vigia IA:** a ergonomia melhorada de cadastro e cópia de credenciais/endereços é útil para o fluxo de configuração do futuro módulo de câmeras do Vigia IA.
+**Não foi executado o build completo do APK neste ambiente.** A correção remove a incompatibilidade demonstrada pelo log, mas requer nova execução do GitHub Actions para confirmar a compilação de todas as etapas.
+
+### Próxima validação no GitHub
+
+1. Envie os arquivos desta versão ao repositório com a estrutura original.
+2. Inicie **Actions > Build APK > Run workflow** (ou faça push na branch principal).
+3. Confirme que `:app:checkReleaseAarMetadata` passa e `assembleRelease` termina sem erros.
+4. Teste a instalação, a descoberta de câmeras e a reprodução H.264/H.265 no dispositivo.
+
+**Assinatura:** o workflow continua usando assinatura debug. Os Secrets de assinatura estável mencionados anteriormente só serão usados se o Gradle/workflow forem configurados explicitamente para isso. Uma chave diferente não atualiza um APK previamente instalado sem desinstalação.
