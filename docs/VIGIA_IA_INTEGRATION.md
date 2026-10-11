@@ -1,6 +1,6 @@
 # Descobertas do Minha Câmera úteis para o Vigia IA
 
-Atualizado em **1.4.6+16** (2026-10-11).
+Atualizado em **1.4.7+17** (2026-10-11).
 
 Este material serve como registro técnico: **não significa que o Vigia IA foi modificado**.
 
@@ -60,3 +60,13 @@ Os testes simulados da 1.4.2 validam o **parser SDP e a sondagem RTSP**, não a 
 - Não tomar aumento de tempo do CI como indicação automática de problema de runtime do LibVLC; são métricas diferentes.
 - Testar cache Gradle (`org.gradle.caching=true`, `setup-gradle@v6`) entre builds completos antes de remover dependências necessárias ao H.265.
 - Guardar tempos de diferentes builds (com e sem cache) para mensurar otimizações antes de transportar a estratégia ao Vigia IA.
+
+## Distribuição por arquitetura (1.4.7)
+
+- Reduzir APKs por ABI preserva LibVLC e codecs; não confundir remoção de cópias para outras CPUs com remoção de funcionalidades.
+- No Flutter, avaliar `flutter build apk --split-per-abi` e os binários de todos os plugins (inclusive IA), verificando o APK final; não copiar o Gradle Kotlin deste projeto automaticamente.
+- Conferir ABIs efetivamente suportadas por cada dependência nativa, certificado, applicationId e versionCode antes de distribuir variantes.
+- Para APKs diretos, manter código sequencial comum. Não usar offsets que bloqueiem a migração de Universal para ABI ou vice-versa.
+- O versionCode crescente não resolve uma chave de assinatura diferente. Preservar a chave original é requisito para atualizar e manter dados.
+- Centralizar testes/assemble em uma execução e publicar artefatos por arquivo evita recompilar todo o app por arquitetura.
+- Tamanhos reais e limites de testes deste projeto estão em BUILD_VALIDATION.md; não constituem medidas do Vigia IA.

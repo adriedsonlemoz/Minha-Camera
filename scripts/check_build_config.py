@@ -44,6 +44,17 @@ try:
         errors.append('O workflow deve executar o Gradle com --build-cache.')
     if target != 34:
         errors.append('Esta correção deve preservar targetSdk 34 até revisão de compatibilidade em runtime.')
+    for marker in ['isEnable = true', 'isUniversalApk = true', 'reset()',
+                   'include("armeabi-v7a", "arm64-v8a", "x86_64", "x86")',
+                   'isMinifyEnabled = false', 'isShrinkResources = false']:
+        if marker not in app_gradle:
+            errors.append(f'Configuração de splits/compatibilidade ausente: {marker}')
+    if actions.count('gradle testProtocol testReleaseUnitTest assembleRelease ') != 1:
+        errors.append('Executar testes e todos os APKs release em uma chamada Gradle.')
+    if 'scripts/verify_apks.py' not in actions:
+        errors.append('Verificar APKs antes dos uploads.')
+    if 'versionCodeOverride' in app_gradle:
+        errors.append('Não usar offsets por ABI na distribuição direta.')
     if errors:
         raise ValueError('\n'.join(errors))
     print(f'Configuração Android consistente: compileSdk {sdk}, targetSdk {target}, AGP {agp}, Gradle {gradle}, Kotlin {kotlin}')

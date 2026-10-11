@@ -6,3 +6,8 @@
 - Preservar a capacidade de adicionar câmeras manualmente e câmeras anteriormente salvas.
 - Não usar credenciais reais em logs, testes ou repositório.
 - Documentar os resultados úteis para migração futura ao Vigia IA, sem modificar esse segundo aplicativo automaticamente.
+
+- Versão atual: 1.4.7+17. APKs diretos compartilham versionCode 17; não aplicar offsets por ABI.
+- Manter Universal e splits das quatro ABIs fornecidas pelo LibVLC; verificar o AAR e os APKs.
+- Executar `gradle testProtocol testReleaseUnitTest assembleRelease --build-cache` uma única vez; depois `scripts/verify_apks.py`.
+- Preservar assinatura configurada; não gerar/substituir keystore ou inventar Secrets para resolver incompatibilidade legada.

@@ -1,5 +1,16 @@
 # Histórico de versões
 
+## 1.4.7+17 | 2026-10-11
+
+- ABI splits habilitados: Universal, armeabi-v7a, arm64-v8a, x86_64 e x86, preservando todas as arquiteturas do LibVLC 3.7.7.
+- Uma execução Gradle para testes e assembleRelease; cache preservado e artefatos APK individuais sem ZIP.
+- Validação do AAR resolvido, bibliotecas por ABI, integridade ZIP, alinhamento, manifesto, assinatura e tamanhos reais, com relatório e SHA-256.
+- Mesmos applicationId, versionName e versionCode 17 em todos os APKs; sem offsets por ABI.
+- Preservados minSdk 24, funcionalidades, Media3 e LibVLC/H.265; minificação e remoção de recursos desabilitadas.
+- Assinatura debug preexistente mantida. Atualização sobre APKs antigos depende da disponibilidade da chave original; não foi inventada chave ou Secret.
+- Build local aprovado em 2m26s, seis testes simulados aprovados e cinco APKs verificados. ARM64: 62,69 MB (−71,18%); ARMv7: 47,85 MB (−78,00%).
+- Certificado local diverge do APK anterior 1.4.6; atualização legada exige a chave original. Publicação GitHub bloqueada por 403. Detalhes em docs/BUILD_VALIDATION.md.
+
 ## 1.4.6+16 | 2026-10-11
 
 ### Diagnóstico do build #9 e otimização do CI

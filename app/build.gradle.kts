@@ -1,3 +1,5 @@
+import java.util.zip.ZipFile
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -11,13 +13,25 @@ android {
         applicationId = "com.minhacamera"
         minSdk = 24
         targetSdk = 34
-        versionCode = 16
-        versionName = "1.4.6"
+        versionCode = 17
+        versionName = "1.4.7"
+    }
+
+    // O AAR LibVLC 3.7.7 contém as quatro ABIs; manter x86 para compatibilidade.
+    // Mesmo versionCode em todos os APKs para distribuição direta e atualização.
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a", "x86_64", "x86")
+            isUniversalApk = true
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            isShrinkResources = false
             // Assinado com a chave de debug para o APK instalar direto.
             signingConfig = signingConfigs.getByName("debug")
         }
@@ -46,3 +60,23 @@ dependencies {
     // Fallback HEVC/RTSP; LibVLC incorpora binários nativos e aumenta o APK.
     implementation("org.videolan.android:libvlc-all:3.7.7")
 }
+
+
+// Verifica o AAR realmente resolvido, antes de empacotar bibliotecas nativas.
+val verifyLibvlcAbis by tasks.registering {
+    doLast {
+        val aar = configurations.getByName("releaseRuntimeClasspath").files.single {
+            it.name == "libvlc-all-3.7.7.aar"
+        }
+        ZipFile(aar).use { zip ->
+            val entries = zip.entries().asSequence().map { it.name }.toSet()
+            for (abi in listOf("armeabi-v7a", "arm64-v8a", "x86_64", "x86")) {
+                for (lib in listOf("libvlc.so", "libvlcjni.so", "libc++_shared.so")) {
+                    check("jni/$abi/$lib" in entries) { "LibVLC sem jni/$abi/$lib" }
+                }
+            }
+            println("LibVLC 3.7.7: quatro ABIs verificadas no AAR resolvido: ${aar.name}")
+        }
+    }
+}
+tasks.named("preBuild") { dependsOn(verifyLibvlcAbis) }

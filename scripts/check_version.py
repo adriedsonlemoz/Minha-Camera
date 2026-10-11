@@ -8,6 +8,7 @@ gradle = (root / 'app/build.gradle.kts').read_text()
 name = re.search(r'versionName\s*=\s*"([^"]+)"', gradle).group(1)
 code = int(re.search(r'versionCode\s*=\s*(\d+)', gradle).group(1))
 files = {
+    'AGENTS.md': f'Versão atual: {name}+{code}',
     'README.md': f'Versão atual: {name} (versionCode {code})',
     'CHANGELOG.md': f'## {name}+{code}',
     'docs/VERSIONING.md': f'**{name}+{code}**',

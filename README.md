@@ -1,8 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.6 (versionCode 16)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.7 (versionCode 17)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
 
-Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.6 habilita cache local de tarefas Gradle, atualiza `setup-gradle@v6` e adiciona medição de duração do build no GitHub Actions. Mantém LibVLC/HEVC e a preparação do SDK da 1.4.5. Consulte [CHANGELOG.md](CHANGELOG.md) e [notas de release](docs/RELEASE_NOTES.md).
+Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.7 gera APKs por arquitetura, mantendo ONVIF, RTSP, H.264/H.265, Media3 e LibVLC. Consulte [CHANGELOG.md](CHANGELOG.md), [notas de release](docs/RELEASE_NOTES.md) e [validação do build](docs/BUILD_VALIDATION.md).
 
 ## Descoberta automática
 
@@ -30,8 +30,17 @@ Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.6 habilit
 
 ## GitHub Actions
 
-O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara as ferramentas do Android SDK com `android-actions/setup-android@v4`, instala a plataforma Android 36, compila `assembleRelease` e envia o arquivo `MinhaCamera-1.4.6.apk` em **Actions > Artifacts**. O release usa a chave de debug do ambiente de build: **isso não garante a mesma assinatura em execuções diferentes**, portanto uma instalação sobre uma versão anterior pode ser rejeitada pelo Android. Para distribuir atualizações instaláveis sem perder dados, configurar uma chave de assinatura estável protegida por GitHub Secrets. O ZIP de código-fonte não contém um APK pré-compilado.
+O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara Android SDK 36 e executa `gradle testProtocol testReleaseUnitTest assembleRelease` uma única vez, com cache. Publica cada APK individualmente, sem ZIP, em **Actions > Artifacts**:
 
+- `MinhaCamera-1.4.7-universal.apk`: todas as quatro ABIs, para distribuição geral.
+- `MinhaCamera-1.4.7-armeabi-v7a.apk`: Android ARM de 32 bits.
+- `MinhaCamera-1.4.7-arm64-v8a.apk`: Android ARM de 64 bits.
+- `MinhaCamera-1.4.7-x86_64.apk`: Android Intel de 64 bits/emuladores.
+- `MinhaCamera-1.4.7-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
+
+Todos têm `com.minhacamera`, versão 1.4.7, código 17 e a mesma assinatura dentro do build. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
+
+A configuração release continua usando a chave debug do ambiente. **Não há garantia de continuidade com a assinatura de execuções anteriores**. Para atualização sem desinstalar/perder dados, recuperar a chave original e comparar seu certificado com o APK instalado; não basta trocar por uma nova chave. Nenhum Secret ou keystore foi adicionado. O build local desta entrega foi aprovado, mas **seu certificado difere do APK 1.4.6 do Actions**; portanto os APKs locais são de validação e não atualizam aquela instalação. A publicação remota foi impedida por 403. Veja [resultados e impedimentos](docs/BUILD_VALIDATION.md).
 O cache de tarefas é habilitado com `org.gradle.caching=true`; o `gradle/actions/setup-gradle@v6` restaura/salva o Gradle User Home após um job concluído. A execução não deve ser cancelada assim que aparecer `BUILD SUCCESSFUL`, porque ainda faltam nomear/publicar o APK e finalizar o cache. O primeiro build pode continuar demorado, e mudanças no projeto invalidam parte do cache. A mensagem `BUILD SUCCESSFUL in 2m 8s` do build #9 foi seguida de cancelamento externo, antes de publicar o APK.
 
 Para atualizar, siga [docs/VERSIONING.md](docs/VERSIONING.md), execute `python3 scripts/check_version.py`, `python3 scripts/check_build_config.py` e, onde houver `kotlinc`, `bash scripts/test_protocol.sh`; depois sincronize versões, documentos e histórico e confirme o build no GitHub.

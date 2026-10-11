@@ -47,30 +47,60 @@ jobs:
           python3 scripts/check_version.py
           python3 scripts/check_build_config.py
 
-      - name: Compilar APK release
+      # Compilação de código/recursos compartilhada: não usar matrix por ABI.
+      - name: Testar protocolos e compilar todos os APKs release
         shell: bash
         run: |
           set -euo pipefail
           SECONDS=0
-          gradle assembleRelease --no-daemon --build-cache --console=plain --stacktrace
-          echo "Tempo do Gradle: ${SECONDS}s"
+          gradle testProtocol testReleaseUnitTest assembleRelease --no-daemon --build-cache --console=plain --stacktrace
+          echo "Tempo do Gradle (testes e todos os APKs): ${SECONDS}s"
 
-      # Nome final: <app_name sem acento e sem espaço>-<versionName>.apk  (ex.: MinhaCamera-1.4.6.apk)
-      - name: Nomear APK
+      - name: Verificar e nomear APKs; medir tamanhos
         id: apk
-        run: |
-          NAME=$(grep 'name="app_name"' app/src/main/res/values/strings.xml | sed 's/.*">\(.*\)<\/string>.*/\1/')
-          SLUG=$(python3 -c "import sys,re,unicodedata; n=unicodedata.normalize('NFKD',sys.argv[1]).encode('ascii','ignore').decode(); print(re.sub(r'[^A-Za-z0-9]+','',n))" "$NAME")
-          VERSION=$(grep 'versionName' app/build.gradle.kts | head -1 | sed 's/.*"\(.*\)".*/\1/')
-          FILE="${SLUG}-${VERSION}.apk"
-          mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk "dist/${FILE}"
-          echo "path=dist/${FILE}" >> "$GITHUB_OUTPUT"
+        run: python3 scripts/verify_apks.py
 
-      # Único artifact: o APK solto (sem ZIP). O nome do artifact = nome do arquivo.
-      - name: Publicar APK
+      - name: Publicar APK universal
         uses: actions/upload-artifact@v7
         with:
-          path: ${{ steps.apk.outputs.path }}
+          path: ${{ steps.apk.outputs.universal }}
           archive: false
+          if-no-files-found: error
+
+      - name: Publicar APK armeabi-v7a
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ steps.apk.outputs.armeabi-v7a }}
+          archive: false
+          if-no-files-found: error
+
+      - name: Publicar APK arm64-v8a
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ steps.apk.outputs.arm64-v8a }}
+          archive: false
+          if-no-files-found: error
+
+      - name: Publicar APK x86_64
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ steps.apk.outputs.x86_64 }}
+          archive: false
+          if-no-files-found: error
+
+      - name: Publicar APK x86
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ steps.apk.outputs.x86 }}
+          archive: false
+          if-no-files-found: error
+
+      - name: Publicar relatório e hashes
+        uses: actions/upload-artifact@v7
+        with:
+          name: MinhaCamera-APK-verificacao
+          path: |
+            dist/apk-report.md
+            dist/apk-report.json
+            dist/SHA256SUMS
           if-no-files-found: error

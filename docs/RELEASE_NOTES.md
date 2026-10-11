@@ -1,32 +1,21 @@
-# Minha Câmera 1.4.6 (versionCode 16)
+# Minha Câmera 1.4.7 (versionCode 17)
 
 **Data:** 2026-10-11
 
-## Motivo: build #9 demorando e cancelado
+## APKs menores com os recursos preservados
 
-O log mostrou que a compilação funcionou (`BUILD SUCCESSFUL in 2m 8s`, às 05:00:45 UTC), mas o job foi cancelado logo após. O ZIP de logs não informa quem ou o que iniciou o cancelamento, portanto não atribuir a causa ao código.
+ABI Splits com `isEnable = true` e `isUniversalApk = true`. O AAR LibVLC 3.7.7 fornece armeabi-v7a, arm64-v8a, x86_64 e x86. Mantemos x86 para não excluir instalações Intel de 32 bits que o Universal anterior atendia. Cada biblioteca nativa é mantida integralmente dentro de sua ABI.
 
-### Tempos observados no build #9 (aproximados)
-- Preparação do Android SDK e instalação da plataforma: **13 s**.
-- Gradle: **2 min 8 s** (configuração aproximada ~54 s, tarefas ~75 s).
-- Também houve download do Gradle 8.13 (~137 MB), embora parte das dependências já tivesse cache.
+Uma única execução Gradle roda a suíte simulada existente (`testProtocol`), testes unitários release (atualmente sem testes Android/JUnit cadastrados) e `assembleRelease`. Preserva setup-gradle e build cache, sem matriz de builds completos. Cinco uploads separados de APK com `archive: false` mantêm compatibilidade com o GitHub Manager.
 
-## Alterações
+Todos os APKs usam applicationId com.minhacamera, versão 1.4.7 e código 17. Não há códigos por ABI. A configuração de assinatura debug preexistente foi mantida; os certificados dos arquivos são comparados no verificador. Continuidade sobre instalações antigas depende da chave privada original, que não é distribuída pelo repositório. Não foram criados Secrets nem chaves substitutas.
 
-1. Habilitada cache de tarefas Gradle via `org.gradle.caching=true` e `--build-cache`.
-2. Atualizada a ação `gradle/actions/setup-gradle@v4` para `@v6`, que gerencia Gradle User Home e build cache em jobs completos.
-3. Adicionada medição de tempo do processo Gradle no passo de compilação.
-4. Mantido LibVLC 3.7.7, sem sacrificar a compatibilidade H.265 para reduzir tempo de maneira não comprovada.
-5. Sincronizada a sequência de versões 1.4.6+16.
+## Verificação
 
-## Teste esperado
+`scripts/verify_apks.py` lê output-metadata.json, verifica CRC, ABIs exatas, três bibliotecas LibVLC por ABI, conteúdo nativo idêntico ao Universal, mesmo DEX/recursos, manifesto, certificado e zipalign; gera nomes finais, SHA-256 e tabela em MB decimais (bytes / 1.000.000). Redução = 100 × (1 − tamanho ABI / tamanho Universal).
 
-1. Publique o código e execute o workflow sem cancelá-lo após `BUILD SUCCESSFUL`.
-2. Espere os passos Nomear APK, Publicar APK e pós-etapas concluírem; baixe o artefato na execução concluída.
-3. Execute um segundo build a partir do mesmo código para comparar os tempos (o primeiro pode povoar o cache).
-4. Compare `Tempo do Gradle:` no log e procure `FROM-CACHE` nas tarefas.
-5. Se continuar lento, exporte o ZIP dos dois logs completos para identificar quais tarefas continuam custosas.
+Build local: **BUILD SUCCESSFUL in 2m26s**, seis testes de protocolo aprovados. ARM64: **62,69 MB (−71,18%)**; ARMv7: **47,85 MB (−78,00%)**; Universal: **217,55 MB**. Os APKs locais têm certificado diferente do APK anterior 1.4.6 do Actions e não o atualizam diretamente. Publicação remota bloqueada por 403 na conexão GitHub. Resultados reais: [BUILD_VALIDATION.md](BUILD_VALIDATION.md). Testes em câmeras/dispositivo Android permanecem necessários para confirmar reprodução e atualização legada; testes de protocolo não validam decodificação HEVC.
 
-## Limites de validação
+## Otimizações adicionais
 
-Não foi possível executar o Android Gradle Plugin com SDK real neste ambiente. A melhoria de tempo ainda depende de medições no GitHub Actions. O APK continua sendo assinado pela configuração debug do runner; a assinatura estável permanece pendente.
+Não ativar R8 ou resource shrinking sem validar JNI/reflexão do LibVLC e todos os caminhos do player. Não remover codecs/plugins nativos ou LibVLC. O Universal continua grande porque contém quatro cópias nativas. AAB pode entregar só a ABI pela loja, mas não substitui os APKs diretos do GitHub Manager. Compressão das bibliotecas nativas pode reduzir download, mas altera extração/espaço/tempo de instalação e exige medição antes de mudar packaging. Não alterar minSdk ou targetSdk para reduzir tamanho.
