@@ -3,22 +3,28 @@ package com.minhacamera
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.Menu
 import android.view.MenuItem
-import android.view.LayoutInflater
 import android.view.View
-import android.widget.ArrayAdapter
+import android.view.ViewGroup
+import android.widget.BaseAdapter
 import android.widget.EditText
 import android.widget.ListView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.textfield.MaterialAutoCompleteTextView
+import com.google.android.material.textfield.TextInputEditText
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var store: CameraStore
     private lateinit var listView: ListView
+    private lateinit var adapter: CameraAdapter
     private var cams = mutableListOf<Camera>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -32,23 +38,18 @@ class MainActivity : AppCompatActivity() {
 
         listView = findViewById(R.id.list)
         listView.emptyView = findViewById(R.id.empty)
+        adapter = CameraAdapter()
+        listView.adapter = adapter
         refresh()
 
         listView.setOnItemClickListener { _, _, pos, _ ->
-            val c = cams[pos]
-            startActivity(
-                Intent(this, PlayerActivity::class.java)
-                    .putExtra("name", c.name)
-                    .putExtra("url", c.url)
-                    .putExtra("alts", c.alts.toTypedArray())
-            )
+            openCamera(cams[pos])
         }
         listView.setOnItemLongClickListener { _, _, pos, _ ->
             showOptions(pos)
             true
         }
 
-        // "+" abre a busca já com o diálogo manual (IP da rede pré-preenchido).
         findViewById<FloatingActionButton>(R.id.fab).setOnClickListener {
             startActivity(Intent(this, ScanActivity::class.java).putExtra("manual", true))
         }
@@ -84,39 +85,83 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun refresh() {
-        val items = cams.map { "${it.name}\n${masked(it.url)}" }
-        listView.adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, items)
+        adapter.notifyDataSetChanged()
     }
 
-    // Esconde usuário e senha na lista.
+    private fun openCamera(camera: Camera) {
+        startActivity(
+            Intent(this, PlayerActivity::class.java)
+                .putExtra("name", camera.name)
+                .putExtra("url", camera.url)
+                .putExtra("alts", camera.alts.toTypedArray())
+        )
+    }
+
+    private fun copyCameraUrl(camera: Camera) {
+        CameraFormUi.copyText(this, camera.url, getString(R.string.copiar_rtsp))
+        Toast.makeText(this, R.string.endereco_copiado, Toast.LENGTH_SHORT).show()
+    }
+
     private fun masked(url: String): String {
         return try {
             val u = Uri.parse(url)
             val host = u.host ?: return url
             val port = if (u.port != -1) ":${u.port}" else ""
-            "rtsp://$host$port${u.path ?: ""}"
+            "rtsp://$host$port${u.path ?: ""}${u.query?.let { "?$it" } ?: ""}"
         } catch (_: Exception) {
             url
         }
     }
 
+    private fun infoSummary(camera: Camera): String {
+        val parsed = CameraFormUi.parseRtsp(camera.url)
+        val pathLabel = CameraFormUi.normalizePathChoice(parsed.path).ifEmpty { getString(R.string.default_option) }
+        val alternativos = if (camera.alts.isEmpty()) {
+            getString(R.string.sem_alternativos)
+        } else {
+            getString(R.string.com_alternativos, camera.alts.size)
+        }
+        return getString(R.string.resumo_camera_salva, parsed.user.ifBlank { "-" }, pathLabel, alternativos)
+    }
+
     private fun showOptions(pos: Int) {
-        val options = arrayOf(getString(R.string.editar), getString(R.string.excluir))
+        val options = arrayOf(
+            getString(R.string.editar),
+            getString(R.string.copiar_rtsp_com_senha),
+            getString(R.string.excluir)
+        )
         AlertDialog.Builder(this)
             .setTitle(cams[pos].name)
             .setItems(options) { _, which ->
-                if (which == 0) showEditDialog(pos) else confirmDelete(pos)
+                when (which) {
+                    0 -> showEditDialog(pos)
+                    1 -> copyCameraUrl(cams[pos])
+                    else -> confirmDelete(pos)
+                }
             }
             .show()
     }
 
     private fun showEditDialog(pos: Int) {
         val c = cams[pos]
-        val view = LayoutInflater.from(this).inflate(R.layout.dialog_camera, null)
-        val etName = view.findViewById<EditText>(R.id.etName)
-        val etUrl = view.findViewById<EditText>(R.id.etUrl)
+        val view = LayoutInflater.from(this).inflate(R.layout.dialog_manual_camera, null)
+        val etName = view.findViewById<TextInputEditText>(R.id.etName)
+        val etIp = view.findViewById<TextInputEditText>(R.id.etIp)
+        val etPort = view.findViewById<TextInputEditText>(R.id.etPort)
+        val etUser = view.findViewById<TextInputEditText>(R.id.etUser)
+        val etPass = view.findViewById<TextInputEditText>(R.id.etPass)
+        val etPath = view.findViewById<MaterialAutoCompleteTextView>(R.id.etPath)
+        val btnCopyPass = view.findViewById<MaterialButton>(R.id.btnCopyPass)
+        val btnPastePass = view.findViewById<MaterialButton>(R.id.btnPastePass)
+        val parsed = CameraFormUi.parseRtsp(c.url)
+
         etName.setText(c.name)
-        etUrl.setText(c.url)
+        etIp.setText(if (parsed.host.isBlank()) c.url else parsed.host)
+        etPort.setText(parsed.port.toString())
+        etUser.setText(parsed.user.ifBlank { "admin" })
+        etPass.setText(parsed.pass)
+        CameraFormUi.setupPasswordTools(this, etPass, btnCopyPass, btnPastePass)
+        CameraFormUi.setupPathSuggestions(this, etPath, view.findViewById(R.id.chipPaths), parsed.path)
 
         val dlg = AlertDialog.Builder(this)
             .setTitle(R.string.editar_camera)
@@ -126,13 +171,24 @@ class MainActivity : AppCompatActivity() {
             .create()
         dlg.show()
         dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-            val url = etUrl.text.toString().trim()
-            if (!url.startsWith("rtsp://", ignoreCase = true)) {
-                Toast.makeText(this, R.string.url_invalida, Toast.LENGTH_LONG).show()
+            val target = etIp.text?.toString()?.trim().orEmpty()
+            val name = etName.text?.toString()?.trim().orEmpty().ifEmpty { c.name }
+            if (target.startsWith("rtsp://", ignoreCase = true)) {
+                cams[pos] = Camera(name, target, if (target == c.url) c.alts else emptyList())
+                store.save(cams)
+                refresh()
+                dlg.dismiss()
                 return@setOnClickListener
             }
-            val name = etName.text.toString().trim().ifEmpty { c.name }
-            // Se o endereço mudou, os fluxos alternativos antigos deixam de valer.
+            if (!Regex("""^\d{1,3}(\.\d{1,3}){3}$""").matches(target)) {
+                Toast.makeText(this, R.string.ip_invalido, Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
+            val port = etPort.text?.toString()?.trim()?.toIntOrNull() ?: 554
+            val user = etUser.text?.toString()?.trim().orEmpty().ifEmpty { "admin" }
+            val pass = etPass.text?.toString().orEmpty()
+            val pathChoice = etPath.text?.toString().orEmpty()
+            val url = CameraFormUi.buildRtspUrl(target, port, user, pass, pathChoice)
             cams[pos] = Camera(name, url, if (url == c.url) c.alts else emptyList())
             store.save(cams)
             refresh()
@@ -151,5 +207,23 @@ class MainActivity : AppCompatActivity() {
             }
             .setNegativeButton(R.string.cancelar, null)
             .show()
+    }
+
+    private inner class CameraAdapter : BaseAdapter() {
+        override fun getCount(): Int = cams.size
+        override fun getItem(position: Int): Any = cams[position]
+        override fun getItemId(position: Int): Long = position.toLong()
+
+        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+            val view = convertView ?: LayoutInflater.from(parent.context).inflate(R.layout.item_camera, parent, false)
+            val camera = cams[position]
+            view.findViewById<TextView>(R.id.tvName).text = camera.name
+            view.findViewById<TextView>(R.id.tvMasked).text = masked(camera.url)
+            view.findViewById<TextView>(R.id.tvInfo).text = infoSummary(camera)
+            view.findViewById<MaterialButton>(R.id.btnOpen).setOnClickListener { openCamera(camera) }
+            view.findViewById<MaterialButton>(R.id.btnCopy).setOnClickListener { copyCameraUrl(camera) }
+            view.findViewById<MaterialButton>(R.id.btnMore).setOnClickListener { showOptions(position) }
+            return view
+        }
     }
 }

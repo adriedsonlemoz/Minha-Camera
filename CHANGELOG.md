@@ -1,5 +1,18 @@
 # Histórico de versões
 
+## 1.4.3+13 | 2026-10-11
+
+### Implementado
+- Repaginada a lista de câmeras salvas com cartões e ações rápidas para abrir o vídeo, copiar o endereço RTSP e acessar mais opções.
+- Nova ação para **copiar o endereço RTSP completo com usuário e senha**, reduzindo o tempo para reutilizar a câmera em outros apps e testes.
+- Diálogo de configuração de câmera encontrada reformulado com campo de senha com ver/ocultar, botões para copiar/colar e sugestões rápidas de caminho RTSP.
+- Adição manual e edição de câmeras agora usam formulário estruturado com nome, IP/URL, porta, usuário, senha e sugestões de caminho com opção **Default**.
+- Edição de câmera salva deixa de depender apenas da URL crua e passa a permitir ajuste mais rápido dos dados principais.
+
+### Validação estática
+- Revisão dos layouts Android, novas strings e adaptação do fluxo de cadastro/edição/listagem.
+- Sem compilação de APK neste ambiente; testes reais em Android permanecem pendentes.
+
 ## 1.4.2+12 | 2026-10-11
 
 ### Implementado

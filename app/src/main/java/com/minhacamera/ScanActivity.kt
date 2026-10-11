@@ -6,11 +6,13 @@ import android.view.LayoutInflater
 import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.EditText
 import android.widget.ListView
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.textfield.MaterialAutoCompleteTextView
+import com.google.android.material.textfield.TextInputEditText
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import java.util.concurrent.ExecutorService
@@ -168,20 +170,24 @@ class ScanActivity : AppCompatActivity() {
     // ---------- Câmera achada na busca ----------
     private fun showCredentialsDialog(f: Found) {
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_scan_camera, null)
-        val etName = view.findViewById<EditText>(R.id.etName)
-        val etUser = view.findViewById<EditText>(R.id.etUser)
-        val etPass = view.findViewById<EditText>(R.id.etPass)
-        val etPath = view.findViewById<EditText>(R.id.etPath)
+        val etName = view.findViewById<TextInputEditText>(R.id.etName)
+        val etUser = view.findViewById<TextInputEditText>(R.id.etUser)
+        val etPass = view.findViewById<TextInputEditText>(R.id.etPass)
+        val etPath = view.findViewById<MaterialAutoCompleteTextView>(R.id.etPath)
+        val btnCopyPass = view.findViewById<MaterialButton>(R.id.btnCopyPass)
+        val btnPastePass = view.findViewById<MaterialButton>(R.id.btnPastePass)
         etName.setText("Câmera ${f.ip.substringAfterLast('.')}")
+        CameraFormUi.setupPasswordTools(this, etPass, btnCopyPass, btnPastePass)
+        CameraFormUi.setupPathSuggestions(this, etPath, view.findViewById(R.id.chipPaths))
 
         AlertDialog.Builder(this)
             .setTitle(f.ip + (f.port?.let { ":$it" } ?: " (ONVIF)"))
             .setView(view)
             .setPositiveButton(R.string.testar_salvar) { _, _ ->
-                val name = etName.text.toString().trim().ifEmpty { "Câmera ${f.ip}" }
-                val user = etUser.text.toString().trim().ifEmpty { "admin" }
-                val pass = etPass.text.toString()
-                testAndSave(f, name, user, pass, normPath(etPath.text.toString()))
+                val name = etName.text?.toString()?.trim().orEmpty().ifEmpty { "Câmera ${f.ip}" }
+                val user = etUser.text?.toString()?.trim().orEmpty().ifEmpty { "admin" }
+                val pass = etPass.text?.toString().orEmpty()
+                testAndSave(f, name, user, pass, CameraFormUi.normalizePathChoice(etPath.text?.toString().orEmpty()))
             }
             .setNegativeButton(R.string.cancelar, null)
             .show()
@@ -190,15 +196,19 @@ class ScanActivity : AppCompatActivity() {
     // ---------- Adicionar manualmente (IP da rede já pré-preenchido) ----------
     private fun showManualDialog() {
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_manual_camera, null)
-        val etName = view.findViewById<EditText>(R.id.etName)
-        val etIp = view.findViewById<EditText>(R.id.etIp)
-        val etPort = view.findViewById<EditText>(R.id.etPort)
-        val etUser = view.findViewById<EditText>(R.id.etUser)
-        val etPass = view.findViewById<EditText>(R.id.etPass)
-        val etPath = view.findViewById<EditText>(R.id.etPath)
+        val etName = view.findViewById<TextInputEditText>(R.id.etName)
+        val etIp = view.findViewById<TextInputEditText>(R.id.etIp)
+        val etPort = view.findViewById<TextInputEditText>(R.id.etPort)
+        val etUser = view.findViewById<TextInputEditText>(R.id.etUser)
+        val etPass = view.findViewById<TextInputEditText>(R.id.etPass)
+        val etPath = view.findViewById<MaterialAutoCompleteTextView>(R.id.etPath)
+        val btnCopyPass = view.findViewById<MaterialButton>(R.id.btnCopyPass)
+        val btnPastePass = view.findViewById<MaterialButton>(R.id.btnPastePass)
 
         etIp.setText(NetUtil.localPrefix(this) ?: "")
-        etIp.setSelection(etIp.text.length)
+        etIp.setSelection(etIp.text?.length ?: 0)
+        CameraFormUi.setupPasswordTools(this, etPass, btnCopyPass, btnPastePass)
+        CameraFormUi.setupPathSuggestions(this, etPath, view.findViewById(R.id.chipPaths))
 
         val dlg = AlertDialog.Builder(this)
             .setTitle(R.string.adicionar_manual)
@@ -211,8 +221,8 @@ class ScanActivity : AppCompatActivity() {
         etIp.requestFocus()
 
         dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-            val ipText = etIp.text.toString().trim()
-            val name = etName.text.toString().trim()
+            val ipText = etIp.text?.toString()?.trim().orEmpty()
+            val name = etName.text?.toString()?.trim().orEmpty()
 
             // Aceita também uma URL RTSP completa no campo IP.
             if (ipText.startsWith("rtsp://", ignoreCase = true)) {
@@ -228,25 +238,20 @@ class ScanActivity : AppCompatActivity() {
                 Toast.makeText(this, R.string.ip_invalido, Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
-            val port = etPort.text.toString().trim().toIntOrNull() ?: 554
-            val user = etUser.text.toString().trim().ifEmpty { "admin" }
-            val pass = etPass.text.toString()
+            val port = etPort.text?.toString()?.trim()?.toIntOrNull() ?: 554
+            val user = etUser.text?.toString()?.trim().orEmpty().ifEmpty { "admin" }
+            val pass = etPass.text?.toString().orEmpty()
             dlg.dismiss()
             testAndSave(
                 Found(ipText, linkedSetOf(port)),
                 name.ifEmpty { "Câmera ${ipText.substringAfterLast('.')}" },
-                user, pass, normPath(etPath.text.toString())
+                user, pass, CameraFormUi.normalizePathChoice(etPath.text?.toString().orEmpty())
             )
         }
     }
 
-    private fun normPath(raw: String): String {
-        val t = raw.trim()
-        return if (t.isEmpty() || t.startsWith("/")) t else "/$t"
-    }
-
     private fun buildUrl(ip: String, port: Int, user: String, pass: String, path: String) =
-        "rtsp://${Uri.encode(user)}:${Uri.encode(pass)}@$ip:$port$path"
+        CameraFormUi.buildRtspUrl(ip, port, user, pass, path)
 
     // Separa porta e caminho (com query) de um endereço RTSP devolvido pela câmera.
     private fun splitUri(u: String): Pair<Int, String> {

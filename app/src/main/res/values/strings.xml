@@ -2,7 +2,8 @@
 <resources>
     <string name="app_name">Minha Câmera</string>
     <string name="minhas_cameras">Minhas câmeras</string>
-    <string name="lista_vazia">Toque em + para adicionar manualmente ou em Buscar câmeras para achar na rede.\nSegure um item para editar ou excluir.</string>
+    <string name="lista_vazia">Toque em + para adicionar manualmente ou em Buscar câmeras para achar na rede.
+Segure um item para editar ou excluir.</string>
     <string name="nova_camera">Nova câmera</string>
     <string name="nome">Nome</string>
     <string name="usuario">Usuário</string>
@@ -13,7 +14,9 @@
     <string name="excluir">Excluir</string>
     <string name="excluir_pergunta">Excluir esta câmera?</string>
     <string name="url_invalida">A URL deve começar com rtsp://</string>
-    <string name="erro_conexao">Não foi possível conectar à câmera.\nVerifique URL, usuário/senha e a rede.\n(%1$s)</string>
+    <string name="erro_conexao">Não foi possível conectar à câmera.
+Verifique URL, usuário/senha e a rede.
+(%1$s)</string>
 
     <string name="buscar_cameras">Buscar câmeras</string>
     <string name="buscar_novamente">Buscar novamente</string>
@@ -25,7 +28,7 @@
     <string name="testar_salvar">Testar e salvar</string>
     <string name="testando">Testando câmera</string>
     <string name="testando_caminho">Testando caminho %1$d de %2$d …</string>
-    <string name="salva">Câmera \"%1$s\" salva.</string>
+    <string name="salva">Câmera "%1$s" salva.</string>
     <string name="falha_login">Usuário ou senha incorretos. Confira a senha em Conexão NVR / RTSP na câmera.</string>
     <string name="falha_caminho">Conectei na câmera, mas nenhum caminho de vídeo conhecido funcionou. Veja abaixo o que ela respondeu; se souber o caminho, digite no campo Caminho.</string>
     <string name="caminho_hint">Caminho (opcional, ex.: /stream1)</string>
@@ -44,8 +47,10 @@
     <string name="tentar_novamente">Tentar de novo</string>
     <string name="tentando_outro">Tentando outro fluxo (%1$d/%2$d) …</string>
     <string name="aviso_h265">Aviso: esta câmera transmite em H.265, que o app pode não abrir. Se o vídeo falhar, mude a câmera para H.264.</string>
-    <string name="erro_h265">Falha ao reproduzir este fluxo H.265/HEVC mesmo após tentar o LibVLC. A câmera pode estar enviando parâmetros SDP incompletos ou um vídeo incompatível com o decodificador.\n\nExperimente habilitar H.264 ou outro perfil na câmera e refazer a busca.</string>
-    <string name="erro_login">A câmera recusou o login. Confira o usuário e a senha (toque e segure na câmera da lista > Editar).</string>
+    <string name="erro_h265">Falha ao reproduzir este fluxo H.265/HEVC mesmo após tentar o LibVLC. A câmera pode estar enviando parâmetros SDP incompletos ou um vídeo incompatível com o decodificador.
+
+Experimente habilitar H.264 ou outro perfil na câmera e refazer a busca.</string>
+    <string name="erro_login">A câmera recusou o login. Confira o usuário e a senha (toque e segure na câmera da lista &gt; Editar).</string>
     <string name="erro_caminho">O caminho do vídeo não existe nesta câmera. Use Editar na lista ou refaça pelo Buscar câmeras.</string>
     <string name="erro_generico">Não foi possível abrir o vídeo desta câmera. Verifique se o celular está no mesmo Wi-Fi e se o RTSP está ativado.</string>
     <string name="usar_media3">Reproduzir com Media3</string>
@@ -53,5 +58,49 @@
     <string name="engine_fluxo">%1$s • fluxo %2$d/%3$d</string>
     <string name="erro_sem_fluxos">Nenhum endereço RTSP válido foi informado.</string>
     <string name="novidades">Novidades e versões</string>
-    <string name="novidades_text">Versão 1.4.2 (código 12)\n• Fallback automático Media3 → LibVLC para fluxos RTSP e H.265.\n• Seleção de fluxo secundário H.264 por codec confirmado no SDP.\n• Escolha manual do motor pelo menu da reprodução.\n• Melhor diagnóstico sem expor credenciais na tela de erro.\n\nVersão 1.4.1 (código 11)\n• Busca ONVIF WS-Discovery por multicast UDP.\n• Busca TCP conforme a máscara da rede e mais portas.\n• Conciliação de dispositivos ONVIF e RTSP por IP.\n• Testes RTSP em todas as portas detectadas.\n• Corrigidos a leitura do corpo RTSP em bytes e o fallback de autenticação.\n\nVersão 1.4.0 (código 10)\n• Cliente ONVIF para consultar fluxos, reprodução RTSP e fluxos alternativos.\n\nObservação: H.265 ainda depende do codec e das informações enviadas pela câmera. Testes reais pendentes.</string>
+
+    <string name="configure_camera_hint">Confira os dados abaixo. Você pode ver, copiar e colar a senha. No caminho RTSP, escolha uma sugestão rápida ou mantenha Default para testar automaticamente.</string>
+    <string name="copiar_senha">Copiar senha</string>
+    <string name="colar_senha">Colar senha</string>
+    <string name="senha_vazia">A senha está vazia.</string>
+    <string name="senha_copiada">Senha copiada.</string>
+    <string name="senha_colada">Senha colada.</string>
+    <string name="area_transferencia_vazia">A área de transferência está vazia.</string>
+    <string name="caminho_rtsp">Caminho RTSP</string>
+    <string name="caminho_default_hint">Sugestões rápidas abaixo. Se deixar em Default, o aplicativo tenta descobrir automaticamente o melhor caminho.</string>
+    <string name="default_option">Default</string>
+    <string name="ip_ou_url_rtsp">IP ou URL RTSP completa</string>
+    <string name="abrir">Abrir</string>
+    <string name="copiar_rtsp">Copiar RTSP</string>
+    <string name="copiar_rtsp_com_senha">Copiar endereço com senha</string>
+    <string name="endereco_copiado">Endereço RTSP copiado.</string>
+    <string name="mais">Mais</string>
+    <string name="sem_alternativos">sem fluxos alternativos</string>
+    <string name="com_alternativos">%1$d fluxo(s) alternativo(s)</string>
+    <string name="resumo_camera_salva">Usuário: %1$s • Caminho: %2$s • %3$s</string>
+
+    <string name="novidades_text">Versão 1.4.3 (código 13)
+• Repaginada a tela de câmeras salvas com cartões e ações rápidas.
+• Botão para copiar o endereço RTSP completo com usuário e senha.
+• Edição reformulada com IP, porta, usuário, senha e sugestões de caminho.
+• Diálogos de adicionar/configurar com ver, copiar e colar senha.
+• Sugestões de caminhos RTSP com opção Default para descoberta automática.
+
+Versão 1.4.2 (código 12)
+• Fallback automático Media3 → LibVLC para fluxos RTSP e H.265.
+• Seleção de fluxo secundário H.264 por codec confirmado no SDP.
+• Escolha manual do motor pelo menu da reprodução.
+• Melhor diagnóstico sem expor credenciais na tela de erro.
+
+Versão 1.4.1 (código 11)
+• Busca ONVIF WS-Discovery por multicast UDP.
+• Busca TCP conforme a máscara da rede e mais portas.
+• Conciliação de dispositivos ONVIF e RTSP por IP.
+• Testes RTSP em todas as portas detectadas.
+• Corrigidos a leitura do corpo RTSP em bytes e o fallback de autenticação.
+
+Versão 1.4.0 (código 10)
+• Cliente ONVIF para consultar fluxos, reprodução RTSP e fluxos alternativos.
+
+Observação: H.265 ainda depende do codec e das informações enviadas pela câmera. Testes reais pendentes.</string>
 </resources>

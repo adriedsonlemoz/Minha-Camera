@@ -1,6 +1,6 @@
 # Descobertas do Minha Câmera úteis para o Vigia IA
 
-Atualizado em **1.4.2+12** (2026-10-11).
+Atualizado em **1.4.3+13** (2026-10-11).
 
 Este material serve como registro técnico: **não significa que o Vigia IA foi modificado**.
 
@@ -30,3 +30,11 @@ Este material serve como registro técnico: **não significa que o Vigia IA foi 
 ## Estado de validação
 
 Os testes simulados da 1.4.2 validam o **parser SDP e a sondagem RTSP**, não a decodificação real H.265 ou a integração Android LibVLC. Testes em câmeras reais são obrigatórios antes de portar ao Vigia IA.
+
+
+## Ergonomia de cadastro e suporte operacional (1.4.3)
+
+- Cadastro e edição mais estruturados reduzem erro humano ao configurar IP, porta, usuário, senha e caminho.
+- Recurso de copiar o RTSP completo com credenciais acelera testes cruzados com players externos, NVRs e outras telas do ecossistema.
+- Sugestões rápidas de caminho com opção **Default** servem como modelo para uma UX híbrida no Vigia IA: simples para iniciantes, mas sem bloquear ajustes manuais.
+- O tratamento explícito da senha (ver/copiar/colar) melhora a usabilidade, mas reforça a necessidade de segurança reforçada no armazenamento quando a abordagem for levada ao Vigia IA.

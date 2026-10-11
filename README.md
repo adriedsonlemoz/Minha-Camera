@@ -1,8 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.2 (versionCode 12)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.3 (versionCode 13)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
 
-Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.2 acrescenta fallback LibVLC e identificação do codec por SDP à descoberta ONVIF da 1.4.1. Consulte [CHANGELOG.md](CHANGELOG.md) e [notas de release](docs/RELEASE_NOTES.md).
+Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.3 repagina o cadastro e a lista de câmeras salvas, preservando as melhorias de descoberta ONVIF, identificação de codecs por SDP e fallback LibVLC introduzidas nas versões anteriores. Consulte [CHANGELOG.md](CHANGELOG.md) e [notas de release](docs/RELEASE_NOTES.md).
 
 ## Descoberta automática
 
@@ -24,12 +24,13 @@ Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.2 acresce
 
 1. Ligue a câmera e conecte o telefone ao mesmo Wi-Fi, sem isolamento entre clientes.
 2. Abra **Buscar câmeras** ou **+** para configurar manualmente.
-3. Toque na câmera encontrada, informe as credenciais RTSP/ONVIF e teste.
-4. Se a descoberta falhar, verifique as portas da câmera, Wi-Fi e ONVIF, ou use `rtsp://usuario:senha@IP:554/caminho`.
+3. Toque na câmera encontrada, informe as credenciais RTSP/ONVIF e teste. Os formulários permitem ver, copiar e colar a senha e escolher sugestões rápidas de caminho RTSP.
+4. A lista principal mostra cartões com ações rápidas para abrir, copiar o endereço RTSP completo e editar/excluir a câmera.
+5. Se a descoberta falhar, verifique as portas da câmera, Wi-Fi e ONVIF, ou use `rtsp://usuario:senha@IP:554/caminho`.
 
 ## GitHub Actions
 
-O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, compila `assembleRelease` e envia o arquivo `MinhaCamera-1.4.2.apk` em **Actions > Artifacts**. O release usa a chave de debug do ambiente de build: **isso não garante a mesma assinatura em execuções diferentes**, portanto uma instalação sobre uma versão anterior pode ser rejeitada pelo Android. Para distribuir atualizações instaláveis sem perder dados, configurar uma chave de assinatura estável protegida por GitHub Secrets. O ZIP de código-fonte não contém um APK pré-compilado.
+O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, compila `assembleRelease` e envia o arquivo `MinhaCamera-1.4.3.apk` em **Actions > Artifacts**. O release usa a chave de debug do ambiente de build: **isso não garante a mesma assinatura em execuções diferentes**, portanto uma instalação sobre uma versão anterior pode ser rejeitada pelo Android. Para distribuir atualizações instaláveis sem perder dados, configurar uma chave de assinatura estável protegida por GitHub Secrets. O ZIP de código-fonte não contém um APK pré-compilado.
 
 Para atualizar, siga [docs/VERSIONING.md](docs/VERSIONING.md), execute `python3 scripts/check_version.py` e, onde houver `kotlinc`, `bash scripts/test_protocol.sh`; depois sincronize versões, documentos e histórico e confirme o build no GitHub.
 

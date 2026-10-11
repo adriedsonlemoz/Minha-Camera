@@ -1,28 +1,27 @@
-# Minha Câmera 1.4.2 (versionCode 12)
+# Minha Câmera 1.4.3 (versionCode 13)
 
 **Data:** 2026-10-11
 
 ## Alterações
 
-- **Player com dois motores:** mantém Media3 para os fluxos compatíveis e, quando todas as URLs falham, tenta automaticamente as mesmas URLs no **LibVLC 3.7.7** (versão estável). É possível selecionar Media3 ou LibVLC no menu do player para testes. Cada motor solta seus recursos ao trocar de fluxo ou fechar a tela.
-- **H.265/HEVC:** o LibVLC pode reproduzir streams que provocavam `missing sprop-vps` no Media3, mas **não há garantia** para SDP ou frames inválidos e decodificadores incompatíveis. Se os dois motores falharem, a tela apresenta o diagnóstico, sem expor URLs com credenciais.
-- **Identificação de codecs:** a resposta SDP de `RTSP DESCRIBE` agora é lida e interpretada. Se o caminho inicial usar H.265 e o secundário responder com **H.264 confirmado**, o H.264 é salvo como URL prioritária.
-- **Recuperação:** não avança duas vezes por callbacks duplicados; timeout de 15 s para inicialização no LibVLC; tentativa das URLs alternativas.
-- **Segurança:** backup Android desabilitado para reduzir risco de exportar credenciais armazenadas em URLs RTSP. A criptografia das preferências ainda está pendente.
+- **Repaginada a lista principal:** as câmeras salvas agora aparecem em cartões com resumo mais útil e ações rápidas para **Abrir**, **Copiar RTSP** e acessar **Mais** opções.
+- **Copiar endereço com senha:** cada câmera salva pode copiar o endereço RTSP completo, com usuário e senha, para poupar tempo em testes, compartilhamento controlado e integração com outros aplicativos.
+- **Formulários mais práticos:** a configuração de câmeras encontradas, a adição manual e a edição de câmeras salvas ganharam campos mais organizados, com nome, IP/URL, porta, usuário, senha e caminho RTSP.
+- **Senha mais acessível:** os formulários permitem **ver/ocultar**, **copiar** e **colar** a senha diretamente.
+- **Sugestões de caminho RTSP:** o campo de caminho oferece opções rápidas (por exemplo `/stream1`, `/onvif1`, `/Streaming/Channels/101`) e a opção **Default**, que preserva a descoberta automática quando nenhum caminho específico for escolhido.
 
 ## Validação
 
-- Executado `bash scripts/test_protocol.sh`: testes simulados de SDP H.264/H.265, seleção somente de faixa de vídeo, leitura `Content-Length`, DESCRIBE H.265, autenticação Digest, WS-Discovery/ONVIF e sub-redes.
-- Executado `python3 scripts/check_version.py` para conferir os metadados de versão.
-- Verificação estática do XML Android. **Não foi compilado um APK Android**, pois este ambiente não possui Android SDK/Gradle e não pode obter dependências Maven; o código LibVLC depende de compilação e teste real.
+- Revisão estática dos arquivos Kotlin/XML e sincronização dos metadados de versão.
+- Não foi compilado um APK Android neste ambiente, pois o Android SDK/Gradle e as dependências Maven não estão disponíveis aqui.
 
 ## Roteiro de teste no Android
 
-1. Compilar via GitHub Actions (configuração existente). Para instalar como atualização sobre 1.4.1, o APK precisa estar assinado com a mesma chave de assinatura da versão instalada; a chave de debug criada pelo runner pode mudar a cada build.
-2. Reabrir uma câmera H.264 conhecida e confirmar a transmissão com Media3.
-3. Abrir a câmera que falhava em `sprop-vps`; conferir se alterna para LibVLC e reproduz.
-4. Pelo menu, escolher manualmente cada motor e observar erro, latência e aquecimento.
-5. Refazer a descoberta ONVIF, testar perfil secundário H.264, sair e entrar repetidamente para verificar recursos nativos.
-6. Comparar tamanho do APK (LibVLC inclui bibliotecas nativas), consumo de memória e bateria.
+1. Compilar via GitHub Actions e instalar a atualização assinada com a mesma chave da versão anterior.
+2. Buscar uma câmera na rede e verificar o novo diálogo: ver/ocultar, copiar e colar senha; escolher caminho sugerido e salvar.
+3. Adicionar uma câmera manualmente e testar a opção **Default** versus um caminho sugerido.
+4. Na tela **Minhas câmeras**, usar **Copiar RTSP** e colar o endereço em outro local para confirmar que usuário e senha foram copiados.
+5. Editar uma câmera salva para alterar senha, porta e caminho, confirmando persistência e reprodução.
+6. Confirmar que o player continua reproduzindo as câmeras já salvas, inclusive as que dependem do fallback Media3/LibVLC.
 
-**Integração Vigia IA:** aproveitar a leitura do SDP e a seleção do fluxo antes de avaliar suporte nativo LibVLC em Flutter; medir impacto do tamanho do APK e do consumo de CPU.
+**Integração Vigia IA:** a ergonomia melhorada de cadastro e cópia de credenciais/endereços é útil para o fluxo de configuração do futuro módulo de câmeras do Vigia IA.
