@@ -13,8 +13,8 @@ android {
         applicationId = "com.minhacamera"
         minSdk = 24
         targetSdk = 34
-        versionCode = 20
-        versionName = "1.4.10"
+        versionCode = 21
+        versionName = "1.4.11"
     }
 
     // O AAR LibVLC 3.7.7 contém as quatro ABIs; manter x86 para compatibilidade.
@@ -57,6 +57,8 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.3.1")
     implementation("androidx.media3:media3-exoplayer-rtsp:1.3.1")
     implementation("androidx.media3:media3-ui:1.3.1")
+    // QR local: exibe um código no transmissor e lê via câmera no receptor.
+    implementation("com.journeyapps:zxing-android-embedded:4.3.0")
     // Fallback HEVC/RTSP; LibVLC incorpora binários nativos e aumenta o APK.
     implementation("org.videolan.android:libvlc-all:3.7.7")
 }

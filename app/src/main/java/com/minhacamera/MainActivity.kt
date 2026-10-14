@@ -15,6 +15,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import com.journeyapps.barcodescanner.ScanContract
+import com.journeyapps.barcodescanner.ScanOptions
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.floatingactionbutton.FloatingActionButton
 import com.google.android.material.textfield.MaterialAutoCompleteTextView
@@ -26,6 +28,33 @@ class MainActivity : AppCompatActivity() {
     private lateinit var listView: ListView
     private lateinit var adapter: CameraAdapter
     private var cams = mutableListOf<Camera>()
+
+    /** A leitura fica restrita ao QR do próprio aplicativo, sem abrir URLs externas. */
+    private val qrScanner = registerForActivityResult(ScanContract()) { result ->
+        val text = result.contents ?: return@registerForActivityResult
+        val stream = PhoneCameraUrls.normalize(text)
+        if (stream == null) {
+            AlertDialog.Builder(this)
+                .setTitle(R.string.phone_qr_invalid_title)
+                .setMessage(R.string.phone_qr_invalid_message)
+                .setPositiveButton(R.string.phone_scan_again) { _, _ -> startPhoneQrScanner() }
+                .setNegativeButton(R.string.cancelar, null)
+                .show()
+        } else {
+            // Preserve os cadastros existentes. Reusar URL impede entradas duplicadas.
+            val existing = cams.firstOrNull { it.url == stream }
+            val label = if (existing != null) existing.name else {
+                val host = Uri.parse(stream).host.orEmpty()
+                "Celular $host".also { name ->
+                    cams.add(Camera(name, stream))
+                    store.save(cams)
+                    refresh()
+                }
+            }
+            startActivity(Intent(this, PhoneCameraViewerActivity::class.java)
+                .putExtra("name", label).putExtra("url", stream))
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,9 +79,7 @@ class MainActivity : AppCompatActivity() {
             true
         }
 
-        findViewById<View>(R.id.btnPhoneBroadcast).setOnClickListener {
-            startActivity(Intent(this, PhoneCameraActivity::class.java))
-        }
+        findViewById<View>(R.id.btnPhoneBroadcast).setOnClickListener { choosePhoneRole() }
         findViewById<FloatingActionButton>(R.id.fab).setOnClickListener {
             startActivity(Intent(this, ScanActivity::class.java).putExtra("manual", true))
         }
@@ -71,9 +98,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         if (item.itemId == 1003) { showPhoneDialog(); return true }
-        if (item.itemId == 1004) {
-            startActivity(Intent(this, PhoneCameraActivity::class.java)); return true
-        }
+        if (item.itemId == 1004) { choosePhoneRole(); return true }
         if (item.itemId == 1002) {
             startActivity(Intent(this, RecordingsActivity::class.java)); return true
         }
@@ -89,6 +114,26 @@ class MainActivity : AppCompatActivity() {
             return true
         }
         return super.onOptionsItemSelected(item)
+    }
+
+    private fun choosePhoneRole() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.phone_role_title)
+            .setItems(arrayOf(getString(R.string.phone_role_transmit), getString(R.string.phone_role_view))) { _, role ->
+                if (role == 0) startActivity(Intent(this, PhoneCameraActivity::class.java))
+                else startPhoneQrScanner()
+            }
+            .setNegativeButton(R.string.cancelar, null)
+            .show()
+    }
+
+    private fun startPhoneQrScanner() {
+        qrScanner.launch(
+            ScanOptions().setDesiredBarcodeFormats(ScanOptions.QR_CODE)
+                .setPrompt(getString(R.string.phone_qr_scan_prompt))
+                .setBeepEnabled(false)
+                .setOrientationLocked(false)
+        )
     }
 
     override fun onResume() {

@@ -46,6 +46,7 @@ jobs:
         run: |
           python3 scripts/check_version.py
           python3 scripts/check_build_config.py
+          python3 tests/test_qr_integration.py
 
       # Compilação de código/recursos compartilhada: não usar matrix por ABI.
       - name: Testar protocolos e compilar todos os APKs release

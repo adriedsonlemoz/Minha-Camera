@@ -1,3 +1,19 @@
+# Minha Câmera 1.4.11 (versionCode 21)
+
+Data: 2026-10-14.
+
+**Novo:** «Usar este celular como câmera» oferece **Transmitir** e **Visualizar**. Em Transmitir, QR Code do endpoint MJPEG aparece junto à prévia. Em Visualizar, o aplicativo acessa a câmera para ler QR, verifica o formato e a rede local, guarda o endereço novo na lista e abre o vídeo ao vivo automaticamente. É preciso que os dois celulares tenham acesso mútuo pela mesma rede Wi-Fi ou ponto de acesso funcional.
+
+**Segurança:** o QR inclui a chave de acesso de 128 bits; qualquer pessoa na mesma rede que obtiver o código poderá assistir durante transmissão. Evite mostrá-lo a terceiros e use «Trocar código de acesso» se houver exposição. Somente URLs locais do formato `/live/TOKEN` são aceitas; links QR externos não são abertos. O transporte HTTP não é criptografado. Continua sem áudio, IA ou gravação no modo celular.
+
+**Compatibilidade:** «Adicionar outro celular» por URL, copiar e compartilhar URL continuam possíveis. Versões anteriores podem consumir a mesma URL manualmente, mas não têm leitor de QR. Nova dependência ZXing Android Embedded 4.3.0 para codificar/ler QR (API 24+).
+
+**Verificação:** testes de código e protocolo locais, sem build Android completo nem teste físico de leitura QR/rede. Assinatura preexistente mantida; atualização direta sobre APK já instalado depende da chave de assinatura correspondente.
+
+Detalhes em [PHONE_CAMERA_IMPLEMENTATION.md](PHONE_CAMERA_IMPLEMENTATION.md) e [VALIDATION_1.4.11.md](VALIDATION_1.4.11.md).
+
+---
+
 # Minha Câmera 1.4.10 (versionCode 20)
 
 Data: 2026-10-14.

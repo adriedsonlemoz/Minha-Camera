@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.4.11+21 — 2026-10-14
+- Ação «Usar este celular como câmera» agora pergunta o papel do aparelho: «Transmitir» ou «Visualizar».
+- Em «Transmitir», a URL com o token de acesso é convertida em QR Code visível, atualizado ao trocar o código, a câmera ou o IP de rede; a imagem QR desaparece quando a transmissão para.
+- Em «Visualizar», câmera abre leitor local de QR Code integrado ZXing, aceita exclusivamente URLs válidas do modo MJPEG privado, salva apenas novo endereço e inicia o vídeo imediatamente. QR inválido não abre links externos.
+- «Adicionar outro celular» manual, cópia e compartilhamento de URL permanecem como opções auxiliares.
+- Sem áudio, IA, análise de imagem, nuvem ou alteração de RTSP/ONVIF, gravações e assinatura; dependência nova `com.journeyapps:zxing-android-embedded:4.3.0`.
+- Build Android, assinatura e teste de pareamento com dois aparelhos físicos ainda pendentes.
+
 ## 1.4.10+20 — 2026-10-14
 - Novo modo «Usar este celular como câmera»: prévia local, permissão CAMERA, alternância de lente e streaming MJPEG via HTTP/IPv4 Wi-Fi.
 - Visualizador no segundo Android, cadastro de URL LAN com token persistente revogável e manutenção das câmeras RTSP/ONVIF anteriores.

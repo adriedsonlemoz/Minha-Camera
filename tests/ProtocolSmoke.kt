@@ -247,7 +247,9 @@ private fun checkPhoneCamera() {
     check(PhoneCameraUrls.normalize("http://172.20.10.1:8088/live/$token") != null)
     for (invalid in listOf("http://8.8.8.8:8088/live/$token", "https://192.168.1.2:8088/live/$token",
         "http://192.168.1.2:8088/live/123", "http://192.168.1.2:8088/live/$token?q=1",
-        "http://admin@192.168.1.2:8088/live/$token", "http://999.168.1.2:8088/live/$token")) {
+        "http://admin@192.168.1.2:8088/live/$token", "http://999.168.1.2:8088/live/$token",
+        "https://evil.example/live/$token", "javascript:alert(1)", "http://127.0.0.1:8765/live/$token",
+        "http://192.168.1.2:8765/live/$token#fragment", "http://192.168.1.2:8765/live/$token/extra")) {
         check(PhoneCameraUrls.normalize(invalid) == null) { "Aceitou endereço inválido" }
     }
     val sample = ByteArray(4 * 2 * 3 / 2) { it.toByte() }

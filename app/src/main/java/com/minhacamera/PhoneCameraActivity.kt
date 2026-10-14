@@ -13,6 +13,10 @@ import android.os.SystemClock
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.view.WindowManager
+import android.view.View
+import android.widget.ImageView
+import com.google.zxing.BarcodeFormat
+import com.journeyapps.barcodescanner.BarcodeEncoder
 import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
@@ -28,6 +32,7 @@ class PhoneCameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
     private lateinit var preview: SurfaceView
     private lateinit var status: TextView
     private lateinit var address: TextView
+    private lateinit var qrCode: ImageView
     private var surfaceReady = false
     private var camera: Camera? = null
     @Volatile private var server: PhoneCameraServer? = null
@@ -49,6 +54,7 @@ class PhoneCameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         preview = findViewById(R.id.phonePreview)
         status = findViewById(R.id.phoneStatus)
         address = findViewById(R.id.phoneAddress)
+        qrCode = findViewById(R.id.phoneQrCode)
         preview.holder.addCallback(this)
         findViewById<Button>(R.id.phoneSwitch).setOnClickListener {
             selectedFacing = if (selectedFacing == Camera.CameraInfo.CAMERA_FACING_BACK)
@@ -185,10 +191,24 @@ class PhoneCameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
             session.start()
             address.text = session.url
             status.setText(R.string.phone_online)
+            showQrCode(session.url)
         } catch (_: Exception) {
             stopStreaming()
             status.setText(R.string.phone_start_failed)
             address.setText(R.string.phone_no_address)
+        }
+    }
+
+    private fun showQrCode(url: String) {
+        try {
+            val bitmap = BarcodeEncoder().encodeBitmap(url, BarcodeFormat.QR_CODE, 512, 512)
+            qrCode.setImageBitmap(bitmap)
+            qrCode.visibility = View.VISIBLE
+        } catch (_: Exception) {
+            // Sem QR o usuário ainda pode copiar/compartilhar a URL.
+            qrCode.setImageDrawable(null)
+            qrCode.visibility = View.GONE
+            Toast.makeText(this, R.string.phone_qr_generation_error, Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -212,6 +232,8 @@ class PhoneCameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
     private fun stopStreaming() {
+        qrCode.setImageDrawable(null)
+        qrCode.visibility = View.GONE
         val previous = server
         server = null
         previous?.stop()
