@@ -3,6 +3,8 @@ package com.minhacamera
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.ClipDescription
+import android.os.Build
 import android.widget.ArrayAdapter
 import android.widget.AutoCompleteTextView
 import android.widget.Toast
@@ -59,7 +61,7 @@ object CameraFormUi {
             if (text.isBlank()) {
                 Toast.makeText(context, R.string.senha_vazia, Toast.LENGTH_SHORT).show()
             } else {
-                copyText(context, text, context.getString(R.string.senha))
+                copyText(context, text, context.getString(R.string.senha), true)
                 Toast.makeText(context, R.string.senha_copiada, Toast.LENGTH_SHORT).show()
             }
         }
@@ -107,8 +109,15 @@ object CameraFormUi {
         }
     }
 
-    fun copyText(context: Context, text: String, label: String) {
+    fun copyText(context: Context, text: String, label: String, sensitive: Boolean = false) {
         val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-        clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
+        val clip = ClipData.newPlainText(label, text)
+        if (sensitive && Build.VERSION.SDK_INT >= 24) {
+            clip.description.extras = android.os.PersistableBundle().apply {
+                putBoolean(if (Build.VERSION.SDK_INT >= 33) ClipDescription.EXTRA_IS_SENSITIVE
+                    else "android.content.extra.IS_SENSITIVE", true)
+            }
+        }
+        clipboard.setPrimaryClip(clip)
     }
 }

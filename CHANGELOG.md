@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.4.10+20 — 2026-10-14
+- Novo modo «Usar este celular como câmera»: prévia local, permissão CAMERA, alternância de lente e streaming MJPEG via HTTP/IPv4 Wi-Fi.
+- Visualizador no segundo Android, cadastro de URL LAN com token persistente revogável e manutenção das câmeras RTSP/ONVIF anteriores.
+- MJPEG sem áudio, IA ou análise de imagem; compressão de baixa taxa, limite de 2 receptores, sem transmissão em segundo plano.
+- Proteção da prévia da área de transferência para URLs/senhas copiadas; sem migração de credenciais legadas nesta versão.
+- Testes sintéticos de token, URL, rotação NV21 e transporte MJPEG. Testes em aparelhos e build completo ainda necessários.
+- Pendências ordenadas em docs/PHONE_CAMERA_IMPLEMENTATION.md.
+
 ## 1.4.9+19 — 2026-10-11
 - Corrigido layout de controles durante rotação sem recriar o player: uma linha compacta na horizontal, duas em retrato.
 - Ícones próximos ao texto, barra menor em horizontal e remoção do zoom que cortava a imagem.

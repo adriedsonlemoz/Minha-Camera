@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import java.net.Inet4Address
+import java.net.NetworkInterface
 
 object NetUtil {
     data class ScanRange(val hosts: List<String>, val description: String, val limited: Boolean)
@@ -39,6 +40,26 @@ object NetUtil {
 
     private fun ipString(value: Long): String =
         (3 downTo 0).joinToString(".") { ((value ushr (it * 8)) and 255L).toString() }
+
+    /** Usa o IPv4 do Wi-Fi; para ponto de acesso, busca somente interfaces WLAN/AP. */
+    fun wifiIpv4(ctx: Context): Inet4Address? {
+        val cm = ctx.getSystemService(ConnectivityManager::class.java)
+        val wifi = wifiNetwork(ctx)
+        if (cm != null && wifi != null) {
+            cm.getLinkProperties(wifi)?.linkAddresses?.firstOrNull {
+                it.address is Inet4Address && !it.address.isLoopbackAddress && !it.address.isLinkLocalAddress
+            }?.address?.let { return it as Inet4Address }
+        }
+        return try {
+            NetworkInterface.getNetworkInterfaces()?.toList()?.firstNotNullOfOrNull { device ->
+                val name = device.name.lowercase()
+                if (!device.isUp || !(name.startsWith("wlan") || name.startsWith("ap") ||
+                            name.startsWith("swlan") || name.startsWith("softap"))) null
+                else device.inetAddresses.toList().filterIsInstance<Inet4Address>()
+                    .firstOrNull { !it.isLoopbackAddress && !it.isLinkLocalAddress }
+            }
+        } catch (_: Exception) { null }
+    }
 
     // Mantido para preencher o formulário manual, não para determinar a rede de varredura.
     fun localPrefix(ctx: Context): String? = localAddress(ctx)?.first?.let {

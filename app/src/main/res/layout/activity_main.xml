@@ -12,7 +12,7 @@
         android:divider="@android:color/transparent"
         android:dividerHeight="4dp"
         android:paddingTop="8dp"
-        android:paddingBottom="116dp" />
+        android:paddingBottom="172dp" />
 
     <TextView
         android:id="@+id/empty"
@@ -22,6 +22,13 @@
         android:gravity="center"
         android:padding="24dp"
         android:text="@string/lista_vazia" />
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnPhoneBroadcast"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="84dp"
+        android:text="@string/phone_broadcast" />
 
     <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
         android:id="@+id/fabScan"

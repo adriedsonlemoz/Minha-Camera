@@ -155,6 +155,7 @@ private fun checkRtspSdpProbe() {
 }
 
 fun main() {
+    checkPhoneCamera()
     checkVideoGeometry()
     checkOnvifIdentity()
     checkRecordingFiles()
@@ -236,4 +237,57 @@ private fun checkOnvifIdentity() {
         check(requests.size == 4 && requests.none { it.contains("ContinuousMove") || it.contains("Set") })
     } finally { server.stop(0) }
     println("OK: identificação ONVIF HTTP simulada, serviços reais da resposta, sem mover câmera ou inferir fabricante")
+}
+
+private fun checkPhoneCamera() {
+    val token = "0123456789abcdef0123456789abcdef"
+    val raw = "http://192.168.43.1:9080/live/$token"
+    check(PhoneCameraUrls.normalize(raw) == raw)
+    check(PhoneCameraUrls.normalize("http://10.0.0.2:8088/live/$token") != null)
+    check(PhoneCameraUrls.normalize("http://172.20.10.1:8088/live/$token") != null)
+    for (invalid in listOf("http://8.8.8.8:8088/live/$token", "https://192.168.1.2:8088/live/$token",
+        "http://192.168.1.2:8088/live/123", "http://192.168.1.2:8088/live/$token?q=1",
+        "http://admin@192.168.1.2:8088/live/$token", "http://999.168.1.2:8088/live/$token")) {
+        check(PhoneCameraUrls.normalize(invalid) == null) { "Aceitou endereço inválido" }
+    }
+    val sample = ByteArray(4 * 2 * 3 / 2) { it.toByte() }
+    val rotated = Nv21Frames.rotated(sample, 4, 2, 90)
+    check(Nv21Frames.rotated(rotated, 2, 4, 270).contentEquals(sample))
+    check(Nv21Frames.rotated(sample, 4, 2, 180).contentEquals(
+        Nv21Frames.rotated(Nv21Frames.rotated(sample, 4, 2, 90), 2, 4, 90)))
+    val local = java.net.InetAddress.getByName("127.0.0.1") as java.net.Inet4Address
+    val server = PhoneCameraServer(local, token)
+    server.start()
+    try {
+        val fake = ByteArray(16) { 0x42.toByte() }
+        server.publish(fake)
+        val url = java.net.URL(server.url)
+        val good = url.openConnection() as java.net.HttpURLConnection
+        good.readTimeout = 3000
+        check(good.responseCode == 200)
+        check(good.contentType.startsWith("multipart/x-mixed-replace"))
+        val data = java.io.BufferedInputStream(good.inputStream)
+        val header = StringBuilder()
+        while (!header.contains("\r\n\r\n")) {
+            val c = data.read()
+            check(c >= 0 && header.length < 1000)
+            header.append(c.toChar())
+        }
+        check(header.contains("Content-Length: ${fake.size}"))
+        val read = ByteArray(fake.size)
+        var count = 0
+        while (count < read.size) {
+            val n = data.read(read, count, read.size - count)
+            check(n > 0)
+            count += n
+        }
+        check(read.contentEquals(fake))
+        good.disconnect()
+        val bad = java.net.URL(server.url.replace("/live/", "/invalid/"))
+            .openConnection() as java.net.HttpURLConnection
+        bad.readTimeout = 3000
+        check(bad.responseCode == 403)
+        bad.disconnect()
+    } finally { server.stop() }
+    println("OK: URL local, rotação NV21 e servidor MJPEG/token com quadro binário")
 }

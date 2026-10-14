@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.9 (versionCode 19)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.10 (versionCode 20)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+A 1.4.10 permite **usar um segundo celular Android como câmera na rede local**: no transmissor, escolha «Usar este celular como câmera»; no monitor, use «Adicionar outro celular» e cole a URL exibida (o transmissor pode compartilhá-la pelo Android). A URL permanece válida após reiniciar a transmissão no mesmo IP, até o usuário revogar o código de acesso. Sem áudio, IA, gravação MJPEG ou servidor na internet. Requer dois aparelhos acessíveis pelo Wi-Fi, permissão de câmera e tela transmissora aberta. A URL muda ao trocar o código de acesso ou mudar o IP. Veja [implementação e limites](docs/PHONE_CAMERA_IMPLEMENTATION.md).
 
 A 1.4.9 reorganiza os controles ao girar o celular, mostra cada lente inteira sem zoom e adiciona **Identificar câmera e serviços** ao menu do player. A identidade e os serviços são os informados pelo ONVIF; não identifica qual lente tem motor nem implementa histórico do Yoosee. Veja [validação 1.4.9](docs/PLAYER_FIT_VALIDATION.md).
 
@@ -34,15 +36,15 @@ Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.8 organiz
 
 O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara Android SDK 36 e executa `gradle testProtocol testReleaseUnitTest assembleRelease` uma única vez, com cache. Publica cada APK individualmente, sem ZIP, em **Actions > Artifacts**:
 
-- `MinhaCamera-1.4.9-universal.apk`: todas as quatro ABIs, para distribuição geral.
-- `MinhaCamera-1.4.9-armeabi-v7a.apk`: Android ARM de 32 bits.
-- `MinhaCamera-1.4.9-arm64-v8a.apk`: Android ARM de 64 bits.
-- `MinhaCamera-1.4.9-x86_64.apk`: Android Intel de 64 bits/emuladores.
-- `MinhaCamera-1.4.9-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
+- `MinhaCamera-1.4.10-universal.apk`: todas as quatro ABIs, para distribuição geral.
+- `MinhaCamera-1.4.10-armeabi-v7a.apk`: Android ARM de 32 bits.
+- `MinhaCamera-1.4.10-arm64-v8a.apk`: Android ARM de 64 bits.
+- `MinhaCamera-1.4.10-x86_64.apk`: Android Intel de 64 bits/emuladores.
+- `MinhaCamera-1.4.10-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
 
-No workflow assinado, todos têm `com.minhacamera`, versão 1.4.9, código 19 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
+No workflow assinado, todos têm `com.minhacamera`, versão 1.4.10, código 20 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
 
-A configuração release continua usando a chave debug do ambiente. **Não há garantia de continuidade com a assinatura de execuções anteriores**. Para atualização sem desinstalar/perder dados, recuperar a chave original e comparar seu certificado com o APK instalado; não basta trocar por uma nova chave. Nenhum Secret ou keystore foi adicionado. Na entrega histórica 1.4.7, **o certificado local diferia do APK 1.4.6 do Actions**. Na validação atual 1.4.9 não havia chave privada disponível: a assinatura foi desabilitada apenas por um init script externo, sem modificar esta configuração ou gerar chave nova. Os APKs locais `-unsigned.apk` não são instaláveis diretamente e não têm continuidade de assinatura comprovada. A publicação remota continua impedida por 403. Veja [resultados e impedimentos](docs/BUILD_VALIDATION.md).
+A configuração release continua usando a chave debug do ambiente. **Não há garantia de continuidade com a assinatura de execuções anteriores**. Para atualização sem desinstalar/perder dados, recuperar a chave original e comparar seu certificado com o APK instalado; não basta trocar por uma nova chave. Nenhum Secret ou keystore foi adicionado. Na entrega histórica 1.4.7, **o certificado local diferia do APK 1.4.6 do Actions**. Na validação histórica 1.4.9 não havia chave privada disponível: a assinatura foi desabilitada apenas por um init script externo, sem modificar esta configuração ou gerar chave nova. Os APKs locais `-unsigned.apk` não são instaláveis diretamente e não têm continuidade de assinatura comprovada. A publicação remota continua impedida por 403. Veja [resultados e impedimentos](docs/BUILD_VALIDATION.md).
 O cache de tarefas é habilitado com `org.gradle.caching=true`; o `gradle/actions/setup-gradle@v6` restaura/salva o Gradle User Home após um job concluído. A execução não deve ser cancelada assim que aparecer `BUILD SUCCESSFUL`, porque ainda faltam nomear/publicar o APK e finalizar o cache. O primeiro build pode continuar demorado, e mudanças no projeto invalidam parte do cache. A mensagem `BUILD SUCCESSFUL in 2m 8s` do build #9 foi seguida de cancelamento externo, antes de publicar o APK.
 
 Para atualizar, siga [docs/VERSIONING.md](docs/VERSIONING.md), execute `python3 scripts/check_version.py`, `python3 scripts/check_build_config.py` e, onde houver `kotlinc`, `bash scripts/test_protocol.sh`; depois sincronize versões, documentos e histórico e confirme o build no GitHub.

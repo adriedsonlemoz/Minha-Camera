@@ -16,6 +16,9 @@ kotlinc \
   "$ROOT/app/src/main/java/com/minhacamera/RecordingFiles.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/VideoGeometry.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/OnvifIdentity.kt" \
+  "$ROOT/app/src/main/java/com/minhacamera/PhoneCameraUrls.kt" \
+  "$ROOT/app/src/main/java/com/minhacamera/Nv21Frames.kt" \
+  "$ROOT/app/src/main/java/com/minhacamera/PhoneCameraServer.kt" \
   "$ROOT/tests/ProtocolSmoke.kt" \
   -include-runtime -d "$BUILD/tests.jar"
 java -jar "$BUILD/tests.jar"

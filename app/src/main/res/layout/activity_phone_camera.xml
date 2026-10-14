@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:padding="16dp" android:background="@color/app_background">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/phone_camera_instructions" android:textColor="@color/app_text"
+        android:layout_marginBottom="12dp" />
+    <SurfaceView android:id="@+id/phonePreview" android:layout_width="match_parent"
+        android:layout_height="0dp" android:layout_weight="1" android:background="#000000" />
+    <TextView android:id="@+id/phoneStatus" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:text="@string/phone_waiting"
+        android:layout_marginTop="12dp" android:textStyle="bold" android:textColor="@color/app_text" />
+    <TextView android:id="@+id/phoneAddress" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:text="@string/phone_no_address"
+        android:textIsSelectable="true" android:layout_marginTop="8dp"
+        android:textColor="@color/app_text" android:breakStrategy="simple" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="horizontal" android:layout_marginTop="8dp">
+        <Button android:id="@+id/phoneSwitch" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:text="@string/phone_switch" />
+        <Button android:id="@+id/phoneCopy" android:layout_width="0dp" android:layout_weight="1"
+            android:layout_height="wrap_content" android:text="@string/phone_copy" />
+    </LinearLayout>
+    <Button android:id="@+id/phoneShare" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:text="@string/phone_share" />
+    <Button android:id="@+id/phoneRevoke" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:text="@string/phone_revoke" />
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:layout_marginTop="8dp" android:text="@string/phone_security_notice"
+        android:textColor="@color/app_text" android:textSize="12sp" />
+</LinearLayout>

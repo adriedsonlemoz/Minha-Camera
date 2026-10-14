@@ -50,6 +50,9 @@ class MainActivity : AppCompatActivity() {
             true
         }
 
+        findViewById<View>(R.id.btnPhoneBroadcast).setOnClickListener {
+            startActivity(Intent(this, PhoneCameraActivity::class.java))
+        }
         findViewById<FloatingActionButton>(R.id.fab).setOnClickListener {
             startActivity(Intent(this, ScanActivity::class.java).putExtra("manual", true))
         }
@@ -61,10 +64,16 @@ class MainActivity : AppCompatActivity() {
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menu.add(0, 1001, 0, R.string.novidades)
         menu.add(0, 1002, 1, R.string.gravacoes)
+        menu.add(0, 1003, 2, R.string.phone_add)
+        menu.add(0, 1004, 3, R.string.phone_broadcast)
         return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        if (item.itemId == 1003) { showPhoneDialog(); return true }
+        if (item.itemId == 1004) {
+            startActivity(Intent(this, PhoneCameraActivity::class.java)); return true
+        }
         if (item.itemId == 1002) {
             startActivity(Intent(this, RecordingsActivity::class.java)); return true
         }
@@ -92,7 +101,47 @@ class MainActivity : AppCompatActivity() {
         adapter.notifyDataSetChanged()
     }
 
+    private fun isPhoneCamera(camera: Camera): Boolean = camera.url.startsWith("http://", true)
+
+    private fun showPhoneDialog(position: Int? = null) {
+        val text = EditText(this).apply {
+            hint = getString(R.string.phone_enter_url)
+            setSingleLine(false)
+            setText(position?.let { cams[it].url }.orEmpty())
+            setPadding(28, 22, 28, 22)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
+        }
+        val dialog = AlertDialog.Builder(this)
+            .setTitle(if (position == null) R.string.phone_add else R.string.editar_camera)
+            .setView(text)
+            .setPositiveButton(R.string.salvar, null)
+            .setNegativeButton(R.string.cancelar, null)
+            .create()
+        dialog.show()
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+            val normalized = PhoneCameraUrls.normalize(text.text.toString())
+            if (normalized == null) {
+                text.error = getString(R.string.phone_invalid_url)
+                return@setOnClickListener
+            }
+            if (position != null) cams[position] = cams[position].copy(url = normalized)
+            else {
+                val host = Uri.parse(normalized).host.orEmpty()
+                cams.add(Camera("Celular $host", normalized))
+            }
+            store.save(cams)
+            refresh()
+            dialog.dismiss()
+            Toast.makeText(this, R.string.phone_saved, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     private fun openCamera(camera: Camera) {
+        if (isPhoneCamera(camera)) {
+            startActivity(Intent(this, PhoneCameraViewerActivity::class.java)
+                .putExtra("name", camera.name).putExtra("url", camera.url))
+            return
+        }
         startActivity(
             Intent(this, PlayerActivity::class.java)
                 .putExtra("name", camera.name)
@@ -102,11 +151,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun copyCameraUrl(camera: Camera) {
-        CameraFormUi.copyText(this, camera.url, getString(R.string.copiar_rtsp))
-        Toast.makeText(this, R.string.endereco_copiado, Toast.LENGTH_SHORT).show()
+        CameraFormUi.copyText(this, camera.url, getString(R.string.phone_stream_url), true)
+        Toast.makeText(this, if (isPhoneCamera(camera)) R.string.phone_url_copied
+            else R.string.endereco_copiado, Toast.LENGTH_SHORT).show()
     }
 
     private fun masked(url: String): String {
+        if (url.startsWith("http://", true)) {
+            return try {
+                val parsed = Uri.parse(url)
+                "http://${parsed.host}:${parsed.port}/live/••••••"
+            } catch (_: Exception) { "MJPEG • Endereço oculto" }
+        }
         return try {
             val u = Uri.parse(url)
             val host = u.host ?: return url
@@ -118,6 +174,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun infoSummary(camera: Camera): String {
+        if (isPhoneCamera(camera)) return getString(R.string.phone_mjpeg_label)
         val parsed = CameraFormUi.parseRtsp(camera.url)
         val pathLabel = CameraFormUi.normalizePathChoice(parsed.path).ifEmpty { getString(R.string.default_option) }
         val alternativos = if (camera.alts.isEmpty()) {
@@ -147,6 +204,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showEditDialog(pos: Int) {
+        if (isPhoneCamera(cams[pos])) { showPhoneDialog(pos); return }
         val c = cams[pos]
         val view = LayoutInflater.from(this).inflate(R.layout.dialog_manual_camera, null)
         val etName = view.findViewById<TextInputEditText>(R.id.etName)

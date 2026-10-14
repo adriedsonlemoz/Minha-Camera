@@ -79,7 +79,35 @@ Experimente habilitar H.264 ou outro perfil na câmera e refazer a busca.</strin
     <string name="com_alternativos">%1$d fluxo(s) alternativo(s)</string>
     <string name="resumo_camera_salva">Usuário: %1$s • Caminho: %2$s • %3$s</string>
 
-    <string name="novidades_text">Versão 1.4.9 (código 19)\n• Controles compactos na horizontal, reorganizados ao girar.\n• Lente superior/inferior inteira, sem zoom cortando bordas.\n• Identificação ONVIF de modelo, firmware e serviços anunciados.\n\nVersão 1.4.8 (código 18)\n• Novo visual azul e player com controles organizados.\n• Sugestões RTSP em lista editável, sem excesso de botões.\n• Carregando sua imagem, aguarde; indicação até a primeira imagem.\n• Gravação local via LibVLC, contador e biblioteca por dia.\n• Tela cheia e recortes para vídeo com duas lentes.\n\nVersão 1.4.7 (código 17)\n• APKs menores por arquitetura e opção Universal.\n• Preservados ONVIF, RTSP, Media3, LibVLC, H.264 e H.265.\n• Mesma versão em todos os APKs; escolha a arquitetura compatível com o Android.\n\nVersão 1.4.6 (código 16)\n• Cache de tarefas Gradle habilitado para builds futuros.\n• Ação Gradle atualizada e duração do build registrada no GitHub Actions.\n• Mantido LibVLC e suporte H.265; build #9 compilou, mas o job foi cancelado antes do upload.\n\nVersão 1.4.5 (código 15)\n• Corrigida falha do build #8: sdkmanager ausente no runner GitHub Actions.\n• Preparação automática do Android SDK e instalação explícita da API 36.\n• Atualizadas ações GitHub e reforçadas verificações do workflow.\n\nVersão 1.4.4 (código 14)
+    <string name="phone_broadcast">Usar este celular como câmera</string>
+    <string name="phone_add">Adicionar outro celular</string>
+    <string name="phone_camera">Câmera de celular</string>
+    <string name="phone_stream_url">Endereço da transmissão</string>
+    <string name="phone_camera_instructions">Mantenha esta tela aberta e os dois celulares conectados à mesma rede Wi-Fi. No outro celular, toque em “Adicionar outro celular” e cole o endereço abaixo.</string>
+    <string name="phone_security_notice">Sem áudio e sem internet externa. O endereço contém uma chave privada de acesso: não o compartilhe publicamente. Use “Trocar código de acesso” caso ele vaze. A câmera para ao sair da tela ou bloquear o aparelho.</string>
+    <string name="phone_waiting">Preparando câmera…</string>
+    <string name="phone_online">Transmitindo pela rede local</string>
+    <string name="phone_connecting">Conectando ao outro celular…</string>
+    <string name="phone_receiving">Recebendo imagens ao vivo</string>
+    <string name="phone_disconnected">Conexão interrompida. Verifique os celulares e tente novamente.</string>
+    <string name="phone_no_wifi">Conecte-se ao Wi-Fi local ou ative o ponto de acesso deste celular.</string>
+    <string name="phone_no_address">A transmissão ainda não possui endereço.</string>
+    <string name="phone_no_camera">Nenhuma câmera disponível.</string>
+    <string name="phone_start_failed">Não foi possível iniciar a câmera. Verifique permissão e disponibilidade.</string>
+    <string name="phone_not_ready">A transmissão não está ativa.</string>
+    <string name="phone_permission_denied">Permita o acesso à câmera nas configurações do Android.</string>
+    <string name="phone_switch">Trocar câmera</string>
+    <string name="phone_copy">Copiar endereço</string>
+    <string name="phone_share">Enviar endereço ao outro celular</string>
+    <string name="phone_revoke">Trocar código de acesso</string>
+    <string name="phone_revoke_confirm">Isto desconectará os outros aparelhos. Será necessário copiar e cadastrar o novo endereço.</string>
+    <string name="phone_copied">Endereço copiado. Trate-o como uma senha privada.</string>
+    <string name="phone_enter_url">Cole o endereço HTTP exibido no outro celular (http://IP:porta/live/código).</string>
+    <string name="phone_invalid_url">Endereço inválido. Use o endereço completo /live/ em IPv4 local.</string>
+    <string name="phone_saved">Celular adicionado à lista.</string>
+    <string name="phone_mjpeg_label">MJPEG • Rede local • Transmissão temporária</string>
+    <string name="phone_url_copied">Endereço da transmissão copiado.</string>
+    <string name="novidades_text">Versão 1.4.10 (código 20)\n• Use a câmera de outro Android pela rede local, com transmissão MJPEG temporária.\n• Adicione o endereço exibido pelo celular transmissor e visualize sem IA.\n• Câmera para ao fechar a tela; URL protegida por código aleatório revogável, sem áudio.\n• Compartilhe a URL pelo compartilhamento do Android.\n\nVersão 1.4.9 (código 19)\n• Controles compactos na horizontal, reorganizados ao girar.\n• Lente superior/inferior inteira, sem zoom cortando bordas.\n• Identificação ONVIF de modelo, firmware e serviços anunciados.\n\nVersão 1.4.8 (código 18)\n• Novo visual azul e player com controles organizados.\n• Sugestões RTSP em lista editável, sem excesso de botões.\n• Carregando sua imagem, aguarde; indicação até a primeira imagem.\n• Gravação local via LibVLC, contador e biblioteca por dia.\n• Tela cheia e recortes para vídeo com duas lentes.\n\nVersão 1.4.7 (código 17)\n• APKs menores por arquitetura e opção Universal.\n• Preservados ONVIF, RTSP, Media3, LibVLC, H.264 e H.265.\n• Mesma versão em todos os APKs; escolha a arquitetura compatível com o Android.\n\nVersão 1.4.6 (código 16)\n• Cache de tarefas Gradle habilitado para builds futuros.\n• Ação Gradle atualizada e duração do build registrada no GitHub Actions.\n• Mantido LibVLC e suporte H.265; build #9 compilou, mas o job foi cancelado antes do upload.\n\nVersão 1.4.5 (código 15)\n• Corrigida falha do build #8: sdkmanager ausente no runner GitHub Actions.\n• Preparação automática do Android SDK e instalação explícita da API 36.\n• Atualizadas ações GitHub e reforçadas verificações do workflow.\n\nVersão 1.4.4 (código 14)
 • Corrigida a configuração de build: Android API 36, Gradle, AGP e Kotlin compatíveis com LibVLC 3.7.7.
 • Corrigido mascaramento de URL RTSP que poderia interromper a compilação Kotlin.
 • Verificação preventiva do SDK/Gradle no GitHub Actions.
