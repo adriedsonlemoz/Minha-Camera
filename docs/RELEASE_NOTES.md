@@ -1,3 +1,9 @@
+# Minha Câmera 1.4.37 (versionCode 47)
+
+- Corrige `Unresolved reference Intent` em `PhoneCameraViewerActivity.kt` no Build APK 37, causado por import Android ausente.
+- Acrescenta verificação estática para `Intent(...)` sem import e testes de regressão.
+- Mantém MCRP v1, Central Multimídia remota, MJPEG/H.264 e comandos remotos sem alterar seu contrato; requer novo build Android para confirmação.
+
 # Minha Câmera 1.4.36 (versionCode 46)
 
 - MCRP v1, compatível com o QR e comandos anteriores: identificação e capacidades do dispositivo, status e diagnósticos.

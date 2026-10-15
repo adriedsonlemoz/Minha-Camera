@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Preflight Kotlin: prevent duplicate and ambiguous imports before Gradle compilation.
 
-Build APK 35 failed at :app:compileReleaseKotlin because
-PhoneHeadlessPreview.kt imported android.os.SystemClock twice.
+Build APK 35 failed because PhoneHeadlessPreview.kt imported SystemClock twice.
+Build APK 37 failed because PhoneCameraViewerActivity.kt used Intent without importing it.
 """
 from __future__ import annotations
 from pathlib import Path
@@ -36,6 +36,14 @@ def import_problems(source: str) -> list[str]:
                             f"(linha {previous[1]}) e {path}")
         elif previous is None:
             seen_names[name] = (path, lineno)
+    # Classes from the Android SDK are not implicitly imported in Kotlin.
+    # Guard a recurring regression in viewer Activities where an unqualified
+    # Intent constructor is added without its android.content.Intent import.
+    if re.search(r"(?<![\w.])Intent\s*\(", source):
+        imports_intent = bool(re.search(r"^\s*import\s+android\.content\.(?:Intent|\*)\s*$", source, re.M))
+        local_intent = bool(re.search(r"\b(?:class|object|fun)\s+Intent\b", source))
+        if not imports_intent and not local_intent:
+            problems.append("uso de Intent(...) sem import android.content.Intent")
     return problems
 
 

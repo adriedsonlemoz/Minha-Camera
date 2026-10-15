@@ -1,6 +1,6 @@
 # Minha Câmera Remote Protocol (MCRP) v1
 
-Implementado no Minha Câmera 1.4.36 e consumido por Vigia IA 1.0.242.
+Implementado no Minha Câmera 1.4.36 e consumido por Vigia IA 1.0.244.
 **Compatibilidade:** as rotas e o QR legados `http://IPv4:8765/live/{token}` permanecem ativos; `vigiaia://pair` continua exclusivo do pareamento antigo do Vigia IA. MCRP é opt-in.
 
 ## Transporte e autorização

@@ -2,7 +2,7 @@
 
 Atualizado em **1.4.36+46** (2026-10-15).
 
-Este material serve como registro técnico: **o Vigia IA 1.0.242 recebe módulo MCRP independente**.
+Este material serve como registro técnico: **o Vigia IA 1.0.244 recebe módulo MCRP independente**.
 
 ## Descoberta automática e estabilidade (1.4.1)
 

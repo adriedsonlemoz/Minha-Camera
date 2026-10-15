@@ -1,9 +1,15 @@
+## 1.4.37+47 — 2026-10-15
+
+- Corrigido o Build APK 37 (`:app:compileReleaseKotlin`): import explícito de `android.content.Intent` em `PhoneCameraViewerActivity.kt`, usado para abrir a Central Multimídia remota.
+- Verificação preventiva de construtores `Intent(...)` sem import integrada ao preflight Kotlin do GitHub Actions; testes de regressão adicionados.
+- Preservados MCRP v1, MJPEG/H.264, biblioteca remota, interface, dados locais e assinatura estável. APK e testes entre aparelhos ainda pendentes.
+
 ## 1.4.36+46 — 2026-10-15
 
 - Protocolo MCRP v1 versionado e retrocompatível com HTTP/QR existentes.
 - Servidor de biblioteca remota autenticado: MP4/fotos do Minha Câmera, cabeçalhos Range e retorno 206 para reprodução parcial, sem excluir arquivos.
 - Central Multimídia e visualizador com acesso à biblioteca do outro celular para consultar, reproduzir e baixar cópias.
-- Cliente Vigia IA 1.0.242 com leitura QR, MJPEG/H.264, estado, comandos e arquivos (em projeto separado).
+- Cliente Vigia IA 1.0.244 com leitura QR, MJPEG/H.264, estado, comandos e arquivos (em projeto separado).
 - Testes Kotlin/JVM de autenticação, listagem, download e HTTP Range. Compilação Android e aparelho pendentes.
 
 ## 1.4.35+45 — 2026-10-15
