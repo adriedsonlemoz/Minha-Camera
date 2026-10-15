@@ -17,6 +17,21 @@ object PhoneCameraUrls {
         return live.replace("/live/", "/control/") + if (enabled) "/eco/enable" else "/eco/disable"
     }
 
+    /** Parâmetros de controle são enumerações fechadas para impedir requisições arbitrárias. */
+    fun qualityCommandUrl(input: String, quality: Int): String? =
+        if (quality in listOf(360, 480, 720)) controlUrl(input, "quality/$quality") else null
+
+    fun fpsCommandUrl(input: String, fps: Int): String? =
+        if (fps in listOf(5, 10, 15)) controlUrl(input, "fps/$fps") else null
+
+    fun facingCommandUrl(input: String, front: Boolean): String? =
+        controlUrl(input, if (front) "camera/front" else "camera/back")
+
+    fun photoCommandUrl(input: String): String? = controlUrl(input, "photo")
+
+    private fun controlUrl(input: String, suffix: String): String? =
+        normalize(input)?.replace("/live/", "/control/")?.plus("/$suffix")
+
     fun normalize(input: String): String? {
         val raw = input.trim()
         if (raw.length !in 35..160 || raw.any { it.isWhitespace() }) return null

@@ -32,9 +32,9 @@ class RearviewTests(unittest.TestCase):
         self.assertNotIn("Bitmap.createBitmap(image", self.code)
 
     def test_focus_restorable_by_tap(self):
-        self.assertIn('previewContainer.setOnClickListener { toggleFocusMode() }', self.code)
-        self.assertIn('controls.visibility = if (focusMode) View.GONE else View.VISIBLE', self.code)
-        self.assertIn("previewContainer.layoutParams = lp", self.code)
+        self.assertIn('if (focusMode) fullControls.visibility', self.code)
+        self.assertIn('fullscreenHost.visibility = View.VISIBLE', self.code)
+        self.assertIn('normalPreviewParent.addView(previewContainer', self.code)
 
     def test_stale_image_cleared_on_disconnect(self):
         self.assertIn("image.setImageDrawable(null)", self.code)
@@ -42,8 +42,8 @@ class RearviewTests(unittest.TestCase):
 
     def test_no_new_permissions_or_dependencies(self):
         gradle = (ROOT / 'app/build.gradle.kts').read_text()
-        self.assertIn('versionName = "1.4.29"', gradle)
-        self.assertIn('versionCode = 39', gradle)
+        self.assertIn('versionName = "1.4.30"', gradle)
+        self.assertIn('versionCode = 40', gradle)
         self.assertNotIn('implementation("androidx.camera', gradle)
 
     def test_vertical_layout_and_labels(self):

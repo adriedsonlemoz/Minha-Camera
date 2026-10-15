@@ -113,6 +113,9 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private var visible = false
     private var permissionRequested = false
     private var backgroundMode = false
+    // Abrir a tela inicia somente a prévia, sem servidor HTTP nem arquivo MP4.
+    private var transmissionEnabled = false
+    private lateinit var transmissionButton: TextView
     private var backgroundRequestedAt = 0L
     private lateinit var backgroundPreview: ImageView
     private val backgroundTick = object : Runnable {
@@ -125,6 +128,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                     return
                 }
                 backgroundMode = false
+                refreshTransmissionButton()
                 window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 backgroundPreview.visibility = View.GONE
                 status.text = service.lastError ?: getString(R.string.phone_background_ended)
@@ -171,6 +175,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         dualPreviewContainer = findViewById(R.id.phoneDualPreview)
         dualTop = findViewById(R.id.phoneDualTop)
         dualBottom = findViewById(R.id.phoneDualBottom)
+        transmissionButton = findViewById(R.id.phoneTransmissionToggle)
+        transmissionButton.setOnClickListener { toggleTransmission() }
         recordButton = findViewById(R.id.phoneRecord)
         recordLabel = findViewById(R.id.phoneRecordLabel)
         recordIcon = findViewById(R.id.phoneRecordIcon)
@@ -239,17 +245,22 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             uiHandler.post(backgroundTick)
             status.setText(R.string.phone_background_transmitting)
         } else {
-            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            if (transmissionEnabled) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             uiHandler.postDelayed(performanceTick, 2000)
             surfaceReady = preview.isAvailable
             tryStart()
         }
+        refreshTransmissionButton()
     }
     override fun onPause() {
         visible = false
         uiHandler.removeCallbacks(performanceTick)
         uiHandler.removeCallbacks(backgroundTick)
-        if (!backgroundMode) stopStreaming()
+        if (!backgroundMode) {
+            transmissionEnabled = false
+            stopStreaming()
+        }
         super.onPause()
     }
     override fun onConfigurationChanged(newConfig: Configuration) {
@@ -297,6 +308,31 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         if (requestCode == 510) {
             if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) tryStart()
             else status.setText(R.string.phone_permission_denied)
+        }
+    }
+
+    private fun refreshTransmissionButton() {
+        if (::transmissionButton.isInitialized) transmissionButton.setText(
+            if (transmissionEnabled || backgroundMode) R.string.phone_transmit_stop else R.string.phone_transmit_start)
+    }
+
+    private fun toggleTransmission() {
+        if (backgroundMode) {
+            toggleBackgroundMode() // O botão de transmissão também encerra o modo persistente.
+            return
+        }
+        if (transmissionEnabled) {
+            transmissionEnabled = false
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            stopStreaming()
+            refreshTransmissionButton()
+            uiHandler.postDelayed({ if (visible) tryStart() }, 120)
+        } else {
+            transmissionEnabled = true
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            stopStreaming()
+            refreshTransmissionButton()
+            uiHandler.postDelayed({ if (visible) tryStart() }, 120)
         }
     }
 
@@ -351,6 +387,17 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             renderedPreviewFrames = false
             publishedStreamFrame = false
             placeholder.visibility = View.VISIBLE
+            if (!transmissionEnabled) {
+                // Prévia local, sem socket nem gravação; botão Iniciar ativa o servidor.
+                updateOrientation()
+                c.setPreviewTexture(preview.surfaceTexture
+                    ?: throw IllegalStateException("Superfície da prévia indisponível"))
+                c.startPreview()
+                status.setText(R.string.phone_preview_only)
+                address.setText(R.string.phone_no_address)
+                refreshTransmissionButton()
+                return
+            }
             // TextureView evita a superfície externa do SurfaceView em ScrollViews MIUI.
             // O JPEG da rede continua orientado por NV21, independente da prévia.
             updateOrientation()
@@ -661,6 +708,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         if (backgroundMode) {
             PhoneCameraBackgroundService.command(this, PhoneCameraBackgroundService.ACTION_STOP)
             backgroundMode = false
+            transmissionEnabled = false
+            refreshTransmissionButton()
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             recordingRequested = false
             showRecordState(false)
@@ -694,8 +743,10 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 512)
             return
         }
+        transmissionEnabled = false
         stopStreaming()
         backgroundMode = true
+        refreshTransmissionButton()
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         backgroundRequestedAt = SystemClock.elapsedRealtime()
         status.setText(R.string.phone_background_starting)
@@ -894,5 +945,6 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         try { c?.release() } catch (_: Exception) { }
         address.setText(R.string.phone_no_address)
         if (visible) status.setText(R.string.phone_waiting)
+        refreshTransmissionButton()
     }
 }

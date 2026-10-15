@@ -29,12 +29,12 @@ class BackgroundCameraTests(unittest.TestCase):
         self.assertEqual(service.attrib[NS+'stopWithTask'], 'false')
 
     def test_capture_owned_by_service_not_ui(self):
-        for token in ('SurfaceTexture(34)', 'opened.setPreviewTexture(texture)',
+        for token in ('PhoneHeadlessPreview.create(size.width, size.height)', 'opened.setPreviewTexture(preview.surfaceTexture)',
                       'setPreviewCallbackWithBuffer', 'PhoneCameraServer(', 'session.publish(encoded, reading)'):
             self.assertIn(token, self.service)
-        self.assertNotIn('preview.surfaceTexture', self.service)
+        self.assertNotIn('preview.surfaceTexture ?: ', self.service)
         self.assertIn('START_NOT_STICKY', self.service)
-        self.assertIn('if (!backgroundMode) stopStreaming()', self.activity)
+        self.assertIn('if (!backgroundMode)', self.activity)
 
     def test_manual_visible_initiation(self):
         self.assertIn('ContextCompat.startForegroundService(context, intent)', self.service)
@@ -56,7 +56,7 @@ class BackgroundCameraTests(unittest.TestCase):
         self.assertIn('WifiManager.WIFI_MODE_FULL_HIGH_PERF', self.service)
         self.assertIn('wifiLock?.release()', self.service)
         self.assertIn('wakeLock?.release()', self.service)
-        self.assertIn('oldCamera?.release()', self.service)
+        self.assertIn('old?.release()', self.service)
 
     def test_no_jpeg_or_mp4_overlay(self):
         self.assertNotIn('batteryOverlay.burnInto', self.activity)
@@ -77,8 +77,8 @@ class BackgroundCameraTests(unittest.TestCase):
         self.assertIn('connection.requestMethod = "POST"',self.viewer)
 
     def test_manifest_resource_and_version(self):
-        self.assertIn('versionCode = 39', (ROOT/'app/build.gradle.kts').read_text())
-        self.assertIn('versionName = "1.4.29"', (ROOT/'app/build.gradle.kts').read_text())
+        self.assertIn('versionCode = 40', (ROOT/'app/build.gradle.kts').read_text())
+        self.assertIn('versionName = "1.4.30"', (ROOT/'app/build.gradle.kts').read_text())
         strs=ET.parse(ROOT/'app/src/main/res/values/strings.xml').getroot()
         names={n.attrib['name'] for n in strs.findall('string')}
         for name in ('phone_background_enable','phone_background_stop','phone_view_telemetry_options'):

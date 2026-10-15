@@ -1,3 +1,11 @@
+## 1.4.30+40 — 2026-10-15
+- Transmissor passou a oferecer prévia sem transmissão e botão Iniciar/Parar transmissão, distinto de REC.
+- Serviço com tela apagada ganhou consumidor OpenGL da SurfaceTexture, corrigindo provável bloqueio da fila de buffers do preview.
+- Rotas autenticadas para foto JPEG nativa máxima, perfis de resolução (360/480/720p), FPS (5/10/15) e troca frontal/traseira no serviço persistente.
+- Recepção do tempo de gravação em headers MJPEG; tela cheia com controles compactos e ícones visíveis para PiP/Inteira/Expandir.
+- Boas-vindas/Novidades uma vez após instalar/atualizar para um novo versionCode.
+- Compatibilidade e efeitos térmicos ainda dependem de build e teste físico no Redmi A3.
+
 ## 1.4.29+39 — 2026-10-15
 - Visualizador MJPEG renovado: cabeçalho da câmera real, bateria compacta, card de vídeo, temperatura, resolução real e FPS efetivo.
 - Comandos funcionais: REC remoto, foto do frame salva no receptor, giro local 180°, expandir, PiP, inteira, espelho e refazer.

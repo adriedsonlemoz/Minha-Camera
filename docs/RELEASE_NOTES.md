@@ -1,3 +1,13 @@
+# Minha Câmera 1.4.30 (versionCode 40)
+
+- Modo transmissor inicia em prévia. Pressione **Iniciar transmissão**; REC é separado e sempre opcional.
+- Corrigido o fluxo de consumo dos buffers EGL no serviço de câmera com tela apagada.
+- Foto JPEG na maior resolução anunciada pela câmera, salva no próprio transmissor; não aceita foto durante REC.
+- Perfis remotos de resolução e FPS e troca frontal/traseira, com token privado na rede local.
+- Cronômetro de gravação no visualizador, ícones revisados e tela cheia com controles transparentes.
+- Janela de novidades uma vez por versão instalada.
+- APK, estabilidade térmica, reprodução e imagens reais ainda precisam de validação em hardware.
+
 # Minha Câmera 1.4.29 (versionCode 39)
 
 - Visualizador de câmera remota renovado, alinhado ao painel de referência.

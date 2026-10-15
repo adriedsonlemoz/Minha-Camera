@@ -341,14 +341,33 @@ private fun checkRemoteRecordingApi() {
     check(PhoneCameraUrls.ecoCommandUrl("http://8.8.8.8:8765/live/$token", true) == null)
     check(PhoneCameraUrls.recordingCommandUrl("http://8.8.8.8:8765/live/$token", true) == null)
     check(PhoneCameraUrls.recordingCommandUrl("http://192.168.12.2:8765/live/invalid", true) == null)
+    check(PhoneCameraUrls.qualityCommandUrl(privateUrl, 720) ==
+        "http://192.168.12.2:8765/control/$token/quality/720")
+    check(PhoneCameraUrls.fpsCommandUrl(privateUrl, 15) ==
+        "http://192.168.12.2:8765/control/$token/fps/15")
+    check(PhoneCameraUrls.facingCommandUrl(privateUrl, true) ==
+        "http://192.168.12.2:8765/control/$token/camera/front")
+    check(PhoneCameraUrls.photoCommandUrl(privateUrl) ==
+        "http://192.168.12.2:8765/control/$token/photo")
+    check(PhoneCameraUrls.qualityCommandUrl(privateUrl, 1080) == null)
+    check(PhoneCameraUrls.fpsCommandUrl(privateUrl, 100) == null)
+    check(PhoneCameraUrls.photoCommandUrl("http://8.8.8.8:8765/live/$token") == null)
     val localhost = java.net.InetAddress.getByName("127.0.0.1") as java.net.Inet4Address
     var recording = false
     var eco = false
+    var quality = 480
+    var fps = 10
+    var facing = 0
+    var photos = 0
     val server = PhoneCameraServer(localhost, token,
         changeRecording = { wanted -> recording = wanted; true },
         recordingStatus = { recording },
         changeEco = { wanted -> eco = wanted; true },
-        ecoStatus = { eco })
+        ecoStatus = { eco },
+        changeQuality = { quality = it; true }, qualityStatus = { quality },
+        changeFps = { fps = it; true }, fpsStatus = { fps },
+        changeFacing = { facing = it; true }, facingStatus = { facing },
+        takePhoto = { photos++; true }, recordingSeconds = { 3L })
     server.start()
     try {
         fun command(path: String, method: String = "POST"): Int {
@@ -377,6 +396,13 @@ private fun checkRemoteRecordingApi() {
         check(!eco)
         check(command("/control/$token/eco/enable", "GET") == 403)
         check(!eco)
+        check(command("/control/$token/quality/720") == 204 && quality == 720)
+        check(command("/control/$token/fps/15") == 204 && fps == 15)
+        check(command("/control/$token/camera/front") == 204 && facing == 1)
+        check(command("/control/$token/photo") == 204 && photos == 1)
+        check(command("/control/${"0".repeat(32)}/photo") == 403 && photos == 1)
+        check(command("/control/$token/photo", "GET") == 403 && photos == 1)
+        check(command("/control/$token/quality/1080") == 403 && quality == 720)
     } finally { server.stop() }
-    println("OK: REC e Eco remotos autenticados por POST; tokens ou métodos inválidos rejeitados")
+    println("OK: REC, Eco, foto, qualidade, FPS e câmera remotos autenticados; token/método inválidos rejeitados")
 }

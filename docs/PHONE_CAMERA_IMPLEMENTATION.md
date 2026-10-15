@@ -77,3 +77,6 @@ A 1.4.27 adiciona REC remoto por POST (mesmo token privado usado para a transmis
 
 ## Visualizador e Eco remoto (1.4.29+39)
 O receptor exibe dados compactos em cabeçalho/card, sem duplicar a camada sobre o vídeo no modo normal; no PiP, conserva etiqueta compacta. O menu Mais foi renovado. O comando Eco via HTTP POST em /control/<token>/eco/enable|disable só está disponível quando o foreground service do transmissor está ativo; o token é o mesmo da URL MJPEG validada como IPv4 local. Não existe comando de ligar a câmera remotamente a partir do estado totalmente parado. A foto captura o JPEG recebido e salva no receptor sem retorno do conteúdo ao transmissor.
+
+## Serviço de captura em tela apagada e controle remoto (1.4.30+40)
+A prévia local não inicia MJPEG até o usuário tocar Iniciar transmissão. O serviço `PhoneHeadlessPreview` cria EGL pbuffer com SurfaceTexture e chama updateTexImage em cada frame no HandlerThread para esvaziar BufferQueue sem desenhar. O HTTP privado ganhou foto JPEG nativa, qualidade/fps e troca de câmera. A foto é salva no próprio transmissor e interrompe brevemente preview; durante REC os comandos destrutivos retornam conflito. O receptor mostra o FPS real e dimensões JPEG, não infere 720p. Testar no aparelho após build.

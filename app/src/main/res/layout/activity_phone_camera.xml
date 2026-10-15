@@ -38,6 +38,12 @@
                 android:layout_height="200dp" android:layout_marginTop="5dp" android:scaleType="fitCenter"
                 android:background="#4B4255" android:contentDescription="@string/phone_front_camera" />
         </LinearLayout>
+        <TextView android:id="@+id/phoneTransmissionToggle"
+            android:layout_width="match_parent" android:layout_height="54dp"
+            android:layout_marginTop="12dp" android:background="@drawable/bg_ui_card"
+            android:clickable="true" android:focusable="true" android:gravity="center"
+            android:text="@string/phone_transmit_start" android:textColor="@color/brand_primary"
+            android:textStyle="bold" android:textSize="16sp" />
         <TextView android:id="@+id/phoneTxPerformance"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:gravity="end" android:paddingTop="5dp"

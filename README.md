@@ -1,6 +1,6 @@
 # Minha Câmera
 
-**Versão atual: 1.4.29 (versionCode 39)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.30 (versionCode 40)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
 
 Desde a **1.4.13**, o projeto exige assinatura Release permanente por Secrets fixos do GitHub Actions e impede publicação com outro certificado. A chave privada fica fora do repositório. Consulte [assinatura permanente](docs/ASSINATURA_PERMANENTE.md) antes de instalar: a assinatura nova não é compatível com APKs antigos assinados por chave diferente.
 
@@ -16,7 +16,9 @@ Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.8 organiz
 
 No receptor **Celular → Assistir**, aguarde a primeira imagem e escolha **Mais → Janela flutuante (PiP)**. No player RTSP, use o botão **PiP** na barra inferior (ou o menu), após aparecer o primeiro quadro e antes de iniciar qualquer gravação. Em seguida é possível abrir o app de mapas com o vídeo visível. No PiP, o receptor MJPEG mantém leitura e reconexão enquanto sua Activity permanece visível; ao fechar o PiP, interrompe a rede. O transmissor NÃO passa a transmitir com a tela apagada nem em segundo plano. Requer Android 8+ e suporte do fabricante ao PiP; sem permissão "Exibir sobre outros apps". O uso real em Xiaomi/HyperOS é pendente.
 
-**Visualizador 1.4.29:** redesenho do painel de visualização MJPEG com card escuro, indicadores compactos, ações rápidas e pop-up Mais com ícones e switches. Gravar controla o REC no Redmi A3 quando o modo persistente estiver ativo; Foto salva apenas o quadro MJPEG recebido no aparelho visualizador (Pictures/MinhaCamera no Android 10+, pasta privada em versões anteriores). Eco remoto alterna pelo mesmo token aleatório usado no MJPEG, exige modo persistente no transmissor e versão 1.4.29 nos dois celulares. Resolução e FPS indicam medições recebidas; zoom remoto, flash e escolha de resolução não foram implementados nesta versão.
+**Novo fluxo 1.4.30:** a tela transmissora abre a prévia sem iniciar rede ou MP4. Toque em **Iniciar transmissão** para abrir o servidor MJPEG e em **Gravar** somente quando desejar salvar MP4. O serviço com a tela apagada usa um consumidor EGL para esvaziar a `SurfaceTexture`, reduzindo o risco de congelamento por fila cheia. No painel remoto, Foto solicita captura JPEG nativa máxima informada pelo hardware (salva no **transmissor**), qualidade solicita 360/480/720p (tamanho de prévia real mais próximo), FPS solicita 5/10/15, e é possível trocar câmera traseira/frontal. Esses comandos exigem o modo persistente; foto e mudança de câmera/resolução ficam bloqueadas durante gravação para preservar MP4. O modo expandido usa controles pequenos semitransparentes; o cronômetro de REC vem do transmissor. Uma tela de novidades aparece só na primeira abertura de cada versionCode. **Validação Android real continua necessária**, especialmente para congelamento, hardware de foto e troca de lente.
+
+**Visualizador 1.4.29:** redesenho do painel de visualização MJPEG com card escuro, indicadores compactos, ações rápidas e pop-up Mais com ícones e switches. Gravar controla o REC no Redmi A3 quando o modo persistente estiver ativo; Na versão 1.4.29, Foto salvava somente o JPEG recebido no visualizador. A versão 1.4.30 solicita foto nativa ao transmissor. Eco remoto alterna pelo mesmo token aleatório usado no MJPEG, exige modo persistente no transmissor e versão 1.4.29 nos dois celulares. Resolução e FPS indicam medições recebidas; zoom remoto e flash continuam pendentes; resolução remota entrou na 1.4.30.
 
 **Menu renovado 1.4.28:** em **Celular → Transmitir → Mais**, o pop-up ganhou layout customizado com ícones, subtítulos e switches para Bateria no vídeo, Eco e Tela apagada. Link, Código e Gravações ficaram mais claros e organizados.
 
@@ -85,13 +87,13 @@ Em **Celular → Assistir**, o receptor permanece em orientação vertical e mos
 
 O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara Android SDK 36 e executa `gradle testProtocol testReleaseUnitTest assembleRelease` uma única vez, com cache. Publica cada APK individualmente, sem ZIP, em **Actions > Artifacts**:
 
-- `MinhaCamera-1.4.29-universal.apk`: todas as quatro ABIs, para distribuição geral.
-- `MinhaCamera-1.4.29-armeabi-v7a.apk`: Android ARM de 32 bits.
-- `MinhaCamera-1.4.29-arm64-v8a.apk`: Android ARM de 64 bits.
-- `MinhaCamera-1.4.29-x86_64.apk`: Android Intel de 64 bits/emuladores.
-- `MinhaCamera-1.4.29-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
+- `MinhaCamera-1.4.30-universal.apk`: todas as quatro ABIs, para distribuição geral.
+- `MinhaCamera-1.4.30-armeabi-v7a.apk`: Android ARM de 32 bits.
+- `MinhaCamera-1.4.30-arm64-v8a.apk`: Android ARM de 64 bits.
+- `MinhaCamera-1.4.30-x86_64.apk`: Android Intel de 64 bits/emuladores.
+- `MinhaCamera-1.4.30-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
 
-No workflow assinado, todos têm `com.minhacamera`, versão 1.4.29, código 39 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
+No workflow assinado, todos têm `com.minhacamera`, versão 1.4.30, código 40 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
 
 A 1.4.16 corrige o bloqueio do Build APK 18 causado por KEYSTORE_BASE64 inválido. O workflow prefere o novo Secret KEYSTORE_HEX, composto apenas de dígitos e letras a–f, mantendo Base64 como alternativa legada. É obrigatório importar KEYSTORE_HEX e conferir os outros três Secrets antes do novo build. O certificado original é mantido; nenhuma chave foi regenerada.
 

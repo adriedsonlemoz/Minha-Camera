@@ -12,7 +12,6 @@ import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.graphics.ImageFormat
 import android.graphics.Rect
-import android.graphics.SurfaceTexture
 import android.graphics.YuvImage
 import android.hardware.Camera
 import android.net.wifi.WifiManager
@@ -77,13 +76,39 @@ class PhoneCameraBackgroundService : Service() {
     private val recordingBusy = AtomicBoolean(false)
     private val battery by lazy { PhoneBatteryTelemetry(applicationContext) }
     private var camera: Camera? = null
-    private var texture: SurfaceTexture? = null
+    private var headlessPreview: PhoneHeadlessPreview? = null
+    private var selectedFacing = Camera.CameraInfo.CAMERA_FACING_BACK
+    @Volatile private var requestedQuality = 480
+    @Volatile private var fpsLimit = 10
+    @Volatile private var switching = false
+    @Volatile private var takingPhoto = false
+    @Volatile private var recordingStartMs = 0L
     @Volatile private var server: PhoneCameraServer? = null
     private var recorder: PhoneMp4Recorder? = null // acessado só pelo recordWorker
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
     private var lastCapture = 0L
+    @Volatile private var lastPublishedAtMs = 0L
+    private var watchdogRestarts = 0
+    private val frameWatchdog = object : Runnable {
+        override fun run() {
+            if (!running || closing) return
+            val age = SystemClock.elapsedRealtime() - lastPublishedAtMs
+            if (age > 12_000 && !switching && !takingPhoto && !recording) {
+                if (watchdogRestarts >= 3) {
+                    lastError = "A câmera parou de enviar quadros após tentativas de recuperação"
+                    stopCaptureAndFinish()
+                    return
+                }
+                watchdogRestarts++
+                server?.let { reconfigure(it, selectedFacing, requestedQuality) }
+            }
+            mainHandler.postDelayed(this, 6000)
+        }
+    }
     private var heatState = PhoneHeatState.NORMAL
+    private var lastBatteryReadAt = 0L
+    private var cachedBattery: PhoneBatteryReading? = null
     @Volatile private var ecoEnabled = false
     private var closing = false
     private var foregroundStarted = false
@@ -116,6 +141,8 @@ class PhoneCameraBackgroundService : Service() {
                     startCameraForegroundNotification()
                     foregroundStarted = true
                     ecoEnabled = getSharedPreferences("phone_video", MODE_PRIVATE).getBoolean("eco_enabled", false)
+                    requestedQuality = getSharedPreferences("phone_video", MODE_PRIVATE).getInt("remote_quality", 480)
+                    fpsLimit = getSharedPreferences("phone_video", MODE_PRIVATE).getInt("remote_fps", 10)
                     val facing = intent.getIntExtra(EXTRA_FACING, Camera.CameraInfo.CAMERA_FACING_BACK)
                     startCapture(facing)
                 } catch (e: Exception) {
@@ -166,94 +193,211 @@ class PhoneCameraBackgroundService : Service() {
         val ip = NetUtil.wifiIpv4(this) ?: throw IllegalStateException("Wi-Fi indisponível")
         val session = PhoneCameraServer(ip, PhoneCameraAccess.token(this),
             changeRecording = { desired ->
-                if (!running || closing || (desired && latestJpeg == null)) false
-                else {
-                    if (recording != desired) toggleRecording()
-                    true
-                }
+                if (!running || closing || switching || (desired && latestJpeg == null)) false
+                else { if (recording != desired) mainHandler.post {
+                    if (!closing && recording != desired) toggleRecording()
+                }; true }
             }, recordingStatus = { recording },
+            recordingSeconds = { if (recording) ((SystemClock.elapsedRealtime() - recordingStartMs) / 1000).coerceAtLeast(0) else 0 },
             changeEco = { desired ->
-                if (!running || closing) false
-                else {
+                if (!running || closing) false else {
                     ecoEnabled = desired
                     getSharedPreferences("phone_video", MODE_PRIVATE).edit().putBoolean("eco_enabled", desired).apply()
                     true
                 }
-            }, ecoStatus = { ecoEnabled })
-        try {
-            val deviceId = (0 until Camera.getNumberOfCameras()).firstOrNull { id ->
-                val info = Camera.CameraInfo()
-                Camera.getCameraInfo(id, info)
-                info.facing == facing
-            } ?: throw IllegalStateException("Câmera indisponível")
-            val opened = Camera.open(deviceId)
-            camera = opened
-            val params = opened.parameters
-            val size = params.supportedPreviewSizes.orEmpty().minByOrNull {
-                kotlin.math.abs(it.width - 640) + kotlin.math.abs(it.height - 480) +
-                    if (it.width * it.height > 1280 * 720) 10000 else 0
-            } ?: throw IllegalStateException("Prévia indisponível")
-            params.setPreviewSize(size.width, size.height)
-            params.previewFormat = ImageFormat.NV21
-            if (params.supportedFocusModes?.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO) == true)
-                params.focusMode = Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO
-            opened.parameters = params
-            val info = Camera.CameraInfo()
-            Camera.getCameraInfo(deviceId, info)
-            val rotation = (getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation
-            val degrees = when (rotation) {
-                Surface.ROTATION_90 -> 90
-                Surface.ROTATION_180 -> 180
-                Surface.ROTATION_270 -> 270
-                else -> 0
-            }
-            val frameRotation = if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT)
-                (info.orientation + degrees) % 360
-            else (info.orientation - degrees + 360) % 360
-            // SurfaceTexture própria: continua válida mesmo depois de a tela / Activity sumir.
-            texture = SurfaceTexture(34).also { it.setDefaultBufferSize(size.width, size.height) }
-            opened.setPreviewTexture(texture)
-            val bytesPerFrame = size.width * size.height * 3 / 2
-            heatState = PhoneHeatState.NORMAL
-            lastCapture = 0L
-            latestBattery = null
-            latestJpeg = null
-            opened.setPreviewCallbackWithBuffer { bytes, source ->
-                if (bytes != null && server === session && !closing &&
-                    bytes.size >= bytesPerFrame &&
-                    SystemClock.elapsedRealtime() - lastCapture >= PhoneEcoPolicy.intervalMs(ecoEnabled, heatState) &&
-                    encoding.compareAndSet(false, true)) {
-                    lastCapture = SystemClock.elapsedRealtime()
-                    val snapshot = bytes.copyOf(bytesPerFrame)
-                    try {
-                        encodeWorker.execute {
-                            try {
-                                if (server === session && !closing) {
-                                    val rotated = Nv21Frames.rotated(snapshot, size.width, size.height, frameRotation)
-                                    val width = if (frameRotation % 180 == 0) size.width else size.height
-                                    val height = if (frameRotation % 180 == 0) size.height else size.width
-                                    publish(session, rotated, width, height)
-                                }
-                            } catch (_: Exception) { /* Perda de um quadro não derruba o serviço. */ }
-                            finally { encoding.set(false) }
-                        }
-                    } catch (_: Exception) { encoding.set(false) }
+            }, ecoStatus = { ecoEnabled },
+            changeQuality = { quality ->
+                if (!running || closing || switching || recording || takingPhoto || quality !in listOf(360, 480, 720)) false
+                else { mainHandler.post { reconfigure(session, selectedFacing, quality) }; true }
+            }, qualityStatus = { requestedQuality },
+            changeFps = { desired ->
+                if (!running || closing || desired !in listOf(5, 10, 15)) false else {
+                    fpsLimit = desired
+                    mainHandler.post { applyCameraFpsRange() }
+                    getSharedPreferences("phone_video", MODE_PRIVATE).edit().putInt("remote_fps", desired).apply()
+                    true
                 }
-                try { if (bytes != null) source.addCallbackBuffer(bytes) } catch (_: Exception) { }
-            }
-            repeat(3) { opened.addCallbackBuffer(ByteArray(bytesPerFrame)) }
+            }, fpsStatus = { fpsLimit },
+            changeFacing = { desired ->
+                if (!running || closing || switching || recording || takingPhoto ||
+                    desired !in listOf(Camera.CameraInfo.CAMERA_FACING_BACK, Camera.CameraInfo.CAMERA_FACING_FRONT) ||
+                    !hasFacing(desired)) false
+                else { mainHandler.post { reconfigure(session, desired, requestedQuality) }; true }
+            }, facingStatus = { selectedFacing },
+            takePhoto = {
+                if (!running || closing || switching || recording || takingPhoto || camera == null) false
+                else { takingPhoto = true; mainHandler.post { captureFullPhoto() }; true }
+            })
+        try {
             server = session
+            openPreview(session, facing, requestedQuality)
             session.start()
-            opened.startPreview()
             streamUrl = session.url
             lastError = null
             running = true
+            lastPublishedAtMs = SystemClock.elapsedRealtime()
+            mainHandler.postDelayed(frameWatchdog, 6000)
             acquireLocks()
             updateNotification()
         } catch (e: Exception) {
             session.stop()
+            server = null
+            releasePreview()
             throw e
         }
+    }
+
+    private fun hasFacing(facing: Int) = (0 until Camera.getNumberOfCameras()).any { id ->
+        val info = Camera.CameraInfo()
+        Camera.getCameraInfo(id, info)
+        info.facing == facing
+    }
+
+    private fun releasePreview() {
+        val old = camera
+        camera = null
+        try { old?.setPreviewCallbackWithBuffer(null) } catch (_: Exception) { }
+        try { old?.stopPreview() } catch (_: Exception) { }
+        try { old?.release() } catch (_: Exception) { }
+        headlessPreview?.close()
+        headlessPreview = null
+    }
+
+    /** Reconfigura no thread principal, sem recriar HTTP/token e sem executar durante MP4. */
+    private fun reconfigure(session: PhoneCameraServer, facing: Int, quality: Int) {
+        if (server !== session || closing || switching || recording || takingPhoto) return
+        switching = true
+        val oldFacing = selectedFacing
+        val oldQuality = requestedQuality
+        releasePreview()
+        latestJpeg = null
+        session.clearFrame()
+        try {
+            openPreview(session, facing, quality)
+            lastError = null
+        } catch (e: Exception) {
+            lastError = "Câmera indisponível: ${e.javaClass.simpleName}"
+            try { releasePreview(); openPreview(session, oldFacing, oldQuality) }
+            catch (_: Exception) { stopCaptureAndFinish() }
+        } finally { switching = false }
+    }
+
+    private fun openPreview(session: PhoneCameraServer, facing: Int, quality: Int) {
+        val deviceId = (0 until Camera.getNumberOfCameras()).firstOrNull { id ->
+            val info = Camera.CameraInfo()
+            Camera.getCameraInfo(id, info)
+            info.facing == facing
+        } ?: throw IllegalStateException("Câmera indisponível")
+        val opened = Camera.open(deviceId)
+        camera = opened
+        val params = opened.parameters
+        val sizes = params.supportedPreviewSizes.orEmpty().filter { it.width > 0 && it.height > 0 && it.width * it.height <= 1280 * 720 }
+        val target = quality // altura da imagem em paisagem é o lado menor (360/480/720).
+        val size = sizes.minByOrNull { kotlin.math.abs(minOf(it.width, it.height) - target) * 10 +
+            kotlin.math.abs(maxOf(it.width, it.height) - target * 16 / 9) } ?: throw IllegalStateException("Resolução indisponível")
+        params.setPreviewSize(size.width, size.height)
+        params.previewFormat = ImageFormat.NV21
+        val photo = params.supportedPictureSizes.orEmpty().maxByOrNull { it.width.toLong() * it.height }
+        if (photo != null) params.setPictureSize(photo.width, photo.height)
+        params.jpegQuality = 95
+        val range = params.supportedPreviewFpsRange.orEmpty().minByOrNull {
+            kotlin.math.abs(it[0] - fpsLimit * 1000) + kotlin.math.abs(it[1] - fpsLimit * 1000)
+        }
+        if (range != null) try { params.setPreviewFpsRange(range[0], range[1]) } catch (_: Exception) { }
+        if (params.supportedFocusModes?.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO) == true)
+            params.focusMode = Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO
+        opened.parameters = params
+        val info = Camera.CameraInfo()
+        Camera.getCameraInfo(deviceId, info)
+        val rotation = (getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation
+        val degrees = when (rotation) {
+            Surface.ROTATION_90 -> 90
+            Surface.ROTATION_180 -> 180
+            Surface.ROTATION_270 -> 270
+            else -> 0
+        }
+        val frameRotation = if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT)
+            (info.orientation + degrees) % 360 else (info.orientation - degrees + 360) % 360
+        val preview = PhoneHeadlessPreview.create(size.width, size.height)
+        headlessPreview = preview
+        opened.setPreviewTexture(preview.surfaceTexture)
+        val byteCount = size.width * size.height * 3 / 2
+        lastCapture = 0L
+        lastPublishedAtMs = SystemClock.elapsedRealtime()
+        opened.setPreviewCallbackWithBuffer { bytes, source ->
+            if (bytes != null && server === session && !closing && !switching &&
+                bytes.size >= byteCount &&
+                SystemClock.elapsedRealtime() - lastCapture >= maxOf(1000L / fpsLimit.coerceAtLeast(1), PhoneEcoPolicy.intervalMs(ecoEnabled, heatState)) &&
+                encoding.compareAndSet(false, true)) {
+                lastCapture = SystemClock.elapsedRealtime()
+                val snapshot = bytes.copyOf(byteCount)
+                try {
+                    encodeWorker.execute {
+                        try {
+                            if (server === session && !closing && !switching) {
+                                val rotated = Nv21Frames.rotated(snapshot, size.width, size.height, frameRotation)
+                                val width = if (frameRotation % 180 == 0) size.width else size.height
+                                val height = if (frameRotation % 180 == 0) size.height else size.width
+                                publish(session, rotated, width, height)
+                            }
+                        } catch (_: Exception) { }
+                        finally { encoding.set(false) }
+                    }
+                } catch (_: Exception) { encoding.set(false) }
+            }
+            try { if (bytes != null) source.addCallbackBuffer(bytes) } catch (_: Exception) { }
+        }
+        repeat(3) { opened.addCallbackBuffer(ByteArray(byteCount)) }
+        opened.startPreview()
+        selectedFacing = facing
+        requestedQuality = quality
+        getSharedPreferences("phone_video", MODE_PRIVATE).edit().putInt("remote_quality", quality).apply()
+        heatState = PhoneHeatState.NORMAL
+    }
+
+    private fun applyCameraFpsRange() {
+        val opened = camera ?: return
+        if (switching || takingPhoto || closing) return
+        try {
+            val params = opened.parameters
+            val range = params.supportedPreviewFpsRange.orEmpty().minByOrNull {
+                kotlin.math.abs(it[0] - fpsLimit * 1000) + kotlin.math.abs(it[1] - fpsLimit * 1000)
+            } ?: return
+            params.setPreviewFpsRange(range[0], range[1])
+            opened.parameters = params
+        } catch (_: Exception) { /* Mantém limite de quadros por software. */ }
+    }
+
+    /** JPEG nativo no maior tamanho anunciado pelo hardware; reinicia preview após takePicture. */
+    private fun captureFullPhoto() {
+        val opened = camera
+        if (!running || closing || opened == null || recording) { takingPhoto = false; return }
+        try {
+            mainHandler.postDelayed({
+                if (takingPhoto && !closing) {
+                    takingPhoto = false
+                    server?.let { reconfigure(it, selectedFacing, requestedQuality) }
+                }
+            }, 8000)
+            opened.takePicture(null, null, Camera.PictureCallback { jpeg, source ->
+                if (jpeg != null && jpeg.isNotEmpty()) {
+                    try { encodeWorker.execute {
+                        val saved = PhoneRemotePhoto.save(applicationContext, jpeg)
+                        if (!saved) lastError = "Não foi possível salvar a foto"
+                    } } catch (_: Exception) { }
+                }
+                try {
+                    if (!closing && camera === source) {
+                        // Alguns aparelhos descartam buffers de callback ao tirar fotos.
+                        val sz = source.parameters.previewSize
+                        source.startPreview()
+                        // Alguns dispositivos devolvem zero buffers após uma captura estática.
+                        repeat(3) { source.addCallbackBuffer(ByteArray(sz.width * sz.height * 3 / 2)) }
+                    }
+                } catch (_: Exception) { lastError = "Prévia não retomada após foto" }
+                takingPhoto = false
+            })
+        } catch (_: Exception) { takingPhoto = false; lastError = "Falha ao capturar foto" }
     }
 
     private fun acquireLocks() {
@@ -272,7 +416,10 @@ class PhoneCameraBackgroundService : Service() {
 
     private fun publish(session: PhoneCameraServer, frame: ByteArray, width: Int, height: Int) {
         if (server !== session || closing) return
-        val reading = battery.read()
+        val now = SystemClock.elapsedRealtime()
+        val reading = if (cachedBattery == null || now - lastBatteryReadAt >= 2000L) {
+            battery.read().also { cachedBattery = it; lastBatteryReadAt = now }
+        } else requireNotNull(cachedBattery)
         latestBattery = reading
         heatState = PhoneEcoPolicy.heatState(reading.temperatureTenthsC, heatState)
         val jpeg = ByteArrayOutputStream()
@@ -281,6 +428,8 @@ class PhoneCameraBackgroundService : Service() {
         if (server !== session || closing) return
         val encoded = jpeg.toByteArray()
         latestJpeg = encoded
+        lastPublishedAtMs = SystemClock.elapsedRealtime()
+        watchdogRestarts = 0
         session.publish(encoded, reading) // Dados da bateria nos headers, nunca gravados nos pixels.
         if (recording && recordingBusy.compareAndSet(false, true)) {
             val snapshot = frame.copyOf()
@@ -305,6 +454,7 @@ class PhoneCameraBackgroundService : Service() {
 
     private fun toggleRecording() {
         recording = !recording
+        recordingStartMs = if (recording) SystemClock.elapsedRealtime() else 0L
         if (!recording) recordWorker.execute { finishRecording() }
         updateNotification()
     }
@@ -323,19 +473,15 @@ class PhoneCameraBackgroundService : Service() {
         closing = true
         running = false
         recording = false
+        recordingStartMs = 0L
+        mainHandler.removeCallbacks(frameWatchdog)
         streamUrl = null
         latestJpeg = null
         latestBattery = null
         val oldServer = server
         server = null
         oldServer?.stop()
-        val oldCamera = camera
-        camera = null
-        try { oldCamera?.setPreviewCallbackWithBuffer(null) } catch (_: Exception) { }
-        try { oldCamera?.stopPreview() } catch (_: Exception) { }
-        try { oldCamera?.release() } catch (_: Exception) { }
-        try { texture?.release() } catch (_: Exception) { }
-        texture = null
+        releasePreview()
         encodeWorker.shutdown()
         // Enquanto a finalização do MP4 estiver pendente, conservar as proteções de suspensão.
         recordWorker.execute {

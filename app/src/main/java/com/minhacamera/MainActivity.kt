@@ -132,8 +132,31 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, ScanActivity::class.java))
         }
         showTab(savedInstanceState?.getBoolean("phoneTabSelected") == true)
-
+        if (savedInstanceState == null) window.decorView.postDelayed({ showWelcomeAfterUpdate() }, 600)
     }
+
+    /** Mostra novidades somente uma vez por versionCode, inclusive na primeira instalação. */
+    private fun showWelcomeAfterUpdate() {
+        if (isFinishing || isDestroyed) return
+        val versionCode = try {
+            val info = packageManager.getPackageInfo(packageName, 0)
+            if (android.os.Build.VERSION.SDK_INT >= 28) info.longVersionCode.toInt() else info.versionCode
+        } catch (_: Exception) { return }
+        val prefs = getSharedPreferences("welcome_versions", MODE_PRIVATE)
+        if (prefs.getInt("last_shown_code", -1) >= versionCode) return
+        val text = getString(R.string.welcome_latest_summary)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.welcome_latest_title)
+            .setMessage(text)
+            .setPositiveButton(R.string.welcome_latest_continue) { _, _ ->
+                prefs.edit().putInt("last_shown_code", versionCode).apply()
+            }
+            .setOnCancelListener {
+                prefs.edit().putInt("last_shown_code", versionCode).apply()
+            }
+            .show()
+    }
+
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
         menu.add(0, 1001, 0, R.string.novidades)

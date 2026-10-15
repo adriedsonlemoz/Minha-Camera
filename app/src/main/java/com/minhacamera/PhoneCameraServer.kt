@@ -16,7 +16,15 @@ class PhoneCameraServer(
     private val changeRecording: ((Boolean) -> Boolean)? = null,
     private val recordingStatus: (() -> Boolean)? = null,
     private val changeEco: ((Boolean) -> Boolean)? = null,
-    private val ecoStatus: (() -> Boolean)? = null
+    private val ecoStatus: (() -> Boolean)? = null,
+    private val changeQuality: ((Int) -> Boolean)? = null,
+    private val qualityStatus: (() -> Int)? = null,
+    private val changeFps: ((Int) -> Boolean)? = null,
+    private val fpsStatus: (() -> Int)? = null,
+    private val changeFacing: ((Int) -> Boolean)? = null,
+    private val facingStatus: (() -> Int)? = null,
+    private val takePhoto: (() -> Boolean)? = null,
+    private val recordingSeconds: (() -> Long)? = null
 ) {
     init { require(token.matches(Regex("[0-9a-f]{32}"))) }
     private val server = ServerSocket(8765, 4, address)
@@ -59,6 +67,17 @@ class PhoneCameraServer(
         }
     }
 
+    /** Invalida o último quadro quando a câmera muda de lente ou resolução. */
+    fun clearFrame() {
+        synchronized(frameLock) {
+            latest = null
+            latestBattery = null
+            latestAtMs = 0L
+            sequence++
+            frameLock.notifyAll()
+        }
+    }
+
     private data class Packet(val jpeg: ByteArray, val atMs: Long, val battery: PhoneBatteryReading?)
 
     private fun serve(peer: Socket) {
@@ -85,6 +104,32 @@ class PhoneCameraServer(
                 "POST $control/eco/enable HTTP/1.1" -> true
                 "POST $control/eco/disable HTTP/1.1" -> false
                 else -> null
+            }
+            val qualityAction = listOf(360, 480, 720).firstOrNull {
+                line == "POST $control/quality/$it HTTP/1.1"
+            }
+            val fpsAction = listOf(5, 10, 15).firstOrNull {
+                line == "POST $control/fps/$it HTTP/1.1"
+            }
+            val cameraAction = when (line) {
+                "POST $control/camera/back HTTP/1.1" -> 0
+                "POST $control/camera/front HTTP/1.1" -> 1
+                else -> null
+            }
+            val photoAction = line == "POST $control/photo HTTP/1.1"
+            if (qualityAction != null || fpsAction != null || cameraAction != null || photoAction) {
+                val success = try {
+                    when {
+                        qualityAction != null -> changeQuality?.invoke(qualityAction) == true
+                        fpsAction != null -> changeFps?.invoke(fpsAction) == true
+                        cameraAction != null -> changeFacing?.invoke(cameraAction) == true
+                        else -> takePhoto?.invoke() == true
+                    }
+                } catch (_: Exception) { false }
+                val status = if (success) "204 No Content" else "409 Conflict"
+                peer.getOutputStream().write(("HTTP/1.1 $status\r\nCache-Control: no-store\r\n" +
+                    "Connection: close\r\nContent-Length: 0\r\n\r\n").toByteArray(Charsets.US_ASCII))
+                return
             }
             if (ecoAction != null) {
                 val success = try { changeEco?.invoke(ecoAction) == true } catch (_: Exception) { false }
@@ -126,6 +171,10 @@ class PhoneCameraServer(
                     next.battery?.averageCurrentMaToday?.let { append("X-Battery-Average-Ma: $it\r\n") }
                     recordingStatus?.let { append("X-Recording: ${if (it()) 1 else 0}\r\n") }
                     ecoStatus?.let { append("X-Eco: ${if (it()) 1 else 0}\r\n") }
+                    qualityStatus?.let { append("X-Quality-Profile: ${it()}\r\n") }
+                    fpsStatus?.let { append("X-FPS-Target: ${it()}\r\n") }
+                    facingStatus?.let { append("X-Camera-Facing: ${it()}\r\n") }
+                    recordingSeconds?.let { append("X-Recording-Seconds: ${it()}\r\n") }
                 }
                 out.write(("--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${next.jpeg.size}\r\n" +
                     "X-Frame-Elapsed-Ms: ${next.atMs}\r\n$batteryHeaders\r\n").toByteArray(Charsets.US_ASCII))
