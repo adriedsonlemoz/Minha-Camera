@@ -5,6 +5,7 @@ BUILD="$(mktemp -d)"
 trap 'rm -rf "$BUILD"' EXIT
 kotlinc \
   "$ROOT/tests/protocol-stubs/AndroidStubs.kt" \
+  "$ROOT/tests/protocol-stubs/SystemClockStub.kt" \
   "$ROOT/tests/protocol-stubs/ContextStub.kt" \
   "$ROOT/tests/protocol-stubs/WifiStub.kt" \
   "$ROOT/tests/protocol-stubs/NetworkStub.kt" \
@@ -19,6 +20,7 @@ kotlinc \
   "$ROOT/app/src/main/java/com/minhacamera/PhoneCameraUrls.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/Nv21Frames.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/PhoneCameraServer.kt" \
+  "$ROOT/app/src/main/java/com/minhacamera/PhoneStreamStats.kt" \
   "$ROOT/tests/ProtocolSmoke.kt" \
   -include-runtime -d "$BUILD/tests.jar"
 java -jar "$BUILD/tests.jar"

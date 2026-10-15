@@ -1,3 +1,11 @@
+## 1.4.19+29 — 2026-10-15
+
+- Transmissor exibe FPS efetivo, com contagem atômica e atualização a cada 2 s; receptor mede FPS efetivamente mostrado na tela.
+- Estimativa de atraso JPEG-publicado → quadro recebido usando timestamps monotônicos no multipart MJPEG e amostra de offset no handshake HTTP (não equivale à latência de captura/decodificação total).
+- Reconexão do receptor após perda temporária do Wi-Fi, com backoff 1/2/4/8 s e cancelamento no ciclo de vida; erro de token não é repetido automaticamente.
+- Mantidos MJPEG, gravação, câmera dupla experimental, interface de cinco ações, assinatura permanente e Secrets existentes; sem bibliotecas novas.
+- Kotlin/API Android e testes físicos ainda pendentes de compilação integral no GitHub Actions e ensaio de aparelhos.
+
 # Histórico de versões
 
 ## 1.4.18+28 — bateria e temperatura no vídeo ao vivo

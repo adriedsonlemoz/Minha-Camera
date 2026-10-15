@@ -1,5 +1,6 @@
 package com.minhacamera
 
+import android.os.SystemClock
 import java.io.BufferedInputStream
 import java.net.Inet4Address
 import java.net.ServerSocket
@@ -18,6 +19,7 @@ class PhoneCameraServer(address: Inet4Address, token: String) {
     private val frameLock = java.lang.Object()
     private var sequence = 0L
     private var latest: ByteArray? = null
+    private var latestAtMs = 0L
     @Volatile private var running = true
 
     fun start() {
@@ -43,6 +45,7 @@ class PhoneCameraServer(address: Inet4Address, token: String) {
         if (!running || jpeg.isEmpty() || jpeg.size > 1_048_576) return
         synchronized(frameLock) {
             latest = jpeg
+            latestAtMs = SystemClock.elapsedRealtime()
             sequence++
             frameLock.notifyAll()
         }
@@ -69,15 +72,17 @@ class PhoneCameraServer(address: Inet4Address, token: String) {
             out.write(("HTTP/1.1 200 OK\r\n" +
                 "Content-Type: multipart/x-mixed-replace; boundary=frame\r\n" +
                 "Cache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n" +
+                "X-Server-Elapsed-Ms: ${SystemClock.elapsedRealtime()}\r\n" +
                 "Connection: close\r\n\r\n").toByteArray(Charsets.US_ASCII))
             var last = 0L
             while (running && !peer.isClosed) {
                 val next = synchronized(frameLock) {
                     if (running && last == sequence) frameLock.wait(1500)
-                    if (sequence == last) null else { last = sequence; latest }
+                    if (sequence == last) null else { last = sequence; latest?.let { it to latestAtMs } }
                 } ?: continue
-                out.write(("--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${next.size}\r\n\r\n").toByteArray(Charsets.US_ASCII))
-                out.write(next)
+                out.write(("--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${next.first.size}\r\n" +
+                    "X-Frame-Elapsed-Ms: ${next.second}\r\n\r\n").toByteArray(Charsets.US_ASCII))
+                out.write(next.first)
                 out.write("\r\n".toByteArray(Charsets.US_ASCII))
                 out.flush()
             }

@@ -1,3 +1,16 @@
+# Minha Câmera 1.4.19 (versionCode 29)
+
+## FPS real e reconexão automática, sem aumentar dependências
+
+- Transmissor conta quadros MJPEG publicados; receptor conta quadros efetivamente mostrados. Interface compacta mostra FPS somente a cada 2 segundos.
+- Transmissão MJPEG inclui timestamps monotônicos autenticados pelo mesmo caminho/token da câmera. Receptor usa uma amostra do relógio do transmissor obtida na resposta HTTP para apresentar **atraso aproximado de entrega após gerar JPEG**. Não é medição exata da latência câmera-tela; diferença de relógios, rede e buffers afetam a estimativa. Ausência de amostra válida = `--`.
+- Em perda da conexão, receptor reconecta automaticamente com backoff de 1/2/4/8 s (máximo). Encerramento da tela interrompe imediatamente as tentativas. Token incorreto exige novo QR ou endereço correto e não gera reconexões infinitas.
+- Sem pacote de terceiros novo, sem encode extra, sem análise de imagem, mantendo todas as funções anteriores, assinatura e Secrets.
+
+**Limites:** servidor transmissor precisa permanecer com a tela ativa; mudança do IP local exige novo QR/endereço. Compilação Android, medição real e reconexão em dois aparelhos pendentes.
+
+---
+
 # Minha Câmera 1.4.18 (versionCode 28)
 
 ## Telemetria de bateria incorporada à transmissão

@@ -9,6 +9,10 @@
         android:layout_height="wrap_content" android:gravity="center"
         android:padding="12dp" android:text="@string/phone_connecting"
         android:textColor="@color/player_text" />
+    <TextView android:id="@+id/phoneViewerPerformance" android:layout_width="match_parent"
+        android:layout_height="wrap_content" android:gravity="center" android:padding="5dp"
+        android:text="@string/phone_performance_waiting" android:textColor="@color/player_muted"
+        android:textSize="12sp" />
     <Button android:id="@+id/phoneRetry" android:layout_width="match_parent"
         android:layout_height="wrap_content" android:text="@string/tentar_novamente" />
 </LinearLayout>

@@ -1,6 +1,6 @@
 # Minha Câmera
 
-**Versão atual: 1.4.18 (versionCode 28)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.19 (versionCode 29)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
 
 Desde a **1.4.13**, o projeto exige assinatura Release permanente por Secrets fixos do GitHub Actions e impede publicação com outro certificado. A chave privada fica fora do repositório. Consulte [assinatura permanente](docs/ASSINATURA_PERMANENTE.md) antes de instalar: a assinatura nova não é compatível com APKs antigos assinados por chave diferente.
 
@@ -57,11 +57,11 @@ A tela principal possui duas abas inferiores: **Câmeras** (câmeras RTSP/ONVIF 
 
 O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara Android SDK 36 e executa `gradle testProtocol testReleaseUnitTest assembleRelease` uma única vez, com cache. Publica cada APK individualmente, sem ZIP, em **Actions > Artifacts**:
 
-- `MinhaCamera-1.4.18-universal.apk`: todas as quatro ABIs, para distribuição geral.
-- `MinhaCamera-1.4.18-armeabi-v7a.apk`: Android ARM de 32 bits.
-- `MinhaCamera-1.4.18-arm64-v8a.apk`: Android ARM de 64 bits.
-- `MinhaCamera-1.4.18-x86_64.apk`: Android Intel de 64 bits/emuladores.
-- `MinhaCamera-1.4.18-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
+- `MinhaCamera-1.4.19-universal.apk`: todas as quatro ABIs, para distribuição geral.
+- `MinhaCamera-1.4.19-armeabi-v7a.apk`: Android ARM de 32 bits.
+- `MinhaCamera-1.4.19-arm64-v8a.apk`: Android ARM de 64 bits.
+- `MinhaCamera-1.4.19-x86_64.apk`: Android Intel de 64 bits/emuladores.
+- `MinhaCamera-1.4.19-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
 
 No workflow assinado, todos têm `com.minhacamera`, versão 1.4.18, código 28 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
 

@@ -50,6 +50,16 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private lateinit var dualTop: ImageView
     private lateinit var dualBottom: ImageView
     private lateinit var telemetryPreview: TextView
+    private lateinit var txPerformance: TextView
+    private val streamStats = PhoneStreamStats()
+    private val performanceTick = object : Runnable {
+        override fun run() {
+            if (!visible) return
+            val fps = streamStats.sample(SystemClock.elapsedRealtime())
+            if (fps != null && server != null) txPerformance.text = getString(R.string.phone_tx_fps, fps)
+            uiHandler.postDelayed(this, 2000)
+        }
+    }
     private val batteryTelemetry by lazy { PhoneBatteryTelemetry(applicationContext) }
     private val batteryOverlay = PhoneBatteryOverlay()
     @Volatile private var showBatteryOverlay = true
@@ -105,6 +115,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         address = findViewById(R.id.phoneAddress)
         placeholder = findViewById(R.id.previewPlaceholder)
         telemetryPreview = findViewById(R.id.phoneTelemetryPreview)
+        txPerformance = findViewById(R.id.phoneTxPerformance)
         showBatteryOverlay = getSharedPreferences("phone_video", MODE_PRIVATE)
             .getBoolean("show_battery_overlay", true)
         singlePreviewContainer = findViewById(R.id.phoneSinglePreview)
@@ -156,10 +167,17 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     override fun onResume() {
         super.onResume()
         visible = true
+        uiHandler.removeCallbacks(performanceTick)
+        uiHandler.postDelayed(performanceTick, 2000)
         surfaceReady = preview.isAvailable
         tryStart()
     }
-    override fun onPause() { visible = false; stopStreaming(); super.onPause() }
+    override fun onPause() {
+        visible = false
+        uiHandler.removeCallbacks(performanceTick)
+        stopStreaming()
+        super.onPause()
+    }
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         if (dualMode) { stopStreaming(); tryStart() }
@@ -168,6 +186,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     override fun onDestroy() {
         preview.surfaceTextureListener = null
         uiHandler.removeCallbacks(recordTick)
+        uiHandler.removeCallbacks(performanceTick)
         // Terminar gravações pendentes antes de encerrar o worker.
         worker.shutdown()
         recordWorker.shutdown()
@@ -261,6 +280,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             val session = PhoneCameraServer(ip, PhoneCameraAccess.token(this))
             lastTelemetryLabel = ""
             server = session
+            streamStats.reset(SystemClock.elapsedRealtime())
+            txPerformance.setText(R.string.phone_performance_waiting)
             worker = if (worker.isShutdown) Executors.newSingleThreadExecutor() else worker
             encoding.set(false)
             val byteCount = size.width * size.height * 3 / 2
@@ -360,6 +381,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         dualController = controller
         lastTelemetryLabel = ""
         server = session
+        streamStats.reset(SystemClock.elapsedRealtime())
+        txPerformance.setText(R.string.phone_performance_waiting)
         worker = if (worker.isShutdown) Executors.newSingleThreadExecutor() else worker
         session.start()
         address.text = session.url
@@ -390,6 +413,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         if (!visible || server !== session) return
         val encoded = jpeg.toByteArray()
         session.publish(encoded)
+        streamStats.frame()
         if (!publishedStreamFrame) {
             publishedStreamFrame = true
             runOnUiThread { if (visible && server === session && !recordingRequested) status.setText(R.string.phone_online) }
@@ -466,6 +490,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         recordIcon.setImageResource(if (active) R.drawable.ic_ui_stop else R.drawable.ic_ui_record)
         recordIcon.setColorFilter(if (active) 0xFFB22323.toInt() else 0xFF111827.toInt())
         uiHandler.removeCallbacks(recordTick)
+        uiHandler.removeCallbacks(performanceTick)
         if (active && recordingStartedAt > 0L) uiHandler.post(recordTick)
         if (!active) {
             recordingStartedAt = 0L
@@ -598,6 +623,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private fun stopStreaming() {
         recordingRequested = false
         uiHandler.removeCallbacks(recordTick)
+        uiHandler.removeCallbacks(performanceTick)
         showRecordState(false)
         try { recordWorker.execute { finishRecording() } } catch (_: Exception) { }
         dualController?.close()

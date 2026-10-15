@@ -155,6 +155,7 @@ private fun checkRtspSdpProbe() {
 }
 
 fun main() {
+    checkStreamStats()
     checkPhoneCamera()
     checkVideoGeometry()
     checkOnvifIdentity()
@@ -166,6 +167,9 @@ fun main() {
     checkDiscoveryXml()
     checkOnvifAdvertisedEndpoint()
     println("Testes simulados de protocolo concluídos")
+    // HttpServer de testes pode manter threads de keep-alive após stop(0).
+    // A execução CLI termina somente após todas as verificações aprovadas.
+    kotlin.system.exitProcess(0)
 }
 
 
@@ -268,6 +272,7 @@ private fun checkPhoneCamera() {
         good.readTimeout = 3000
         check(good.responseCode == 200)
         check(good.contentType.startsWith("multipart/x-mixed-replace"))
+        check((good.getHeaderField("X-Server-Elapsed-Ms")?.toLongOrNull() ?: 0L) > 0L)
         val data = java.io.BufferedInputStream(good.inputStream)
         val header = StringBuilder()
         while (!header.contains("\r\n\r\n")) {
@@ -276,6 +281,7 @@ private fun checkPhoneCamera() {
             header.append(c.toChar())
         }
         check(header.contains("Content-Length: ${fake.size}"))
+        check(Regex("X-Frame-Elapsed-Ms: [0-9]+").containsMatchIn(header))
         val read = ByteArray(fake.size)
         var count = 0
         while (count < read.size) {
@@ -292,4 +298,22 @@ private fun checkPhoneCamera() {
         bad.disconnect()
     } finally { server.stop() }
     println("OK: URL local, rotação NV21 e servidor MJPEG/token com quadro binário")
+}
+
+private fun checkStreamStats() {
+    val stats = PhoneStreamStats()
+    stats.reset(1000L)
+    repeat(22) { stats.frame() }
+    check(stats.sample(2000L) == null)
+    check(stats.sample(3000L) == 11)
+    check(stats.sample(3100L) == null)
+    check(stats.sample(5000L) == 0)
+    check((1..6).map { PhoneReconnectPolicy.delayMs(it) } ==
+        listOf(1000L, 2000L, 4000L, 8000L, 8000L, 8000L))
+    val offset = PhoneDeliveryDelay.offsetMs(500L, 540L, 9000L)
+    check(offset == -8480L)
+    check(PhoneDeliveryDelay.estimateMs(600L, 9000L, offset) == 80L)
+    check(PhoneDeliveryDelay.offsetMs(0L, 9000L, 1L) == null)
+    check(PhoneDeliveryDelay.estimateMs(100L, 9000L, offset) == null)
+    println("OK: FPS real, reconexão progressiva e atraso estimado com relógios distintos")
 }

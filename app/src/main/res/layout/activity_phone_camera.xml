@@ -34,6 +34,11 @@
                 android:layout_height="200dp" android:layout_marginTop="5dp" android:scaleType="fitCenter"
                 android:background="#4B4255" android:contentDescription="@string/phone_front_camera" />
         </LinearLayout>
+        <TextView android:id="@+id/phoneTxPerformance"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:gravity="end" android:paddingTop="5dp"
+            android:text="@string/phone_performance_waiting"
+            android:textColor="@color/ui_muted" android:textSize="12sp" />
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="12dp" android:orientation="horizontal" android:baselineAligned="false">
             <LinearLayout android:id="@+id/phoneSwitch" android:layout_width="0dp" android:layout_weight="1"
