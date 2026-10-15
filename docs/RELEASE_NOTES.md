@@ -1,3 +1,11 @@
+# Minha Câmera 1.4.33 (versionCode 43)
+
+- Nova tela inicial com câmeras IP e celulares unificados e ações explícitas.
+- Nova Central Multimídia, Configurações (temas e Sobre) e opção de contribuição por chave Pix.
+- Controles remotos Eco, REC, frente/trás e foto na transmissão com tela ligada; recusa clara quando REC impede a mudança.
+- Metadados reais de aparelho e resolução no cabeçalho de status quando disponíveis.
+- MJPEG/H.264 preservados. Cobrança pelo Google indisponível até configurar produtos no Play Console e Google Play Billing.
+
 # Minha Câmera 1.4.32 (versionCode 42)
 
 - Transmissão H.264 experimental com MediaCodec/LibVLC via HTTP local autenticado; MJPEG mantido como compatibilidade e fallback.

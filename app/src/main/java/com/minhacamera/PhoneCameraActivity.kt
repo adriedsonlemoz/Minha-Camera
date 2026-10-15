@@ -413,6 +413,9 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                     kotlin.math.abs(maxOf(it.width,it.height) - expectedWide)
             } ?: throw IllegalStateException("Preview indisponível")
             params.setPreviewSize(size.width, size.height)
+            params.supportedPictureSizes?.maxByOrNull { it.width.toLong() * it.height }?.let {
+                params.setPictureSize(it.width, it.height)
+            }
             params.previewFormat = ImageFormat.NV21
             if (params.supportedFocusModes?.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO) == true)
                 params.focusMode = Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO
@@ -440,6 +443,57 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             c.setPreviewTexture(preview.surfaceTexture
                 ?: throw IllegalStateException("Superfície da prévia indisponível"))
             val session = PhoneCameraServer(ip, PhoneCameraAccess.token(this),
+                changeRecording = { desired ->
+                    if (!visible || dualMode || (desired && server == null)) false else {
+                        runOnUiThread { if (visible && recordingRequested != desired) toggleRecording() }
+                        true
+                    }
+                },
+                changeEco = { desired ->
+                    if (!visible) false else {
+                        ecoEnabled = desired
+                        getSharedPreferences("phone_video", MODE_PRIVATE).edit().putBoolean("eco_enabled",desired).apply()
+                        true
+                    }
+                }, ecoStatus = { ecoEnabled },
+                changeFacing = { desired ->
+                    if (!visible || dualMode || recordingRequested ||
+                        desired !in listOf(Camera.CameraInfo.CAMERA_FACING_BACK,Camera.CameraInfo.CAMERA_FACING_FRONT) ||
+                        (0 until Camera.getNumberOfCameras()).none { id ->
+                            val info = Camera.CameraInfo()
+                            Camera.getCameraInfo(id, info); info.facing == desired
+                        }) false else {
+                        runOnUiThread {
+                            if (visible && !recordingRequested) {
+                                selectedFacing = desired; stopStreaming(); tryStart()
+                            }
+                        }
+                        true
+                    }
+                }, facingStatus = { selectedFacing },
+                takePhoto = {
+                    if (!visible || dualMode || recordingRequested || camera == null) false else {
+                        runOnUiThread {
+                            val activeCamera = camera
+                            if (activeCamera != null && visible && !recordingRequested) {
+                                try {
+                                    activeCamera.takePicture(null, null, Camera.PictureCallback { jpeg, source ->
+                                        if (jpeg != null) {
+                                            Thread({ PhoneRemotePhoto.save(applicationContext, jpeg) }, "remote-photo-save").start()
+                                        }
+                                        try { source.startPreview() } catch (e: Exception) {
+                                            PhoneStreamDiagnostics.add("Retomar camera apos foto: ${e.javaClass.simpleName}")
+                                            if (visible) { stopStreaming(); tryStart() }
+                                        }
+                                    })
+                                } catch (e: Exception) { PhoneStreamDiagnostics.add("Foto remota: ${e.javaClass.simpleName}") }
+                            }
+                        }
+                        true
+                    }
+                },
+                deviceModel = { Build.MODEL },
+                resolutionStatus = { "${previewWidth}x${previewHeight}" },
                 changeCodec = { desired ->
                     if (desired != "h264" || !visible || recordingRequested || dualMode) false
                     else {

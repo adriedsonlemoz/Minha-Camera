@@ -26,7 +26,7 @@ class RtspEnginePolicyTests(unittest.TestCase):
         self.assertEqual(manifest.count('android:supportsPictureInPicture="true"'), 2)
     def test_release_version(self):
         gradle=(ROOT/'app/build.gradle.kts').read_text()
-        self.assertIn('versionCode = 42', gradle)
-        self.assertIn('versionName = "1.4.32"', gradle)
+        self.assertIn('versionCode = 43', gradle)
+        self.assertIn('versionName = "1.4.33"', gradle)
 
 if __name__=='__main__': unittest.main()

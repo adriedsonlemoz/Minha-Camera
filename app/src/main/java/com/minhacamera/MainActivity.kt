@@ -40,12 +40,11 @@ class MainActivity : AppCompatActivity() {
     private lateinit var store: CameraStore
     private lateinit var listView: ListView
     private lateinit var adapter: CameraAdapter
-    private lateinit var phoneAdapter: CameraAdapter
     private var cams = mutableListOf<Camera>()
+    private val remoteDetails = mutableMapOf<String, String>()
 
     private var scanDialog: AlertDialog? = null
     private var scannerView: BarcodeView? = null
-    private var phoneTabSelected = false
 
     private val scanPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) openPhoneScanDialog()
@@ -89,37 +88,17 @@ class MainActivity : AppCompatActivity() {
 
         listView = findViewById(R.id.list)
         listView.emptyView = findViewById(R.id.empty)
-        val phoneList = findViewById<ListView>(R.id.phoneSavedList)
-        phoneList.emptyView = findViewById(R.id.phoneEmpty)
-        adapter = CameraAdapter(phoneOnly = false)
-        phoneAdapter = CameraAdapter(phoneOnly = true)
+        adapter = CameraAdapter()
         listView.adapter = adapter
-        phoneList.adapter = phoneAdapter
         refresh()
-        listView.setOnItemClickListener { _, _, pos, _ ->
-            openCamera(cams[indices(phoneOnly = false)[pos]])
+        listView.setOnItemClickListener { _, _, pos, _ -> openCamera(cams[pos]) }
+        listView.setOnItemLongClickListener { _, _, pos, _ -> showOptions(pos); true }
+        findViewById<View>(R.id.mainMore).setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
-        listView.setOnItemLongClickListener { _, _, pos, _ ->
-            showOptions(indices(phoneOnly = false)[pos]); true
+        findViewById<View>(R.id.mainMedia).setOnClickListener {
+            startActivity(Intent(this, MultimediaActivity::class.java))
         }
-        phoneList.setOnItemClickListener { _, _, pos, _ ->
-            openCamera(cams[indices(phoneOnly = true)[pos]])
-        }
-        phoneList.setOnItemLongClickListener { _, _, pos, _ ->
-            showOptions(indices(phoneOnly = true)[pos]); true
-        }
-
-        findViewById<View>(R.id.mainMore).setOnClickListener { anchor ->
-            PopupMenu(this, anchor).apply {
-                menu.add(0, 1001, 0, R.string.novidades)
-                menu.add(0, 1002, 1, R.string.gravacoes)
-                menu.add(0, 1003, 2, R.string.phone_add)
-                setOnMenuItemClickListener { item -> onOptionsItemSelected(item) }
-                show()
-            }
-        }
-        findViewById<View>(R.id.mainTabCameras).setOnClickListener { showTab(false) }
-        findViewById<View>(R.id.mainTabPhone).setOnClickListener { showTab(true) }
         findViewById<View>(R.id.roleTransmit).setOnClickListener {
             startActivity(Intent(this, PhoneCameraActivity::class.java))
         }
@@ -131,7 +110,6 @@ class MainActivity : AppCompatActivity() {
         findViewById<View>(R.id.mainScan).setOnClickListener {
             startActivity(Intent(this, ScanActivity::class.java))
         }
-        showTab(savedInstanceState?.getBoolean("phoneTabSelected") == true)
         if (savedInstanceState == null) window.decorView.postDelayed({ showWelcomeAfterUpdate() }, 600)
     }
 
@@ -186,19 +164,7 @@ class MainActivity : AppCompatActivity() {
         return super.onOptionsItemSelected(item)
     }
 
-    private fun choosePhoneRole() = showTab(true)
-
-    private fun showTab(phone: Boolean) {
-        phoneTabSelected = phone
-        findViewById<View>(R.id.camerasSection).visibility = if (phone) View.GONE else View.VISIBLE
-        findViewById<View>(R.id.phoneSection).visibility = if (phone) View.VISIBLE else View.GONE
-        findViewById<View>(R.id.mainTabCameras).setBackgroundResource(
-            if (phone) R.drawable.bg_ui_card else R.drawable.bg_ui_selected)
-        findViewById<View>(R.id.mainTabPhone).setBackgroundResource(
-            if (phone) R.drawable.bg_ui_selected else R.drawable.bg_ui_card)
-        findViewById<TextView>(R.id.mainSubtitle).setText(
-            if (phone) R.string.ui_phone_title else R.string.ui_home_subtitle)
-    }
+    private fun choosePhoneRole() { startActivity(Intent(this, PhoneCameraActivity::class.java)) }
 
     private fun startPhoneQrScanner() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -237,15 +203,11 @@ class MainActivity : AppCompatActivity() {
         barcode.resume()
     }
 
-    override fun onSaveInstanceState(outState: Bundle) {
-        outState.putBoolean("phoneTabSelected", phoneTabSelected)
-        super.onSaveInstanceState(outState)
-    }
-
     override fun onResume() {
         super.onResume()
         cams = store.load()
         refresh()
+        refreshDeviceMetadata()
         if (scanDialog?.isShowing == true) scannerView?.resume()
     }
 
@@ -263,40 +225,80 @@ class MainActivity : AppCompatActivity() {
 
     private fun refresh() {
         adapter.notifyDataSetChanged()
-        phoneAdapter.notifyDataSetChanged()
     }
 
-    private fun indices(phoneOnly: Boolean): List<Int> =
-        cams.indices.filter { isPhoneCamera(cams[it]) == phoneOnly }
+    /** Consulta apenas /control/<token>/status para celulares; nunca presume capacidades RTSP. */
+    private fun refreshDeviceMetadata() {
+        val phones = cams.filter { isPhoneCamera(it) }.take(20)
+        if (phones.isEmpty()) return
+        Thread({
+            NetUtil.bindToWifi(applicationContext)
+            for (camera in phones) {
+                val endpoint = PhoneCameraUrls.statusUrl(camera.url) ?: continue
+                try {
+                    val conn = java.net.URL(endpoint).openConnection() as java.net.HttpURLConnection
+                    try {
+                        conn.connectTimeout = 1000; conn.readTimeout = 1000; conn.useCaches = false
+                        if (conn.responseCode != 200) continue
+                        val model = conn.getHeaderField("X-Device-Model")?.take(48)?.trim().orEmpty()
+                        val resolution = conn.getHeaderField("X-Resolution")?.take(18)?.trim().orEmpty()
+                        val fps = conn.getHeaderField("X-FPS-Target")?.toIntOrNull()
+                        val details = buildList {
+                            if (model.isNotBlank()) add(model)
+                            if (resolution.matches(Regex("[0-9]{1,5}x[0-9]{1,5}"))) add(resolution.replace('x','×'))
+                            if (fps != null && fps > 0) add("$fps FPS alvo")
+                        }.joinToString(" · ")
+                        if (details.isNotBlank()) runOnUiThread {
+                            if (!isFinishing && !isDestroyed) {
+                                remoteDetails[camera.url] = details
+                                refresh()
+                            }
+                        }
+                    } finally { conn.disconnect() }
+                } catch (_: Exception) { /* aparelho offline; mantém a informação previamente conhecida */ }
+            }
+        }, "device-metadata").apply { isDaemon = true; start() }
+    }
+
 
     private fun isPhoneCamera(camera: Camera): Boolean = camera.url.startsWith("http://", true)
 
     private fun showPhoneDialog(position: Int? = null) {
-        val text = EditText(this).apply {
+        val nameInput = EditText(this).apply {
+            hint = getString(R.string.home_device_phone)
+            setSingleLine(true)
+            setText(position?.let { cams[it].name }.orEmpty())
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
+        }
+        val linkInput = EditText(this).apply {
             hint = getString(R.string.phone_enter_url)
             setSingleLine(false)
             setText(position?.let { cams[it].url }.orEmpty())
-            setPadding(28, 22, 28, 22)
             inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
+        }
+        val fields = android.widget.LinearLayout(this).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding(28, 12, 28, 12)
+            addView(nameInput)
+            addView(linkInput)
         }
         val dialog = AlertDialog.Builder(this)
             .setTitle(if (position == null) R.string.phone_add else R.string.editar_camera)
-            .setView(text)
+            .setView(fields)
             .setPositiveButton(R.string.salvar, null)
             .setNegativeButton(R.string.cancelar, null)
             .create()
         dialog.show()
         dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
-            val normalized = PhoneCameraUrls.normalize(text.text.toString())
+            val normalized = PhoneCameraUrls.normalize(linkInput.text.toString())
             if (normalized == null) {
-                text.error = getString(R.string.phone_invalid_url)
+                linkInput.error = getString(R.string.phone_invalid_url)
                 return@setOnClickListener
             }
-            if (position != null) cams[position] = cams[position].copy(url = normalized)
-            else {
-                val host = Uri.parse(normalized).host.orEmpty()
-                cams.add(Camera("Celular $host", normalized))
-            }
+            val host = Uri.parse(normalized).host.orEmpty()
+            val desiredName = nameInput.text.toString().trim().take(64).ifBlank { "Celular $host" }
+            if (position != null) cams[position] = cams[position].copy(name = desiredName, url = normalized)
+            else cams.add(Camera(desiredName, normalized))
             store.save(cams)
             refresh()
             dialog.dismiss()
@@ -359,7 +361,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun infoSummary(camera: Camera): String {
-        if (isPhoneCamera(camera)) return getString(R.string.phone_mjpeg_label)
+        if (isPhoneCamera(camera)) {
+            val known = remoteDetails[camera.url] ?: getString(R.string.home_resolution_unknown)
+            return getString(R.string.home_device_phone) + " · " + known
+        }
         val parsed = CameraFormUi.parseRtsp(camera.url)
         val pathLabel = CameraFormUi.normalizePathChoice(parsed.path).ifEmpty { getString(R.string.default_option) }
         val alternativos = if (camera.alts.isEmpty()) {
@@ -367,7 +372,8 @@ class MainActivity : AppCompatActivity() {
         } else {
             getString(R.string.com_alternativos, camera.alts.size)
         }
-        return getString(R.string.resumo_camera_salva, parsed.user.ifBlank { "-" }, pathLabel, alternativos)
+        return getString(R.string.home_device_ip) + " · " +
+            getString(R.string.resumo_camera_salva, parsed.user.ifBlank { "-" }, pathLabel, alternativos)
     }
 
     private fun showOptions(pos: Int) {
@@ -456,21 +462,25 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    private inner class CameraAdapter(private val phoneOnly: Boolean) : BaseAdapter() {
-        override fun getCount(): Int = indices(phoneOnly).size
-        override fun getItem(position: Int): Any = cams[indices(phoneOnly)[position]]
-        override fun getItemId(position: Int): Long = indices(phoneOnly)[position].toLong()
+    private inner class CameraAdapter : BaseAdapter() {
+        override fun getCount(): Int = cams.size
+        override fun getItem(position: Int): Any = cams[position]
+        override fun getItemId(position: Int): Long = position.toLong()
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
             val view = convertView ?: LayoutInflater.from(parent.context).inflate(R.layout.item_camera, parent, false)
-            val realPosition = indices(phoneOnly)[position]
+            val realPosition = position
             val camera = cams[realPosition]
-            view.findViewById<TextView>(R.id.tvName).text = camera.name
+            view.findViewById<TextView>(R.id.tvName).text =
+                (if (isPhoneCamera(camera)) "📱 " else "📷 ") + camera.name
             view.findViewById<TextView>(R.id.tvMasked).text = masked(camera.url)
             view.findViewById<TextView>(R.id.tvInfo).text = infoSummary(camera)
             view.findViewById<MaterialButton>(R.id.btnOpen).setOnClickListener { openCamera(camera) }
             view.findViewById<MaterialButton>(R.id.btnCopy).setOnClickListener { copyCameraUrl(camera) }
-            view.findViewById<MaterialButton>(R.id.btnMore).setOnClickListener { showOptions(realPosition) }
+            view.findViewById<MaterialButton>(R.id.btnEdit).setOnClickListener { showEditDialog(realPosition) }
+            view.findViewById<MaterialButton>(R.id.btnDelete).setOnClickListener { confirmDelete(realPosition) }
+            view.findViewById<MaterialButton>(R.id.btnCopy).text =
+                if (isPhoneCamera(camera)) getString(R.string.ui_link_copy) else getString(R.string.copiar_rtsp)
             return view
         }
     }

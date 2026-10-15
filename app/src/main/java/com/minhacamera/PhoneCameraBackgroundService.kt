@@ -96,6 +96,7 @@ class PhoneCameraBackgroundService : Service() {
     private var camera: Camera? = null
     private var headlessPreview: PhoneHeadlessPreview? = null
     private var selectedFacing = Camera.CameraInfo.CAMERA_FACING_BACK
+    @Volatile private var remoteResolution = ""
     @Volatile private var requestedQuality = 480
     @Volatile private var fpsLimit = 10
     @Volatile private var switching = false
@@ -252,6 +253,8 @@ class PhoneCameraBackgroundService : Service() {
                 (SystemClock.elapsedRealtime() - transmissionStartedMs).coerceAtLeast(0) / 1000 else 0L },
             requestKeyframe = { encodeWorker.execute { liveEncoder?.requestKeyframe() } },
             diagnostics = { diagnosis() },
+            deviceModel = { Build.MODEL },
+            resolutionStatus = { remoteResolution },
             recordingSeconds = { if (recording) ((SystemClock.elapsedRealtime() - recordingStartMs) / 1000).coerceAtLeast(0) else 0 },
             changeEco = { desired ->
                 if (!running || closing) false else {
@@ -356,6 +359,7 @@ class PhoneCameraBackgroundService : Service() {
         val target = quality // altura da imagem em paisagem é o lado menor (360/480/720).
         val size = sizes.minByOrNull { kotlin.math.abs(minOf(it.width, it.height) - target) * 10 +
             kotlin.math.abs(maxOf(it.width, it.height) - target * (if (target == 768) 4 else 16) / (if (target == 768) 3 else 9)) } ?: throw IllegalStateException("Resolução indisponível")
+        remoteResolution = "${size.width}x${size.height}"
         params.setPreviewSize(size.width, size.height)
         params.previewFormat = ImageFormat.NV21
         val photo = params.supportedPictureSizes.orEmpty().maxByOrNull { it.width.toLong() * it.height }

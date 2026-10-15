@@ -429,26 +429,43 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             return
         }
         Thread({
+            var reason: String? = null
             val ok = try {
                 NetUtil.bindToWifi(applicationContext)
                 val conn = URL(endpoint).openConnection() as HttpURLConnection
                 try {
                     conn.requestMethod = "POST"
-                    conn.connectTimeout = 3000
-                    conn.readTimeout = 3000
+                    conn.connectTimeout = 3500
+                    conn.readTimeout = 3500
                     conn.instanceFollowRedirects = false
                     conn.setRequestProperty("Content-Length", "0")
-                    conn.responseCode == 204
+                    val status = conn.responseCode
+                    reason = conn.getHeaderField("X-Control-Reason")
+                    status == 204
                 } finally { conn.disconnect() }
             } catch (_: Exception) { false }
             runOnUiThread {
                 if (!isFinishing && !isDestroyed) {
                     if (ok) onSuccess()
-                    Toast.makeText(this, if (ok) notice else R.string.viewer_remote_command_failed,
-                        Toast.LENGTH_LONG).show()
+                    val message = if (ok) getString(notice) else when (reason) {
+                        "recording-active" -> getString(R.string.remote_blocked_recording)
+                        "unsupported-mode" -> getString(R.string.remote_unsupported_mode)
+                        else -> getString(R.string.viewer_remote_command_failed)
+                    }
+                    Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+                    if (ok) refreshRemoteStatusSoon()
                 }
             }
         }, "camera-remote-command").apply { isDaemon = true; start() }
+    }
+
+    private fun refreshRemoteStatusSoon() {
+        statusHandler.postDelayed({
+            if (!isFinishing && !isDestroyed) Thread({
+                val state = probeStatus()
+                runOnUiThread { if (!isFinishing && !isDestroyed) applyRemoteStatus(state) }
+            }, "remote-state-refresh").apply { isDaemon = true; start() }
+        }, 950)
     }
 
     private fun chooseRemoteCodec() {
@@ -653,31 +670,10 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         }, "phone-record-command").apply { isDaemon = true; start() }
     }
 
-    /** Eco controla apenas o serviço persistente. POST autenticado pelo token local. */
+    /** Eco funciona no serviço e no modo de transmissão com a tela ligada. */
     private fun setRemoteEco(enabled: Boolean) {
-        val endpoint = PhoneCameraUrls.ecoCommandUrl(intent.getStringExtra("url").orEmpty(), enabled)
-            ?: run { Toast.makeText(this, R.string.phone_invalid_url, Toast.LENGTH_LONG).show(); return }
-        Thread({
-            val success = try {
-                NetUtil.bindToWifi(applicationContext)
-                val conn = URL(endpoint).openConnection() as HttpURLConnection
-                try {
-                    conn.requestMethod = "POST"
-                    conn.connectTimeout = 3000
-                    conn.readTimeout = 3000
-                    conn.instanceFollowRedirects = false
-                    conn.setRequestProperty("Content-Length", "0")
-                    conn.responseCode == 204
-                } finally { conn.disconnect() }
-            } catch (_: Exception) { false }
-            runOnUiThread {
-                if (!isFinishing && !isDestroyed) {
-                    if (success) remoteEco = enabled
-                    updateEcoUi()
-                    Toast.makeText(this, if (success) R.string.viewer_eco_updated else R.string.viewer_eco_unavailable, Toast.LENGTH_LONG).show()
-                }
-            }
-        }, "phone-eco-command").apply { isDaemon = true; start() }
+        postRemote(PhoneCameraUrls.ecoCommandUrl(intent.getStringExtra("url").orEmpty(), enabled),
+            R.string.viewer_eco_updated) { remoteEco = enabled; updateEcoUi() }
     }
 
     private fun updateEcoUi() {

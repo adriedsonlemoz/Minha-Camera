@@ -29,7 +29,9 @@ class PhoneCameraServer(
     private val codecStatus: (() -> String)? = null,
     private val transmissionSeconds: (() -> Long)? = null,
     private val requestKeyframe: (() -> Unit)? = null,
-    private val diagnostics: (() -> String)? = null
+    private val diagnostics: (() -> String)? = null,
+    private val deviceModel: (() -> String)? = null,
+    private val resolutionStatus: (() -> String)? = null
 ) {
     init { require(token.matches(Regex("[0-9a-f]{32}"))) }
     private val server = ServerSocket(8765, 4, address)
@@ -157,6 +159,12 @@ class PhoneCameraServer(
                 val status = buildString {
                     append("HTTP/1.1 200 OK\r\nCache-Control: no-store\r\n")
                     append("X-Stream-Codec: ${codecStatus?.invoke() ?: "mjpeg"}\r\n")
+                    deviceModel?.invoke()?.replace(Regex("[^A-Za-z0-9 ._\\-]"), "")?.take(48)?.let {
+                        append("X-Device-Model: $it\r\n")
+                    }
+                    resolutionStatus?.invoke()?.let { if (it.matches(Regex("[0-9]{1,5}x[0-9]{1,5}")))
+                        append("X-Resolution: $it\r\n") }
+
                     synchronized(frameLock) {
                         latestBattery?.levelPercent?.let { append("X-Battery-Level: $it\r\n") }
                         latestBattery?.temperatureTenthsC?.let { append("X-Battery-Temp-Tenths: $it\r\n") }
@@ -200,15 +208,22 @@ class PhoneCameraServer(
                     }
                 } catch (_: Exception) { false }
                 val status = if (success) "204 No Content" else "409 Conflict"
+                val reason = if (success) "" else if (recordingStatus?.invoke() == true &&
+                    (qualityAction != null || cameraAction != null || photoAction)) "recording-active"
+                    else if ((qualityAction != null && changeQuality == null) ||
+                        (fpsAction != null && changeFps == null) ||
+                        (cameraAction != null && changeFacing == null) ||
+                        (photoAction && takePhoto == null)) "unsupported-mode" else "command-rejected"
                 peer.getOutputStream().write(("HTTP/1.1 $status\r\nCache-Control: no-store\r\n" +
-                    "Connection: close\r\nContent-Length: 0\r\n\r\n").toByteArray(Charsets.US_ASCII))
+                    "X-Control-Reason: $reason\r\nConnection: close\r\nContent-Length: 0\r\n\r\n").toByteArray(Charsets.US_ASCII))
                 return
             }
             if (ecoAction != null) {
                 val success = try { changeEco?.invoke(ecoAction) == true } catch (_: Exception) { false }
                 val status = if (success) "204 No Content" else "409 Conflict"
+                val reason = if (success) "" else if (changeEco == null) "unsupported-mode" else "command-rejected"
                 peer.getOutputStream().write(("HTTP/1.1 $status\r\nCache-Control: no-store\r\n" +
-                    "Connection: close\r\nContent-Length: 0\r\n\r\n").toByteArray(Charsets.US_ASCII))
+                    "X-Control-Reason: $reason\r\nConnection: close\r\nContent-Length: 0\r\n\r\n").toByteArray(Charsets.US_ASCII))
                 return
             }
             if (recordAction != null) {

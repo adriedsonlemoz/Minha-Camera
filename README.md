@@ -1,6 +1,13 @@
 # Minha Câmera
 
-**Versão atual: 1.4.32 (versionCode 42)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.33 (versionCode 43)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Tela inicial unificada 1.4.33:** Câmeras RTSP e celulares HTTP na mesma lista, com ícones de tipo e botões Abrir, Copiar, Editar e Excluir visíveis. O topo concentra Transmitir, Assistir e a engrenagem de Configurações; a Central Multimídia permite acessar gravações RTSP e selecionar fotos/vídeos do dispositivo. Modelo, FPS alvo e resolução real aparecem quando informados pelo transmissor conectado, sem inventar dados de câmeras IP.
+
+**Comandos remotos 1.4.33:** Eco, REC, troca de câmera e foto nativa agora também possuem rotas no transmissor com tela ligada, além do serviço persistente. Mudanças que comprometeriam uma gravação MP4 permanecem bloqueadas, mas o receptor informa o motivo. O botão Refazer passa a ser chamado Reconectar e só reinicia a conexão do receptor.
+
+**Configurações 1.4.33:** tema conforme sistema/claro/escuro/AMOLED, Sobre com últimas 3 versões e apoio voluntário por chave Pix fornecida. Valores sugeridos pelo Google são apenas informativos até configurar Play Console e Google Play Billing; nenhuma cobrança é simulada.
+
 
 Desde a **1.4.13**, o projeto exige assinatura Release permanente por Secrets fixos do GitHub Actions e impede publicação com outro certificado. A chave privada fica fora do repositório. Consulte [assinatura permanente](docs/ASSINATURA_PERMANENTE.md) antes de instalar: a assinatura nova não é compatível com APKs antigos assinados por chave diferente.
 
@@ -91,13 +98,13 @@ Em **Celular → Assistir**, o receptor permanece em orientação vertical e mos
 
 O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara Android SDK 36 e executa `gradle testProtocol testReleaseUnitTest assembleRelease` uma única vez, com cache. Publica cada APK individualmente, sem ZIP, em **Actions > Artifacts**:
 
-- `MinhaCamera-1.4.32-universal.apk`: todas as quatro ABIs, para distribuição geral.
-- `MinhaCamera-1.4.32-armeabi-v7a.apk`: Android ARM de 32 bits.
-- `MinhaCamera-1.4.32-arm64-v8a.apk`: Android ARM de 64 bits.
-- `MinhaCamera-1.4.32-x86_64.apk`: Android Intel de 64 bits/emuladores.
-- `MinhaCamera-1.4.32-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
+- `MinhaCamera-1.4.33-universal.apk`: todas as quatro ABIs, para distribuição geral.
+- `MinhaCamera-1.4.33-armeabi-v7a.apk`: Android ARM de 32 bits.
+- `MinhaCamera-1.4.33-arm64-v8a.apk`: Android ARM de 64 bits.
+- `MinhaCamera-1.4.33-x86_64.apk`: Android Intel de 64 bits/emuladores.
+- `MinhaCamera-1.4.33-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
 
-No workflow assinado, todos têm `com.minhacamera`, versão 1.4.32, código 42 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
+No workflow assinado, todos têm `com.minhacamera`, versão 1.4.33, código 43 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
 
 A 1.4.16 corrige o bloqueio do Build APK 18 causado por KEYSTORE_BASE64 inválido. O workflow prefere o novo Secret KEYSTORE_HEX, composto apenas de dígitos e letras a–f, mantendo Base64 como alternativa legada. É obrigatório importar KEYSTORE_HEX e conferir os outros três Secrets antes do novo build. O certificado original é mantido; nenhuma chave foi regenerada.
 

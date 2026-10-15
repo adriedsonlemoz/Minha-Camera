@@ -1,1 +1,7 @@
-<resources><color name="brand_primary">#87B9FF</color><color name="brand_on_primary">#072F60</color><color name="brand_secondary">#60E1D7</color><color name="app_background">#0D1624</color><color name="app_surface">#172337</color><color name="app_text">#E6F0FC</color><color name="app_outline">#2B3C53</color><color name="ui_selected">#1B3856</color><color name="ui_muted">#9DAEC4</color></resources>
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+ <color name="brand_primary">#317ACC</color><color name="brand_on_primary">#FFFFFF</color><color name="brand_secondary">#4FC0CC</color>
+ <color name="app_background">#111722</color><color name="app_surface">#1A2635</color><color name="app_text">#F1F5FB</color><color name="app_outline">#354358</color>
+ <color name="player_background">#090F19</color><color name="player_panel">#142033</color><color name="player_text">#F0F6FF</color><color name="player_muted">#A9B8CA</color><color name="live_accent">#60E1D7</color>
+ <color name="ui_selected">#29435C</color><color name="ui_muted">#B3C1D1</color>
+</resources>

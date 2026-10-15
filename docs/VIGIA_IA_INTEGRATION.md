@@ -1,6 +1,6 @@
 # Descobertas do Minha Câmera úteis para o Vigia IA
 
-Atualizado em **1.4.32+42** (2026-10-15).
+Atualizado em **1.4.33+43** (2026-10-15).
 
 Este material serve como registro técnico: **não significa que o Vigia IA foi modificado**.
 
@@ -112,3 +112,6 @@ Os testes simulados da 1.4.2 validam o **parser SDP e a sondagem RTSP**, não a 
 
 ## Codec experimental e métricas (1.4.32+42)
 O transmissor permite MJPEG legado em `/live/TOKEN` e H.264/AVC experimental Annex-B por HTTP em `/h264/TOKEN`, com o mesmo token privado. O receptor Minha Câmera utiliza LibVLC com `demux=h264` (não RTSP). Consulte `GET /control/TOKEN/status` para `X-Stream-Codec`, cronômetro e parâmetros, `POST /control/TOKEN/codec/mjpeg` ou `/codec/h264` para alternar e `GET /control/TOKEN/diagnostic` para relatório sem credenciais. O Vigia IA deverá tratar codecs separados, detectar erros, não assumir compatibilidade H.264 até teste real e preservar MJPEG como fallback.
+
+## Metadados e controles em 1.4.33+43
+O GET /control/<token>/status inclui X-Device-Model e X-Resolution quando disponibilizados e sanitizados pelo transmissor. Comandos POST podem responder 409 com X-Control-Reason: recording-active / unsupported-mode / command-rejected. O futuro receptor Vigia IA deve mostrar a causa sem reexecutar automaticamente ações destrutivas. Acessos continuam exclusivamente na LAN e exigem token.

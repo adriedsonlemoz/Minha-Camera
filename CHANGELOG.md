@@ -1,3 +1,11 @@
+## 1.4.33+43 — 2026-10-15
+- Tela inicial reformulada: câmeras IP RTSP e celulares HTTP na mesma lista, ações Abrir/Copiar/Editar/Excluir visíveis e atalhos Transmitir/Assistir no topo.
+- Central Multimídia com gravações RTSP e seleção de fotos/vídeos do dispositivo.
+- Engrenagem Configurações, temas claro/escuro/sistema/AMOLED, Sobre com três últimas versões e apoio voluntário por Pix; apoio pelo Google apresentado sem cobrança até configuração do Billing.
+- Eco/REC/troca de câmera/foto nativa no servidor do transmissor com tela ligada; status de modelo/resolução para identificar aparelhos remotos.
+- Respostas de controle diferenciam bloqueio por gravação MP4 de funções indisponíveis; o botão Refazer foi renomeado Reconectar.
+- MJPEG/H.264, diagnósticos, modo de tela apagada e assinatura permanente preservados.
+
 ## 1.4.32+42 — 2026-10-15
 - H.264/AVC **experimental** adicionado para transmissão pela rede local, com codificação MediaCodec e playback LibVLC da rota autenticada `/h264/TOKEN`. MJPEG permanece padrão e como fallback.
 - Seletores MJPEG/H.264 no topo do transmissor e receptor, escolha remota autenticada, recuperação ao mudar de codec.
