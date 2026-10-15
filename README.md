@@ -1,6 +1,6 @@
 # Minha Câmera
 
-**Versão atual: 1.4.26 (versionCode 36)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.27 (versionCode 37)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
 
 Desde a **1.4.13**, o projeto exige assinatura Release permanente por Secrets fixos do GitHub Actions e impede publicação com outro certificado. A chave privada fica fora do repositório. Consulte [assinatura permanente](docs/ASSINATURA_PERMANENTE.md) antes de instalar: a assinatura nova não é compatível com APKs antigos assinados por chave diferente.
 
@@ -15,6 +15,10 @@ Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.8 organiz
 ## Janela flutuante PiP (1.4.25)
 
 No receptor **Celular → Assistir**, aguarde a primeira imagem e escolha **Mais → Janela flutuante (PiP)**. No player RTSP, use o botão **PiP** na barra inferior (ou o menu), após aparecer o primeiro quadro e antes de iniciar qualquer gravação. Em seguida é possível abrir o app de mapas com o vídeo visível. No PiP, o receptor MJPEG mantém leitura e reconexão enquanto sua Activity permanece visível; ao fechar o PiP, interrompe a rede. O transmissor NÃO passa a transmitir com a tela apagada nem em segundo plano. Requer Android 8+ e suporte do fabricante ao PiP; sem permissão "Exibir sobre outros apps". O uso real em Xiaomi/HyperOS é pendente.
+
+**Modo com tela apagada 1.4.27:** em **Celular → Transmitir → Mais → Manter transmitindo com tela apagada**, o aplicativo transfere a câmera única para um `ForegroundService` de tipo `camera`, usando uma `SurfaceTexture` independente da Activity. A transmissão MJPEG continua ao bloquear a tela, com gravação MP4 opcional pelo botão Gravar ou ação da notificação, e parada manual na notificação ou em Mais. A gravação deve ser iniciada no modo persistente, antes de bloquear a tela. Dual Camera não é suportada no modo persistente. O Android pode interromper o serviço por restrições do fabricante, bateria ou temperatura, então o Redmi A3 deve ser testado fisicamente. Não reinicia automaticamente após o sistema encerrar o processo.
+
+**Indicadores:** a bateria e a temperatura vêm dos cabeçalhos MJPEG, sem serem incorporadas aos pixels do vídeo ou MP4. O receptor exibe somente `🔋 77% · 39,0°C` e acrescenta `⚡` quando detecta carregamento. Em **Assistir → Mais → Indicadores do vídeo e PiP**, bateria, temperatura e raio podem ser ativados individualmente. Não exibe corrente média nem texto "sem carga" dentro do PiP. O selo local no transmissor também é apenas uma View.
 
 **Correção RTSP 1.4.26**: o log identificou `NullPointerException` em `RtspClient.java:544` (Media3 1.3.1), ligada à tentativa de usar `CSeq` de uma resposta RTSP sem o campo disponível. Agora o app usa **LibVLC diretamente** para vídeo IP, novas tentativas e URLs alternativas; a opção Media3 fica temporariamente indisponível, pois sua falha em thread interna escapava do fallback. O Media3 permanece no código para investigação futura, mas não é iniciado no fluxo normal. Continuamos sem captura dos pacotes do servidor e sem teste físico de câmera. O registro privado de crashes Java/Kotlin é mantido, sem URLs/senhas.
 
@@ -77,13 +81,13 @@ Em **Celular → Assistir**, o receptor permanece em orientação vertical e mos
 
 O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara Android SDK 36 e executa `gradle testProtocol testReleaseUnitTest assembleRelease` uma única vez, com cache. Publica cada APK individualmente, sem ZIP, em **Actions > Artifacts**:
 
-- `MinhaCamera-1.4.26-universal.apk`: todas as quatro ABIs, para distribuição geral.
-- `MinhaCamera-1.4.26-armeabi-v7a.apk`: Android ARM de 32 bits.
-- `MinhaCamera-1.4.26-arm64-v8a.apk`: Android ARM de 64 bits.
-- `MinhaCamera-1.4.26-x86_64.apk`: Android Intel de 64 bits/emuladores.
-- `MinhaCamera-1.4.26-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
+- `MinhaCamera-1.4.27-universal.apk`: todas as quatro ABIs, para distribuição geral.
+- `MinhaCamera-1.4.27-armeabi-v7a.apk`: Android ARM de 32 bits.
+- `MinhaCamera-1.4.27-arm64-v8a.apk`: Android ARM de 64 bits.
+- `MinhaCamera-1.4.27-x86_64.apk`: Android Intel de 64 bits/emuladores.
+- `MinhaCamera-1.4.27-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
 
-No workflow assinado, todos têm `com.minhacamera`, versão 1.4.26, código 36 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
+No workflow assinado, todos têm `com.minhacamera`, versão 1.4.27, código 37 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
 
 A 1.4.16 corrige o bloqueio do Build APK 18 causado por KEYSTORE_BASE64 inválido. O workflow prefere o novo Secret KEYSTORE_HEX, composto apenas de dígitos e letras a–f, mantendo Base64 como alternativa legada. É obrigatório importar KEYSTORE_HEX e conferir os outros três Secrets antes do novo build. O certificado original é mantido; nenhuma chave foi regenerada.
 

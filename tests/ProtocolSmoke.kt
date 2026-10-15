@@ -158,6 +158,7 @@ fun main() {
     checkPhoneEcoPolicy()
     checkStreamStats()
     checkPhoneCamera()
+    checkRemoteRecordingApi()
     checkVideoGeometry()
     checkOnvifIdentity()
     checkRecordingFiles()
@@ -324,4 +325,42 @@ private fun checkStreamStats() {
     check(PhoneDeliveryDelay.offsetMs(0L, 9000L, 1L) == null)
     check(PhoneDeliveryDelay.estimateMs(100L, 9000L, offset) == null)
     println("OK: FPS real, reconexão progressiva e atraso estimado com relógios distintos")
+}
+
+private fun checkRemoteRecordingApi() {
+    val token = "abcdef0123456789abcdef0123456789"
+    val privateUrl = "http://192.168.12.2:8765/live/$token"
+    check(PhoneCameraUrls.recordingCommandUrl(privateUrl, true) ==
+        "http://192.168.12.2:8765/control/$token/record/start")
+    check(PhoneCameraUrls.recordingCommandUrl(privateUrl, false) ==
+        "http://192.168.12.2:8765/control/$token/record/stop")
+    check(PhoneCameraUrls.recordingCommandUrl("http://8.8.8.8:8765/live/$token", true) == null)
+    check(PhoneCameraUrls.recordingCommandUrl("http://192.168.12.2:8765/live/invalid", true) == null)
+    val localhost = java.net.InetAddress.getByName("127.0.0.1") as java.net.Inet4Address
+    var recording = false
+    val server = PhoneCameraServer(localhost, token,
+        changeRecording = { wanted -> recording = wanted; true },
+        recordingStatus = { recording })
+    server.start()
+    try {
+        fun command(path: String, method: String = "POST"): Int {
+            val connection = java.net.URL(server.url.substringBefore("/live/") + path)
+                .openConnection() as java.net.HttpURLConnection
+            try {
+                connection.requestMethod = method
+                connection.readTimeout = 3000
+                connection.connectTimeout = 3000
+                return connection.responseCode
+            } finally { connection.disconnect() }
+        }
+        check(command("/control/$token/record/start") == 204)
+        check(recording)
+        check(command("/control/$token/record/stop") == 204)
+        check(!recording)
+        check(command("/control/${"0".repeat(32)}/record/start") == 403)
+        check(!recording)
+        check(command("/control/$token/record/start", "GET") == 403)
+        check(!recording)
+    } finally { server.stop() }
+    println("OK: controle remoto de gravação por POST autenticado; token inválido rejeitado")
 }

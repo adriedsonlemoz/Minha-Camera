@@ -61,3 +61,13 @@ P3: atualizar Media3 e target SDK com testes de regressão. Essas melhorias **n�
 ## Telemetria 1.4.18 (observações para adaptação)
 
 O quadro NV21 recebe selo de carga e temperatura da **bateria do transmissor** antes do MJPEG/MP4. Como é uma marca d'água gravada no vídeo, o receptor não precisa de endpoint de telemetria. Para alternar sem gravar dados no vídeo em uma futura arquitetura WebRTC, considerar canal de dados autenticado e overlay apenas no cliente. Leituras provêm do broadcast sticky `ACTION_BATTERY_CHANGED` e não representam a CPU.
+
+## Modo persistente com tela apagada (1.4.27+37)
+
+O serviço `PhoneCameraBackgroundService` é iniciado exclusivamente enquanto a tela `PhoneCameraActivity` está visível após consentimento explícito em **Mais**. O Android 14 exige permissões `FOREGROUND_SERVICE_CAMERA` e `CAMERA` e proíbe a criação do serviço de câmera a partir do plano de fundo. Com o serviço ativo, o `onPause` da Activity não para a captura; `SurfaceTexture` e `Camera` permanecem pertencendo ao serviço, com `START_NOT_STICKY` e notificação de encerramento/REC. O serviço mantém wake lock parcial e Wi-Fi lock durante a sessão.
+
+**Escopo:** uma câmera de cada vez com API `android.hardware.Camera` legada, 640x480 aproximado sujeito a tamanhos suportados, MJPEG e H.264/MP4 sem áudio. A prévia na Activity decodifica a amostra JPEG a 1 FPS enquanto está visível; durante o bloqueio não ocorre decodificação de interface. A gravação pode ser ligada/desligada no serviço antes de apagar a tela, sem interromper a rede. Ao parar, o muxer H.264 deve terminar antes de remover a notificação foreground.
+
+**Riscos a medir:** determinados HALs OEM podem parar o preview após a tela apagar ou quando a fila SurfaceTexture sem GL não é consumida; permissões de notificação podem esconder controles. Validar em Redmi A3 e outro receptor com intervalos prolongados e medir temperatura da bateria, taxa de frames, consumo e arquivo MP4. A câmera dupla permanece dependente da Activity e não é suportada no serviço.
+
+A 1.4.27 adiciona REC remoto por POST (mesmo token privado usado para a transmissão) no modo persistente. Rotas não autenticadas respondem HTTP 403; o comando não fica exposto por CORS. Os controles aparecem em **Assistir → Mais** e são idempotentes. A transmissão não é reiniciada ao alternar REC. Em redes Wi-Fi compartilhadas, HTTP não cifra o token: usar apenas hotspot/rede local de confiança.

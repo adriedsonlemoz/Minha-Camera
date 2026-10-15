@@ -1,3 +1,12 @@
+## 1.4.27+37 — 2026-10-15
+
+- Transmissão e gravação opcional com tela apagada: ForegroundService de câmera, superfície independente da Activity, notificação com Gravar/Parar e Encerrar, proteção de suspensão e trava Wi-Fi durante a captura. Habilitação explícita com tela visível e apenas uma câmera.
+- No receptor MJPEG, Mais oferece gravação remota do transmissor. Comando HTTP POST usa o mesmo token secreto da URL MJPEG e só funciona no serviço persistente (iniciar/parar idempotente). Incluído teste de protocolo com token correto e inválido.
+- Desacopla o vídeo e o MP4 dos indicadores de bateria: remove o selo NV21 permanente, evitando sobreposição duplicada no PiP e mantendo gravações limpas.
+- Receptor permite selecionar bateria, temperatura e raio de carregamento individualmente, com preferências persistentes e indicador compacto sem média de corrente ou texto de ausência de carga.
+- Câmeras RTSP continuam no LibVLC (contorno do crash Media3 da 1.4.26). Recursos PiP, modo espelho e gravação anterior preservados.
+- Pendências: build Android assinado, Android 14/Redmi A3 com tela apagada, câmera MJPEG prolongada e gravação MP4 real não foram testados em dispositivo.
+
 ## 1.4.26+36 — 2026-10-15
 
 - Corrigido o caminho de fechamento ao conectar RTSP: `NullPointerException` não tratada em `RtspClient.MessageListener.handleRtspResponse` do Media3 1.3.1 (linha 544; leitura de cabeçalho `CSeq` ausente).

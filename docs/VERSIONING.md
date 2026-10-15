@@ -9,10 +9,10 @@ O projeto adota a disciplina de releases sequenciais do GitHub Manager:
 5. Conferir as verificações estáticas e o build do GitHub Actions antes de publicar a release.
 6. Manter as anotações de incompatibilidades, correções pendentes e limitações para o Vigia IA.
 
-Versão atual: **1.4.26+36**, em 2026-10-15.
+Versão atual: **1.4.27+37**, em 2026-10-15.
 
 ## APKs por ABI
 
-Universal, armeabi-v7a, arm64-v8a, x86_64 e x86 usam `com.minhacamera`, versionName 1.4.26 e versionCode 36, sem offsets. Para instalação direta, o Android não exige códigos diferentes por ABI. A próxima versão usará 37 em todos. A troca entre Universal e ABI na mesma versão é uma reinstalação com o mesmo código; requer a mesma assinatura e uma ABI suportada pelo sistema Android (um processador de 64 bits pode usar Android de 32 bits).
+Universal, armeabi-v7a, arm64-v8a, x86_64 e x86 usam `com.minhacamera`, versionName 1.4.27 e versionCode 37, sem offsets. Para instalação direta, o Android não exige códigos diferentes por ABI. A próxima versão usará 37 em todos. A troca entre Universal e ABI na mesma versão é uma reinstalação com o mesmo código; requer a mesma assinatura e uma ABI suportada pelo sistema Android (um processador de 64 bits pode usar Android de 32 bits).
 
 A partir de 1.4.13, assinatura Release sempre via Secrets e keystore PKCS12 fixa. O workflow rejeita assinatura divergente de docs/SIGNING_CERT_SHA256.txt. Essa chave NÃO corresponde necessariamente à instalação legada: APK com certificado diferente não atualiza sem desinstalar, mesmo com versionCode crescente. A chave usada na instalação anterior precisa ser recuperada para atualizar diretamente. Nunca trocar a chave desta linha de releases; manter backup da keystore privada e senhas fora do GitHub e sem compartilhamento público.

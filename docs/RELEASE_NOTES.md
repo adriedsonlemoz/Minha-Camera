@@ -1,3 +1,12 @@
+# Minha Câmera 1.4.27 (versionCode 37)
+
+- Modo persistente de uma câmera: **Celular → Transmitir → Mais → Manter transmitindo com tela apagada**. Inicia um serviço em primeiro plano do tipo `camera` enquanto o aplicativo está visível, permitindo bloquear a tela e manter MJPEG pela mesma porta/token local. A prévia local passa a exibir amostras do serviço, sem reabrir a câmera na Activity.
+- Gravação MP4 **opcional**: após ativar o modo persistente, toque em **Gravar** antes de bloquear o aparelho ou use o controle da notificação quando disponível. A gravação termina e salva ao tocar em **Parar** ou encerrar o serviço. Recepção PiP no outro celular continua.
+- O visualizador pode iniciar/parar REC remotamente em **Assistir → Mais** quando o transmissor utiliza o serviço persistente. A rota POST é autenticada por token de 32 caracteres, sem nuvem. Sem HTTPS, manter estritamente na rede local confiável.
+- Indicador compacto do transmissor `🔋 77% · 39,0°C`, com raio apenas durante carregamento; no receptor, **Mais → Indicadores do vídeo e PiP** permite selecionar porcentagem, temperatura e raio. O selo deixa de ser queimado em MJPEG e MP4.
+- Android 14+: requer permissão de câmera e serviço iniciado enquanto a Activity está visível; notificação pode depender de autorização no Android 13+. Disponibilidade de captura contínua e ganho de bateria devem ser medidos no Redmi A3; Android pode encerrar serviços por políticas térmicas/energia. Câmera dupla não foi migrada para segundo plano.
+- Conferidos código Kotlin, recursos, regressões e versões localmente; build APK e teste físico pendentes.
+
 # Minha Câmera 1.4.26 (versionCode 36)
 
 - **Correção do fechamento RTSP:** o registro recebido apontou `NullPointerException` em Media3 1.3.1 (`RtspClient.java:544`), ao tentar processar uma resposta RTSP sem `CSeq` disponível. O erro ocorre na thread de reprodução e o fallback anterior não conseguia interceptá-lo.

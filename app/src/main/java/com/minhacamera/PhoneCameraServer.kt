@@ -9,8 +9,13 @@ import java.net.SocketException
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
 
-/** Servidor MJPEG local e efêmero. Só existe enquanto a tela transmissora está ativa. */
-class PhoneCameraServer(address: Inet4Address, token: String) {
+/** Servidor MJPEG local; a Activity ou o serviço foreground controlam sua vida útil. */
+class PhoneCameraServer(
+    address: Inet4Address,
+    token: String,
+    private val changeRecording: ((Boolean) -> Boolean)? = null,
+    private val recordingStatus: (() -> Boolean)? = null
+) {
     init { require(token.matches(Regex("[0-9a-f]{32}"))) }
     private val server = ServerSocket(8765, 4, address)
     val url: String = "http://${address.hostAddress}:${server.localPort}/live/$token"
@@ -67,6 +72,20 @@ class PhoneCameraServer(address: Inet4Address, token: String) {
                 if (size > 8192) return
             }
             val wanted = url.substringAfter(":${server.localPort}")
+            // Controle somente com POST + mesmo token aleatório do MJPEG (não há CORS).
+            val control = wanted.replaceFirst("/live/", "/control/")
+            val recordAction = when (line) {
+                "POST $control/record/start HTTP/1.1" -> true
+                "POST $control/record/stop HTTP/1.1" -> false
+                else -> null
+            }
+            if (recordAction != null) {
+                val success = try { changeRecording?.invoke(recordAction) == true } catch (_: Exception) { false }
+                val status = if (success) "204 No Content" else "409 Conflict"
+                peer.getOutputStream().write(("HTTP/1.1 $status\r\nCache-Control: no-store\r\n" +
+                    "Connection: close\r\nContent-Length: 0\r\n\r\n").toByteArray(Charsets.US_ASCII))
+                return
+            }
             if (line != "GET $wanted HTTP/1.1" && line != "GET $wanted HTTP/1.0") {
                 peer.getOutputStream().write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n".toByteArray(Charsets.US_ASCII))
                 return
@@ -91,6 +110,7 @@ class PhoneCameraServer(address: Inet4Address, token: String) {
                     next.battery?.temperatureTenthsC?.let { append("X-Battery-Temp-Tenths: $it\r\n") }
                     next.battery?.charging?.let { append("X-Battery-Charging: ${if (it) 1 else 0}\r\n") }
                     next.battery?.averageCurrentMaToday?.let { append("X-Battery-Average-Ma: $it\r\n") }
+                    recordingStatus?.let { append("X-Recording: ${if (it()) 1 else 0}\r\n") }
                 }
                 out.write(("--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${next.jpeg.size}\r\n" +
                     "X-Frame-Elapsed-Ms: ${next.atMs}\r\n$batteryHeaders\r\n").toByteArray(Charsets.US_ASCII))

@@ -90,8 +90,8 @@ internal class PhoneBatteryTelemetry(context: Context) {
         private fun chargingFromIntent(intent: Intent?): Boolean? {
             intent ?: return null
             return when (intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1)) {
-                BatteryManager.BATTERY_STATUS_CHARGING,
-                BatteryManager.BATTERY_STATUS_FULL -> true
+                BatteryManager.BATTERY_STATUS_CHARGING -> true
+                BatteryManager.BATTERY_STATUS_FULL,
                 BatteryManager.BATTERY_STATUS_DISCHARGING,
                 BatteryManager.BATTERY_STATUS_NOT_CHARGING -> false
                 else -> null

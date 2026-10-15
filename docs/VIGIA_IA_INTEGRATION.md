@@ -1,6 +1,6 @@
 # Descobertas do Minha Câmera úteis para o Vigia IA
 
-Atualizado em **1.4.26+36** (2026-10-15).
+Atualizado em **1.4.27+37** (2026-10-15).
 
 Este material serve como registro técnico: **não significa que o Vigia IA foi modificado**.
 
@@ -100,3 +100,12 @@ Os testes simulados da 1.4.2 validam o **parser SDP e a sondagem RTSP**, não a 
 - `try/catch` em `ExoPlayer.prepare()` e `Player.Listener.onPlayerError` não contêm exceções não tratadas no `HandlerThread` do cliente RTSP; um fallback pós-falha não chega a ser executado.
 - Mitigação no app: LibVLC como motor exclusivo acionável para RTSP, com tentativa de URLs alternativas, PiP e gravação preservados. Media3 permanece desabilitado até atualização/testes de protocolos RTSP irregulares.
 - Investigar com captura RTSP redigida sem segredos antes de atribuir definitivamente a causa ao firmware da câmera. Não modificar automaticamente o Vigia IA.
+
+## Câmera com tela apagada e telemetria desacoplada (1.4.27+37)
+
+- Isolar câmera e MJPEG em ForegroundService `camera` com `SurfaceTexture` de vida útil independente da Activity; iniciar enquanto câmera está autorizada e Activity visível. Executar teste prolongado em dispositivo OEM com tela apagada, sem assumir que `SurfaceTexture` não drenada terá desempenho idêntico em todos os aparelhos.
+- Manter WakeLock parcial + WiFiLock durante captura com tela apagada, liberando após finalizar MP4; medir consumo energético real para comparar com tela ativa.
+- Telemetria no cabeçalho HTTP MJPEG, desenhada só no receptor em TextView configurável; não sobrepor NV21 antes da gravação H.264 para evitar selos irremovíveis.
+- Câmera dupla segue vinculada à Activity e não deve ser anunciada como capturável com tela apagada.
+
+- Comando POST autenticado por token em rede local `control/<token>/record/start|stop`, condicionado a serviço ativo; não expor comando sem autenticação e considerar TLS para redes não confiáveis.

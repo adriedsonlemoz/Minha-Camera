@@ -69,7 +69,6 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         }
     }
     private val batteryTelemetry by lazy { PhoneBatteryTelemetry(applicationContext) }
-    private val batteryOverlay = PhoneBatteryOverlay()
     @Volatile private var showBatteryOverlay = true
     private var lastTelemetryLabel = ""
     private var cachedTelemetryLabel = ""
@@ -113,6 +112,43 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     @Volatile private var lastCapture = 0L
     private var visible = false
     private var permissionRequested = false
+    private var backgroundMode = false
+    private var backgroundRequestedAt = 0L
+    private lateinit var backgroundPreview: ImageView
+    private val backgroundTick = object : Runnable {
+        override fun run() {
+            if (!visible || !backgroundMode) return
+            val service = PhoneCameraBackgroundService
+            if (!service.running) {
+                if (SystemClock.elapsedRealtime() - backgroundRequestedAt < 10_000L && service.lastError == null) {
+                    uiHandler.postDelayed(this, 600)
+                    return
+                }
+                backgroundMode = false
+                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                backgroundPreview.visibility = View.GONE
+                status.text = service.lastError ?: getString(R.string.phone_background_ended)
+                tryStart()
+                return
+            }
+            service.latestJpeg?.let { jpeg ->
+                BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)?.let { bitmap ->
+                    backgroundPreview.setImageBitmap(bitmap)
+                    backgroundPreview.visibility = View.VISIBLE
+                    placeholder.visibility = View.GONE
+                }
+            }
+            service.latestBattery?.let { battery ->
+                telemetryPreview.text = battery.compactLabel()
+                telemetryPreview.visibility = if (showBatteryOverlay) View.VISIBLE else View.GONE
+            }
+            if (service.recording != recordingRequested) {
+                recordingRequested = service.recording
+                showRecordState(recordingRequested)
+            }
+            uiHandler.postDelayed(this, 1000)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -121,6 +157,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         preview = findViewById(R.id.phonePreview)
+        backgroundPreview = findViewById(R.id.phoneBackgroundPreview)
         status = findViewById(R.id.phoneStatus)
         address = findViewById(R.id.phoneAddress)
         placeholder = findViewById(R.id.previewPlaceholder)
@@ -144,6 +181,10 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         // SurfaceTexture desenha como uma View normal, mesmo dentro de ScrollView.
         surfaceReady = preview.isAvailable
         findViewById<View>(R.id.phoneSwitch).setOnClickListener {
+            if (backgroundMode) {
+                Toast.makeText(this, R.string.phone_background_disable_first, Toast.LENGTH_LONG).show()
+                return@setOnClickListener
+            }
             if (dualMode) {
                 Toast.makeText(this, R.string.phone_dual_has_both, Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
@@ -165,10 +206,20 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                 .setTitle(R.string.phone_revoke)
                 .setMessage(R.string.phone_revoke_confirm)
                 .setPositiveButton(R.string.phone_revoke) { _, _ ->
+                    if (backgroundMode) {
+                        PhoneCameraBackgroundService.command(this, PhoneCameraBackgroundService.ACTION_STOP)
+                        backgroundMode = false
+                        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                        uiHandler.removeCallbacks(backgroundTick)
+                        backgroundPreview.visibility = View.GONE
+                        recordingRequested = false
+                        showRecordState(false)
+                    }
                     stopStreaming()
                     try {
                         PhoneCameraAccess.revoke(this)
-                        tryStart()
+                        // O token anterior e o servidor são encerrados antes de abrir o novo.
+                        uiHandler.postDelayed({ if (visible) tryStart() }, 650)
                     } catch (_: Exception) { status.setText(R.string.phone_start_failed) }
                 }
                 .setNegativeButton(R.string.cancelar, null).show()
@@ -179,19 +230,31 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     override fun onResume() {
         super.onResume()
         visible = true
+        backgroundMode = PhoneCameraBackgroundService.running || backgroundMode
+        if (PhoneCameraBackgroundService.running) backgroundRequestedAt = SystemClock.elapsedRealtime() - 10_000L
         uiHandler.removeCallbacks(performanceTick)
-        uiHandler.postDelayed(performanceTick, 2000)
-        surfaceReady = preview.isAvailable
-        tryStart()
+        uiHandler.removeCallbacks(backgroundTick)
+        if (backgroundMode) {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            uiHandler.post(backgroundTick)
+            status.setText(R.string.phone_background_transmitting)
+        } else {
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            uiHandler.postDelayed(performanceTick, 2000)
+            surfaceReady = preview.isAvailable
+            tryStart()
+        }
     }
     override fun onPause() {
         visible = false
         uiHandler.removeCallbacks(performanceTick)
-        stopStreaming()
+        uiHandler.removeCallbacks(backgroundTick)
+        if (!backgroundMode) stopStreaming()
         super.onPause()
     }
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        if (backgroundMode) return
         if (dualMode) { stopStreaming(); tryStart() }
         else try { updateOrientation() } catch (_: Exception) { stopStreaming(); tryStart() }
     }
@@ -199,6 +262,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         preview.surfaceTextureListener = null
         uiHandler.removeCallbacks(recordTick)
         uiHandler.removeCallbacks(performanceTick)
+        uiHandler.removeCallbacks(backgroundTick)
+        backgroundPreview.setImageDrawable(null)
         // Terminar gravações pendentes antes de encerrar o worker.
         worker.shutdown()
         recordWorker.shutdown()
@@ -214,7 +279,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
     override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
         surfaceReady = false
-        if (!dualMode) stopStreaming()
+        if (!dualMode && !backgroundMode) stopStreaming()
         return true // Android libera a textura após a câmera deixar de utilizá-la.
     }
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
@@ -228,6 +293,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) toggleRecording()
             else Toast.makeText(this, R.string.phone_storage_denied, Toast.LENGTH_LONG).show()
         }
+        if (requestCode == 512 && visible && !backgroundMode) toggleBackgroundMode()
         if (requestCode == 510) {
             if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) tryStart()
             else status.setText(R.string.phone_permission_denied)
@@ -235,7 +301,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
 
     private fun tryStart() {
-        if (!visible || (!dualMode && (!surfaceReady || !preview.isAvailable)) || camera != null || dualController != null) return
+        if (backgroundMode || PhoneCameraBackgroundService.running || !visible ||
+            (!dualMode && (!surfaceReady || !preview.isAvailable)) || camera != null || dualController != null) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             if (!permissionRequested) {
                 permissionRequested = true
@@ -352,6 +419,10 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
 
     private fun toggleDual() {
+        if (backgroundMode) {
+            Toast.makeText(this, R.string.phone_background_disable_first, Toast.LENGTH_LONG).show()
+            return
+        }
         if (recordingRequested) {
             Toast.makeText(this, R.string.phone_stop_record_first, Toast.LENGTH_SHORT).show()
             return
@@ -450,8 +521,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             }
         }
         if (showBatteryOverlay) {
-            val label = cachedTelemetryLabel
-            batteryOverlay.burnInto(frame, w, h, label)
+            val label = battery.compactLabel()
             if (lastTelemetryLabel != label) {
                 lastTelemetryLabel = label
                 runOnUiThread {
@@ -521,6 +591,24 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
 
     private fun toggleRecording() {
+        if (backgroundMode) {
+            if (!recordingRequested && Build.VERSION.SDK_INT < 29 &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 511)
+                return
+            }
+            if (!PhoneCameraBackgroundService.running) {
+                Toast.makeText(this, R.string.phone_background_ended, Toast.LENGTH_SHORT).show()
+                return
+            }
+            PhoneCameraBackgroundService.command(this, PhoneCameraBackgroundService.ACTION_RECORD)
+            // Atualiza o botão após o comando ser recebido no serviço.
+            uiHandler.postDelayed({ if (visible) {
+                recordingRequested = PhoneCameraBackgroundService.recording
+                showRecordState(recordingRequested)
+            } }, 200)
+            return
+        }
         if (recordingRequested) {
             recordingRequested = false
             showRecordState(false)
@@ -569,14 +657,69 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         }
     }
 
+    private fun toggleBackgroundMode() {
+        if (backgroundMode) {
+            PhoneCameraBackgroundService.command(this, PhoneCameraBackgroundService.ACTION_STOP)
+            backgroundMode = false
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            recordingRequested = false
+            showRecordState(false)
+            backgroundPreview.setImageDrawable(null)
+            backgroundPreview.visibility = View.GONE
+            placeholder.visibility = View.VISIBLE
+            telemetryPreview.visibility = View.GONE
+            uiHandler.removeCallbacks(backgroundTick)
+            // Aguarda a liberação da câmera e da porta pelo serviço.
+            uiHandler.postDelayed({ if (visible) tryStart() }, 650)
+            return
+        }
+        if (dualMode) {
+            Toast.makeText(this, R.string.phone_background_single_only, Toast.LENGTH_LONG).show()
+            return
+        }
+        if (recordingRequested) {
+            Toast.makeText(this, R.string.phone_stop_record_first, Toast.LENGTH_LONG).show()
+            return
+        }
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+            Toast.makeText(this, R.string.phone_permission_denied, Toast.LENGTH_LONG).show()
+            return
+        }
+        // A chamada ocorre enquanto a Activity está visível (permissão de câmera while-in-use).
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED &&
+            !getSharedPreferences("phone_video", MODE_PRIVATE).getBoolean("notification_permission_requested", false)) {
+            getSharedPreferences("phone_video", MODE_PRIVATE).edit()
+                .putBoolean("notification_permission_requested", true).apply()
+            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.POST_NOTIFICATIONS), 512)
+            return
+        }
+        stopStreaming()
+        backgroundMode = true
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        backgroundRequestedAt = SystemClock.elapsedRealtime()
+        status.setText(R.string.phone_background_starting)
+        try {
+            PhoneCameraBackgroundService.command(this, PhoneCameraBackgroundService.ACTION_START, selectedFacing)
+            uiHandler.removeCallbacks(backgroundTick)
+            uiHandler.postDelayed(backgroundTick, 800)
+        } catch (e: Exception) {
+            backgroundMode = false
+            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+            status.text = e.javaClass.simpleName
+            tryStart()
+        }
+    }
+
     private fun openMoreDialog() {
         val overlayOption = getString(if (showBatteryOverlay)
             R.string.phone_hide_battery_overlay else R.string.phone_show_battery_overlay)
         val ecoOption = getString(if (ecoEnabled)
             R.string.phone_eco_disable else R.string.phone_eco_enable)
+        val backgroundOption = getString(if (backgroundMode) R.string.phone_background_stop else R.string.phone_background_enable)
         AlertDialog.Builder(this).setTitle(R.string.ui_more)
             .setItems(arrayOf(getString(R.string.ui_link), getString(R.string.ui_code),
-                overlayOption, ecoOption, getString(R.string.phone_record_location))) { _, which ->
+                overlayOption, ecoOption, backgroundOption, getString(R.string.phone_record_location))) { _, which ->
                 when (which) {
                     0 -> openLinkDialog()
                     1 -> findViewById<View>(R.id.phoneRevoke).performClick()
@@ -599,13 +742,14 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                             Toast.LENGTH_SHORT).show()
                         // Configuração aplicada ao próximo JPEG; QR, conexão e REC continuam.
                     }
+                    4 -> toggleBackgroundMode()
                     else -> Toast.makeText(this, R.string.phone_record_location, Toast.LENGTH_LONG).show()
                 }
             }.setNegativeButton(R.string.cancelar, null).show()
     }
 
     private fun openQrDialog() {
-        val live = server?.url
+        val live = if (backgroundMode) PhoneCameraBackgroundService.streamUrl else server?.url
         if (live == null) {
             Toast.makeText(this, R.string.phone_not_ready, Toast.LENGTH_SHORT).show()
             return
@@ -630,7 +774,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
 
     /** Link mantém as duas ações legadas em um único item da barra. */
     private fun openLinkDialog() {
-        val live = server?.url
+        val live = if (backgroundMode) PhoneCameraBackgroundService.streamUrl else server?.url
         if (live == null) {
             Toast.makeText(this, R.string.phone_not_ready, Toast.LENGTH_SHORT).show()
             return

@@ -20,7 +20,18 @@ internal data class PhoneBatteryReading(
     }
     private fun avgText() = averageCurrentMaToday?.let { if (it > 0) "+${it} mA" else "$it mA" } ?: "--"
 
-    /** Selo compacto para gravar diretamente no vídeo transmitido. */
+    /** Exibido como View no receptor/local, sem gravar nos pixels do vídeo. */
+    fun compactLabel(battery: Boolean = true, temperature: Boolean = true, charge: Boolean = true): String {
+        val parts = mutableListOf<String>()
+        if (battery && levelPercent != null) {
+            val bolt = if (charge && charging == true) "⚡" else ""
+            parts.add("${bolt}🔋 ${levelPercent}%")
+        } else if (charge && charging == true) parts.add("⚡")
+        if (temperature && temperatureTenthsC != null) parts.add(tempText())
+        return parts.joinToString(" · ")
+    }
+
+    /** Etiqueta completa legada, não aplicada aos pixels MJPEG/MP4 nesta versão. */
     fun overlayLabel(): String = "${levelText()} · ${chargeText()} · ${tempText()} · média ${avgText()}"
 
     /** Linha rica para o receptor. */

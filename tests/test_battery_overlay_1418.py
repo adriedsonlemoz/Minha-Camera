@@ -25,7 +25,11 @@ source_code = model + '''\ninternal object TestNormalizer {\n''' + normalizer + 
     check(PhoneBatteryReading(61, 347, true, 160).overlayLabel().contains("61%"))
     check(PhoneBatteryReading(61, 347, true, 160).detailsLabel().contains("carregando"))
     check(PhoneBatteryReading(null, null, null, null).overlayLabel().contains("--%"))
-    println("OK: 11 testes JVM de bateria e telemetria")
+    check(PhoneBatteryReading(77, 390, false, -575).compactLabel() == "🔋 77% · 39,0°C")
+    check(PhoneBatteryReading(77, 390, true, 200).compactLabel() == "⚡🔋 77% · 39,0°C")
+    check(PhoneBatteryReading(77, 390, false, -575).compactLabel(false, false, true).isEmpty())
+    check(PhoneBatteryReading(null, 390, true, null).compactLabel(false, true, true) == "⚡ · 39,0°C")
+    println("OK: 15 testes JVM de bateria e telemetria")
 }
 '''
 with tempfile.TemporaryDirectory() as tmp:
@@ -35,9 +39,10 @@ with tempfile.TemporaryDirectory() as tmp:
     subprocess.run(['kotlinc', str(src), '-include-runtime', '-d', str(jar)], check=True, timeout=45)
     subprocess.run(['java', '-jar', str(jar)], check=True, timeout=12)
 
-assert 'batteryOverlay.burnInto(frame, w, h, label)' in activity
-assert activity.index('batteryOverlay.burnInto(frame, w, h, label)') < activity.index('compressToJpeg(', activity.index('private fun publishFrame('))
-assert activity.index('batteryOverlay.burnInto(frame, w, h, label)') < activity.index('recorder?.append(snapshot, timestamp)')
+# v1.4.27: os dados nunca são gravados nos pixels (MJPEG/MP4); evita badge duplicado no PiP.
+assert 'batteryOverlay.burnInto(frame, w, h, label)' not in activity
+assert 'PhoneBatteryOverlay' not in activity
+assert 'battery.compactLabel()' in activity
 assert 'phoneTelemetryPreview' in layout
 assert 'show_battery_overlay' in activity and 'phone_hide_battery_overlay' in activity
 assert 'registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))' in overlay
@@ -46,4 +51,4 @@ assert 'EXTRA_TEMPERATURE' in overlay
 assert 'nv21[uv + channel]' in overlay
 assert 'ByteArrayOutputStream' in activity
 ET.fromstring(layout)
-print('OK: invariantes de overlay MJPEG/MP4/UI e recursos')
+print('OK: telemetria somente na interface, MJPEG/MP4 sem selo gravado')

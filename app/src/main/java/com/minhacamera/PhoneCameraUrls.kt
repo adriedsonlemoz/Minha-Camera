@@ -6,6 +6,12 @@ import java.net.URI
 object PhoneCameraUrls {
     private val tokenPattern = Regex("/live/[0-9a-f]{32}")
 
+    /** Endereço de comando derivado exclusivamente da URL privada MJPEG validada. */
+    fun recordingCommandUrl(input: String, enabled: Boolean): String? {
+        val live = normalize(input) ?: return null
+        return live.replace("/live/", "/control/") + if (enabled) "/record/start" else "/record/stop"
+    }
+
     fun normalize(input: String): String? {
         val raw = input.trim()
         if (raw.length !in 35..160 || raw.any { it.isWhitespace() }) return null
