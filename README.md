@@ -1,6 +1,6 @@
 # Minha Câmera
 
-**Versão atual: 1.4.23 (versionCode 33)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.25 (versionCode 35)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
 
 Desde a **1.4.13**, o projeto exige assinatura Release permanente por Secrets fixos do GitHub Actions e impede publicação com outro certificado. A chave privada fica fora do repositório. Consulte [assinatura permanente](docs/ASSINATURA_PERMANENTE.md) antes de instalar: a assinatura nova não é compatível com APKs antigos assinados por chave diferente.
 
@@ -61,17 +61,23 @@ A leitura de temperatura **da bateria** já existia: agora, quando ela atinge 42
 
 Nenhuma biblioteca ou permissão nova; transmissão continua MJPEG local. Build e medições físicas pendentes.
 
+### Modo Retrovisor do receptor (1.4.25)
+
+Em **Celular → Assistir**, o receptor permanece em orientação vertical e mostra cinco controles compactos: **Refazer · Inteira/Preencher · Espelho/Normal · Foco · Mais**. **Espelho** faz apenas uma transformação de exibição (`ImageView.scaleX=-1`) no celular receptor. Nenhum quadro é recodificado, nenhuma alteração é enviada ao transmissor, e o ajuste fica salvo no aparelho receptor. O padrão é imagem normal, sem espelhamento. Importante: textos já gravados nos pixels do vídeo são invertidos junto com a imagem; a telemetria nativa sobreposta à prévia permanece legível.
+
+**Foco** aumenta a área da imagem e esconde elementos secundários; toque no vídeo para voltar. Ao perder o sinal, o receptor limpa o último quadro em vez de deixar uma imagem congelada aparentando ser ao vivo. Essa tela foi pensada para uso como retrovisor, mas **não substitui espelhos físicos nem elimina pontos cegos**. Nenhuma nova dependência ou permissão. Build Android e ensaio em dois celulares ainda pendentes.
+
 ## GitHub Actions
 
 O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara Android SDK 36 e executa `gradle testProtocol testReleaseUnitTest assembleRelease` uma única vez, com cache. Publica cada APK individualmente, sem ZIP, em **Actions > Artifacts**:
 
-- `MinhaCamera-1.4.23-universal.apk`: todas as quatro ABIs, para distribuição geral.
-- `MinhaCamera-1.4.23-armeabi-v7a.apk`: Android ARM de 32 bits.
-- `MinhaCamera-1.4.23-arm64-v8a.apk`: Android ARM de 64 bits.
-- `MinhaCamera-1.4.23-x86_64.apk`: Android Intel de 64 bits/emuladores.
-- `MinhaCamera-1.4.23-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
+- `MinhaCamera-1.4.25-universal.apk`: todas as quatro ABIs, para distribuição geral.
+- `MinhaCamera-1.4.25-armeabi-v7a.apk`: Android ARM de 32 bits.
+- `MinhaCamera-1.4.25-arm64-v8a.apk`: Android ARM de 64 bits.
+- `MinhaCamera-1.4.25-x86_64.apk`: Android Intel de 64 bits/emuladores.
+- `MinhaCamera-1.4.25-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
 
-No workflow assinado, todos têm `com.minhacamera`, versão 1.4.23, código 33 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
+No workflow assinado, todos têm `com.minhacamera`, versão 1.4.25, código 35 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
 
 A 1.4.16 corrige o bloqueio do Build APK 18 causado por KEYSTORE_BASE64 inválido. O workflow prefere o novo Secret KEYSTORE_HEX, composto apenas de dígitos e letras a–f, mantendo Base64 como alternativa legada. É obrigatório importar KEYSTORE_HEX e conferir os outros três Secrets antes do novo build. O certificado original é mantido; nenhuma chave foi regenerada.
 

@@ -14,6 +14,16 @@
                 android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
                 android:text="@string/ui_live" android:textColor="@color/app_text"
                 android:textSize="23sp" android:textStyle="bold"/>
+            <TextView
+                android:id="@+id/phoneViewerRec"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/phone_receiver_idle" android:textColor="@color/brand_secondary"
+                android:textSize="13sp" android:textStyle="bold"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:layout_marginTop="2dp" android:orientation="horizontal" android:gravity="end|center_vertical">
             <View android:layout_width="8dp" android:layout_height="8dp" android:background="@drawable/bg_ui_live"/>
             <TextView
                 android:id="@+id/phoneViewerStatus"
@@ -23,6 +33,7 @@
         </LinearLayout>
 
         <FrameLayout
+            android:id="@+id/phoneViewerPreviewContainer"
             android:layout_width="match_parent" android:layout_height="240dp"
             android:layout_marginTop="12dp" android:background="@drawable/bg_ui_preview"
             android:clipToOutline="true">
@@ -52,23 +63,35 @@
             android:textColor="#FFFFFFFF" android:textSize="12sp" android:visibility="gone" />
 
         <LinearLayout
+            android:id="@+id/phoneViewerControls"
             android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="12dp" android:orientation="horizontal" android:baselineAligned="false">
 
             <LinearLayout
-                android:id="@+id/phoneRetry" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="76dp" android:layout_marginEnd="4dp" android:padding="4dp"
+                android:id="@+id/phoneViewerSwitch" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="76dp" android:layout_marginEnd="3dp" android:padding="4dp"
                 android:gravity="center" android:background="@drawable/bg_ui_card" android:orientation="vertical"
-                android:clickable="true" android:focusable="true" android:contentDescription="@string/tentar_novamente">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_ui_scan"
+                android:clickable="true" android:focusable="true" android:contentDescription="@string/phone_receiver_switch_camera">
+                <ImageView android:id="@+id/phoneViewerSwitchIcon" android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_ui_flip"
                     android:contentDescription="@null"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="5dp"
-                    android:text="@string/tentar_novamente" android:textColor="@color/app_text" android:textSize="11sp"/>
+                <TextView android:id="@+id/phoneViewerSwitchLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="5dp"
+                    android:text="@string/phone_receiver_switch_camera_short" android:textColor="@color/app_text" android:textSize="11sp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/phoneViewerRecord" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="76dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="4dp"
+                android:gravity="center" android:background="@drawable/bg_ui_card" android:orientation="vertical"
+                android:clickable="true" android:focusable="true" android:contentDescription="@string/ui_record">
+                <ImageView android:id="@+id/phoneViewerRecordIcon" android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_ui_record"
+                    android:contentDescription="@null"/>
+                <TextView android:id="@+id/phoneViewerRecordLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="5dp"
+                    android:text="@string/ui_record" android:textColor="@color/app_text" android:textSize="11sp"/>
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/phoneViewerFit" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="76dp" android:layout_marginStart="2dp" android:layout_marginEnd="2dp" android:padding="4dp"
+                android:layout_height="76dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="4dp"
                 android:gravity="center" android:background="@drawable/bg_ui_card" android:orientation="vertical"
                 android:clickable="true" android:focusable="true" android:contentDescription="@string/imagem_inteira">
                 <ImageView android:id="@+id/phoneViewerFitIcon" android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_fit"
@@ -78,8 +101,19 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/phoneViewerMirror" android:layout_width="0dp" android:layout_weight="1"
+                android:layout_height="76dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="4dp"
+                android:gravity="center" android:background="@drawable/bg_ui_card" android:orientation="vertical"
+                android:clickable="true" android:focusable="true" android:contentDescription="@string/phone_view_mirror">
+                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_ui_mirror"
+                    android:contentDescription="@null"/>
+                <TextView android:id="@+id/phoneViewerMirrorLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="5dp"
+                    android:text="@string/phone_view_mirror" android:textColor="@color/app_text" android:textSize="11sp"/>
+            </LinearLayout>
+
+            <LinearLayout
                 android:id="@+id/phoneViewerMore" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="76dp" android:layout_marginStart="4dp" android:padding="4dp"
+                android:layout_height="76dp" android:layout_marginStart="3dp" android:padding="4dp"
                 android:gravity="center" android:background="@drawable/bg_ui_card" android:orientation="vertical"
                 android:clickable="true" android:focusable="true" android:contentDescription="@string/ui_more_short">
                 <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_ui_more"
@@ -90,6 +124,7 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/phoneViewerInstructions"
             android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp"
             android:text="@string/phone_receiver_instructions" android:textColor="@color/ui_muted" android:textSize="13sp"/>
 

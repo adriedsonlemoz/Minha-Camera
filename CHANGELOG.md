@@ -1,3 +1,15 @@
+## 1.4.25+35 — 2026-10-15
+- Receptor com barra principal mais próxima do transmissor: Trocar, Gravar/Parar, Inteira/Preencher, Espelho e Mais.
+- Botões remotos no receptor controlam o celular transmissor por HTTP local: trocar câmera e iniciar/parar gravação.
+- Estado de gravação do transmissor agora volta no fluxo MJPEG e aparece no receptor como indicador REC e botão Parar.
+
+## 1.4.24+34 — 2026-10-15
+- Receptor em modo retrato com cinco ações compactas: Refazer, Enquadrar, Espelho, Foco e Mais.
+- Espelhamento horizontal opcional feito apenas por transformação de View, lembrado nas preferências do receptor. A câmera e o MJPEG não mudam.
+- Modo Foco amplia o vídeo e esconde detalhes secundários; toque no vídeo para restaurar os controles.
+- Em perda de sinal, limpa a imagem antiga para não confundir vídeo congelado com visão ao vivo.
+- Telemetria na interface reduz atualizações redundantes. Sem novas dependências, permissões ou Secrets; gravação e câmera dupla preservadas.
+
 ## 1.4.23+33 — 2026-10-15
 - Corrigido o erro AAPT2 `Invalid unicode escape sequence` em `novidades_text`, provocado por apóstrofo não escapado no histórico de novidades.
 - Incluído verificador de recursos Android no pré-build do GitHub Actions e testes de regressão para caracteres e escapes problemáticos.

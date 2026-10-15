@@ -1,3 +1,16 @@
+# Minha Câmera 1.4.25 (versionCode 35)
+
+- Tela receptora alinhada à transmissão, com barra principal mais completa.
+- Novo controle remoto do transmissor pelo receptor: trocar câmera e gravar/parar.
+- Indicador REC do outro celular mostrado no receptor, com estado devolvido pelo fluxo MJPEG.
+
+# Minha Câmera 1.4.24 (versionCode 34)
+
+- No receptor, Espelho inverte a visualização horizontalmente sem alterar o vídeo enviado, e lembra a configuração.
+- Foco amplia a prévia e oculta controles secundários; toque na imagem para retornar ao layout normal.
+- Imagem antiga é limpa quando o Wi-Fi cai, evitando confusão com vídeo ao vivo.
+- Cinco cartões compactos seguem a linguagem visual existente. MJPEG, assinatura e recursos anteriores preservados.
+
 # Minha Câmera 1.4.23 (versionCode 33)
 
 - Corrigido Build APK 24: recursos Android rejeitavam apóstrofo não escapado em `novidades_text`.
