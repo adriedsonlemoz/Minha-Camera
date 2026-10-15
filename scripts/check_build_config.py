@@ -56,9 +56,11 @@ try:
     if 'versionCodeOverride' in app_gradle:
         errors.append('Não usar offsets por ABI na distribuição direta.')
     if 'python3 scripts/prepare_signing.py' not in actions:
-        errors.append('O workflow deve usar o preparador Base64 seguro antes de compilar.')
+        errors.append('O workflow deve usar preparador de assinatura segura antes de compilar.')
     if 'python3 -m unittest discover -s tests -p test_signing_preflight.py -q' not in actions:
-        errors.append('Executar os testes de Base64 antes do build.')
+        errors.append('Executar os testes de assinatura antes do build.')
+    if 'KEYSTORE_HEX: ${{ secrets.KEYSTORE_HEX }}' not in actions:
+        errors.append('Passar KEYSTORE_HEX ao preparador; não depender apenas do Base64 legado.')
     if 'base64 --decode' in actions:
         errors.append('Não retornar à decodificação shell sem validação e diagnóstico.')
     if errors:

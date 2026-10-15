@@ -1,3 +1,12 @@
+# Minha Câmera 1.4.16 (versionCode 26)
+
+**Correção do Build APK 18:** novamente o GitHub Actions recebeu `KEYSTORE_BASE64` contendo caracteres inválidos e interrompeu o job antes do Gradle. O conteúdo real do Secret não é visível no log. O backup privado original da keystore e dos importadores é válido.
+
+- O novo `KEYSTORE_HEX` permite importar os mesmos bytes do arquivo PKCS12 usando somente caracteres de baixo risco para o parser. **Importe o arquivo PRIVADO v1.4.16 de Secrets no GitHub Manager antes de executar o workflow.**
+- O workflow usa HEX prioritariamente e preserva compatibilidade opcional com Base64 legado; não regenera o certificado nem usa Debug.
+- Os testes verificam os dois formatos, preferência do HEX e rejeição de dados inválidos. Testes Python de QR e interface aprovados; suíte Kotlin de protocolos atingiu o tempo limite nesta rodada.
+- O build Android completo e a atualização real entre APKs ainda não foram executados neste ambiente.
+
 # Minha Câmera 1.4.15 (versionCode 25)
 
 ## Correção do Build APK 17: Secret Base64 inválido

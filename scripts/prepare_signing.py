@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Prepara assinatura fixa do Minha Câmera no runner sem revelar Secrets.
 
-Aceita Base64 padrão com whitespace/aspas externas e padding omitido; rejeita
-conteúdo corrompido e qualquer certificado diferente do fixado no repositório.
+Aceita KEYSTORE_HEX (prioritário, seguro para importação por texto) ou Base64
+legado; rejeita entrada corrompida e qualquer certificado diferente do fixado.
 """
 from __future__ import annotations
 
@@ -17,10 +17,10 @@ import subprocess
 import sys
 import tempfile
 
-SECRETS = ("KEYSTORE_BASE64", "KEYSTORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD")
+SECRETS = ("KEYSTORE_PASSWORD", "KEY_ALIAS", "KEY_PASSWORD")
 ERROR_HINT = (
-    "Substitua os quatro Secrets no GitHub Manager usando o arquivo JSON "
-    "original de importação (especialmente KEYSTORE_BASE64). Não gere nova chave."
+    "Importe o novo KEYSTORE_HEX junto de KEYSTORE_PASSWORD, KEY_ALIAS e "
+    "KEY_PASSWORD pelo GitHub Manager. Não gere outra chave."
 )
 
 
@@ -48,6 +48,33 @@ def decode_keystore(value: str) -> bytes:
     return raw
 
 
+def decode_keystore_hex(value: str) -> bytes:
+    """Converte somente hexadecimal ASCII. Nenhum caractere é corrigido/adivinhado."""
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+        value = value[1:-1]
+    value = re.sub(r"[\t\n\r\f\v ]", "", value)
+    if value.startswith("KEYSTORE_HEX="):
+        raise ValueError("KEYSTORE_HEX contém a linha NOME=valor, em vez de apenas seu valor.")
+    if not value or len(value) % 2 or not re.fullmatch(r"[a-fA-F0-9]+", value):
+        raise ValueError("KEYSTORE_HEX não contém hexadecimal válido ou tem tamanho ímpar.")
+    raw = bytes.fromhex(value)
+    if not 512 <= len(raw) <= 512 * 1024:
+        raise ValueError("A keystore HEX decodificada possui tamanho inesperado.")
+    return raw
+
+
+def load_keystore_from_environment() -> tuple[bytes, str]:
+    """Hex tem precedência: Base64 legado pode permanecer corrompido no GitHub."""
+    hexdigest = os.environ.get('KEYSTORE_HEX', '')
+    if hexdigest.strip():
+        return decode_keystore_hex(hexdigest), 'HEX'
+    legacy = os.environ.get('KEYSTORE_BASE64', '')
+    if legacy.strip():
+        return decode_keystore(legacy), 'Base64'
+    raise ValueError("Faltam KEYSTORE_HEX (recomendado) e KEYSTORE_BASE64 (legado).")
+
+
 def keytool_certificate(keystore: Path, alias: str) -> bytes:
     """Exporta certificado DER. Senha é passada pelo ambiente, não na linha de comando."""
     cmd = [
@@ -69,7 +96,7 @@ def prepare() -> None:
     if not runner_temp:
         raise ValueError("RUNNER_TEMP não está configurado.")
 
-    raw = decode_keystore(os.environ["KEYSTORE_BASE64"])
+    raw, codec = load_keystore_from_environment()
     expected = (Path(__file__).resolve().parents[1] / 'docs/SIGNING_CERT_SHA256.txt').read_text().strip().lower()
     if not re.fullmatch(r'[a-f0-9]{64}', expected):
         raise ValueError("Impressão SHA-256 fixada no projeto é inválida.")
@@ -87,7 +114,7 @@ def prepare() -> None:
             raise ValueError("Certificado diferente do SHA-256 fixado no projeto; geração bloqueada.")
         tmp_path.replace(dest)
         dest.chmod(0o600)
-        print("Assinatura verificada: Base64, keystore PKCS12 e certificado SHA-256 conferidos.")
+        print(f"Assinatura verificada: {codec}, PKCS12 e SHA-256 do certificado conferidos.")
     finally:
         tmp_path.unlink(missing_ok=True)
 

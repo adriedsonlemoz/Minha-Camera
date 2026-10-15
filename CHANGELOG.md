@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.4.16+26 — Build APK 18: assinatura por hexadecimal sem caracteres especiais
+
+- Log Build APK 18: o `KEYSTORE_BASE64` do GitHub contém caracteres inválidos; o erro ocorreu **antes** do Gradle, embora as verificações de configuração e versionamento passassem.
+- Adicionado `KEYSTORE_HEX` (hexadecimal ASCII 0–9/a–f) com **precedência** sobre o Base64 legado. O valor antigo pode permanecer no repositório sem interromper o build quando o novo Secret válido estiver configurado.
+- O preparador nunca muda ou deduz bytes da chave: valida sintaxe/tamanho, abre o PKCS12 usando os Secrets e compara o certificado SHA-256 fixado.
+- Novo importador privado para GitHub Manager, com `KEYSTORE_HEX`, `KEYSTORE_PASSWORD`, `KEY_ALIAS` e `KEY_PASSWORD`; sem chave no repositório.
+- Código dos protocolos, QR e interface da 1.4.14 preservado. Testes de integração Python passaram, mas a suíte Kotlin de protocolos excedeu o tempo de execução local. O build Android no GitHub Actions ainda precisa ser validado após importar os Secrets.
+
 ## 1.4.15+25 — 2026-10-14
 
 - Corrigido pré-processamento da assinatura após o Build APK 17 falhar com `base64: invalid input` na v1.4.13+23. O erro ocorreu antes de qualquer compilação.

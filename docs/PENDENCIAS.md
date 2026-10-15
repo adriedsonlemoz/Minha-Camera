@@ -3,7 +3,7 @@
 ## P0: preservação de dados / segurança
 
 - Persistir credenciais RTSP com proteção baseada no Android Keystore e migração sem perda das câmeras legadas.
-- **Build APK 17 falhou ao ler Base64 do Secret na v1.4.13**, apesar de o original armazenado em backup ser válido. A v1.4.15 tornou o pré-processador tolerante a padding/espaços, mas reimportar o JSON original caso o valor persistido no GitHub esteja corrompido e confirmar um novo build bem-sucedido. Guardar backup privado. Recuperar a assinatura original se quiser atualizar instalações antigas sem desinstalação.
+- **Builds APK 17 e 18 falharam em KEYSTORE_BASE64**, embora o backup seja válido. A 1.4.16 prioriza o novo KEYSTORE_HEX para evitar caracteres especiais na importação, sem alterar certificado. Importar KEYSTORE_HEX e demais Secrets corretos no GitHub Manager e confirmar build real. Guardar backup privado. Recuperar a assinatura original se quiser atualizar instalações antigas sem desinstalação.
 
 ## P1: robustez
 

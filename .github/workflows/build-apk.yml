@@ -52,14 +52,15 @@ jobs:
       - name: Preparar assinatura Release permanente
         shell: bash
         env:
+          KEYSTORE_HEX: ${{ secrets.KEYSTORE_HEX }}
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          # Aceita padding Base64 perdido na importação, espaços e quebras de linha.
-          # Falha com mensagem útil se o Secret foi truncado ou o certificado mudou.
+          # KEYSTORE_HEX tem precedência sobre o Base64 legado (que pode estar corrompido).
+          # Falha se o Secret novo foi truncado ou o certificado mudou.
           # A senha nunca aparece na linha de comando, nos logs ou no repositório.
           python3 scripts/prepare_signing.py
 

@@ -2,11 +2,11 @@
 
 ## Preparação e importação
 
-Foram gerados três arquivos PRIVADOS **fora** do código-fonte: uma chave `Minha-Camera-CHAVE-ASSINATURA-PRIVADA.p12` e importadores `Minha-Camera-Secrets-IMPORTAR-GitHub-Manager.txt` / `.json`. Os importadores têm os quatro Secrets `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
+Foram gerados três arquivos PRIVADOS **fora** do código-fonte: uma chave `Minha-Camera-CHAVE-ASSINATURA-PRIVADA.p12` e importadores `Minha-Camera-Secrets-IMPORTAR-GitHub-Manager.txt` / `.json`. Os importadores originais usam `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. A partir de 1.4.16 há novos importadores privados que usam `KEYSTORE_HEX` no lugar de `KEYSTORE_BASE64`, preservando as mesmas senha, alias, bytes PKCS12 e certificado.
 
-No GitHub Manager: Repositório **Minha Câmera > Secrets > Importar** > selecione o `.txt` (UTF-8) > confira os quatro nomes > confirme criar/substituir. O workflow do repositório deve ser atualizado para a versão atual antes de compilar. No GitHub, o mesmo pode ser feito em Settings > Secrets and variables > Actions.
+No GitHub Manager: Repositório **Minha Câmera > Secrets > Importar** > selecione o novo `.txt`/`.json` **1.4.16-HEX** > confira `KEYSTORE_HEX`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD` > confirme criar/substituir. O workflow do repositório deve ser atualizado para a versão atual antes de compilar. No GitHub, o mesmo pode ser feito em Settings > Secrets and variables > Actions.
 
-Os Secrets devem ser *repository secrets* acessíveis ao workflow. Não publicar a keystore ou importadores, não incluí-los no ZIP do projeto e não enviá-los ao GitHub como arquivos versionados. `KEYSTORE_BASE64` é base64 de uma keystore binária, **não criptografia**. A keystore PKCS12 é protegida por senha; o arquivo de importação contém a senha.
+O Secret `KEYSTORE_HEX` é hexadecimal (não criptografia) e tem preferência sobre o `KEYSTORE_BASE64` antigo; os nomes de senha e alias são os mesmos. Os Secrets devem ser *repository secrets* acessíveis ao workflow. Não publicar a keystore ou importadores, não incluí-los no ZIP do projeto e não enviá-los ao GitHub como arquivos versionados. `KEYSTORE_BASE64` é base64 de uma keystore binária, **não criptografia**. A keystore PKCS12 é protegida por senha; o arquivo de importação contém a senha.
 
 ## Certificado fixado
 
@@ -24,7 +24,7 @@ Para comparar: obtenha o APK antigo sem desinstalar o aplicativo e execute `apks
 
 ## Operação segura
 
-- Configurar os quatro Secrets; não copiar o `.txt` para o código do repositório.
+- Configurar os quatro Secrets da importação atual (`KEYSTORE_HEX`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`); não copiar o `.txt` para o código do repositório.
 - Fazer backup offline de `.p12` **e** das senhas. Sem ambos não será possível reproduzir esta assinatura no futuro.
 - O workflow falha antes do build se faltar qualquer Secret ou se o certificado não coincidir.
 - Os cinco APKs gerados numa execução devem apresentar a mesma assinatura. O `scripts/verify_apks.py` compara a assinatura com a fixada e bloqueia a publicação se divergir.
@@ -44,3 +44,14 @@ A etapa **Preparar assinatura Release permanente** de uma execução da versão 
 3. Rode manualmente **Build APK**. Procure `Assinatura verificada: Base64, keystore PKCS12 e certificado SHA-256 conferidos.` antes da etapa Gradle. Se ainda falhar, reporte a mensagem nova, sem expor o Base64/credenciais.
 
 Um Secret genuinamente truncado **não pode ser reconstruído a partir dos logs**; a solução nesse caso exige restaurar o valor íntegro. Nunca contornar a verificação do certificado, nem gerar outra keystore só para fazer o workflow passar.
+
+## Build APK 18: solução HEX (1.4.16+26)
+
+O Build APK 18 executou a versão 1.4.15+25, passou nas validações estáticas, mas falhou no preparador antes do Gradle com `O Secret não contém apenas caracteres Base64 válidos`. Os logs não expõem o conteúdo da variável, portanto não é possível provar se o importador a alterou ou se o valor foi colado incorretamente.
+
+1. Atualize código/workflow para 1.4.16+26.
+2. No **GitHub Manager > Repositório > Secrets > Importar**, use o novo arquivo privado `Minha-Camera-Secrets-v1.4.16-HEX-IMPORTAR.txt` (ou `.json`). Confirme **Criar** para `KEYSTORE_HEX` e **Substituir** para `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`. O `KEYSTORE_BASE64` antigo não precisa ser removido; será ignorado quando HEX estiver preenchido.
+3. Execute novamente Build APK. O preparador deve registrar apenas `Assinatura verificada: HEX, PKCS12 e SHA-256 do certificado conferidos.`. Isso confirma o pré-processamento; a compilação Android e a assinatura final continuam sendo etapas distintas.
+4. **Se o HEX também falhar**, não altere a chave nem retire a verificação SHA-256. Investigue o valor exato salvo no GitHub Manager, sem publicá-lo. Mensagens de erro específicas permitem distinguir HEX inválido, senha/alias incorretos e certificado divergente.
+
+O HEX só muda a representação textual da mesma keystore PKCS12; não cria uma nova assinatura Android. Não incluir importadores nem `.p12` no repositório.
