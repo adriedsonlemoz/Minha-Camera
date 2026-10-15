@@ -1,3 +1,8 @@
+## 1.4.23+33 — 2026-10-15
+- Corrigido o erro AAPT2 `Invalid unicode escape sequence` em `novidades_text`, provocado por apóstrofo não escapado no histórico de novidades.
+- Incluído verificador de recursos Android no pré-build do GitHub Actions e testes de regressão para caracteres e escapes problemáticos.
+- Preservados câmera de celular/retrovisor, telemetria, RTSP/ONVIF, QR, gravação e assinatura estável.
+
 ## 1.4.22+32 — 2026-10-15
 - Corrigido Build APK 23: `:compileProtocolTests` não encontrava `PhoneBatteryReading` após a telemetria do receptor.
 - Modelo de telemetria extraído para `PhoneBatteryReading.kt` independente de Android; adicionado aos dois caminhos de compilação de protocolos (Gradle e script local).

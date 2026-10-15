@@ -17,7 +17,7 @@ assert 'TextureView.SurfaceTextureListener' in s
 for required in ('c.setPreviewTexture(preview.surfaceTexture', 'onSurfaceTextureUpdated(',
                  'preview.isAvailable', 'stopStreaming()', 'publishedStreamFrame',
                  'receivedCameraFrames', 'renderedPreviewFrames', 'R.string.phone_no_frames',
-                 'status.setText(R.string.phone_online)', 'session.publish(encoded)',
+                 'status.setText(R.string.phone_online)', 'session.publish(encoded, battery)',
                  'R.layout.dialog_phone_qr', 'R.id.phoneQr', 'R.id.phoneMore',
                  'R.id.phoneSwitch', 'R.id.phoneRevoke'):
     assert required in s, required

@@ -1,3 +1,9 @@
+# Minha Câmera 1.4.23 (versionCode 33)
+
+- Corrigido Build APK 24: recursos Android rejeitavam apóstrofo não escapado em `novidades_text`.
+- Adicionado teste preventivo de escapes e caracteres especiais dos recursos XML na etapa de verificação antes do Gradle.
+- Assinatura permanente, protocolo MJPEG com telemetria e interface de retrovisor mantidos.
+
 # Minha Câmera 1.4.22 (versionCode 32)
 
 - Corrigida a compilação dos testes de protocolos após integrar a telemetria do receptor na 1.4.21.
