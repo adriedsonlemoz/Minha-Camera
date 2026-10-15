@@ -36,7 +36,7 @@ class WelcomeActivity : AppCompatActivity() {
         setContentView(scroll)
         val fullHistory = intent.getBooleanExtra("full_history", false)
         content.addView(TextView(this).apply { text = getString(R.string.welcome_latest_title); textSize = 28f; setTextColor(getColor(R.color.app_text)); setPadding(0,0,0,dp(4)) })
-        content.addView(TextView(this).apply { text = "Uma atualização mais bonita e organizada para o app."; textSize = 14f; setTextColor(getColor(R.color.ui_muted)); setPadding(0,0,0,dp(16)) })
+        content.addView(TextView(this).apply { text = "Agora, a câmera funciona na vertical e na horizontal, em casa ou na bicicleta."; textSize = 14f; setTextColor(getColor(R.color.ui_muted)); setPadding(0,0,0,dp(16)) })
         addHighlight(content, "Visual renovado", "Configurações, sobre, apoio e novidades agora têm telas próprias, sem depender de pop-ups para tudo.")
         addHighlight(content, "Tela inicial mais clara", "Os dispositivos ficam mais organizados em cartões com ações visíveis para abrir, copiar, editar e excluir.")
         addHighlight(content, "Central multimídia reorganizada", "A biblioteca local e a do outro celular foram agrupadas em áreas mais claras, com foco em gravações, fotos, vídeos e rede local.")

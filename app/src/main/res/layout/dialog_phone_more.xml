@@ -166,6 +166,30 @@
                 app:showText="false" />
         </LinearLayout>
 
+        <LinearLayout android:id="@+id/moreOrientationRow"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground" android:clickable="true"
+            android:focusable="true" android:minHeight="72dp" android:orientation="horizontal"
+            android:gravity="center_vertical" android:paddingVertical="10dp">
+            <FrameLayout android:layout_width="40dp" android:layout_height="40dp"
+                android:background="@drawable/bg_phone_more_icon">
+                <ImageView android:layout_width="22dp" android:layout_height="22dp"
+                    android:layout_gravity="center" android:src="@drawable/ic_ui_screen"/>
+            </FrameLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="14dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/phone_orientation_title" android:textColor="@color/app_text"
+                    android:textStyle="bold" android:textSize="16sp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                    android:text="@string/phone_orientation_subtitle" android:textColor="@color/ui_muted"
+                    android:textSize="13sp" android:layout_marginTop="2dp"/>
+            </LinearLayout>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/phone_more_open" android:textColor="@color/brand_primary"
+                android:textStyle="bold" android:textSize="13sp"/>
+        </LinearLayout>
+
         <LinearLayout
             android:id="@+id/moreQualityRow"
             android:layout_width="match_parent"

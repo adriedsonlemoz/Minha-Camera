@@ -1,3 +1,11 @@
+# Minha Câmera 1.4.40 (versionCode 50)
+
+- Orientação automática com estabilização do sensor; seleção de retrato/paisagem fixa para monitoramento doméstico e retrovisor de bicicleta.
+- MJPEG/H.264 e MCRP informam geometria efetiva do quadro, com suporte a receptores que respeitam a proporção real.
+- Formato MP4 não muda de dimensões durante REC; rotação adiada até o encerramento do arquivo.
+- Visualizador Android tem escolha de orientação automática, vertical ou horizontal, e adapta a região de vídeo.
+- Compilação Android e testes em aparelhos continuam pendentes; sensor sob tela apagada varia conforme hardware/firmware.
+
 # Minha Câmera 1.4.39 (versionCode 49)
 
 - Segunda passada de design na tela inicial, com visual mais premium e ações principais em destaque.

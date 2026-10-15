@@ -1,3 +1,11 @@
+## 1.4.40+50 — 2026-10-15
+
+- Captura MJPEG e H.264 com orientação automática estável pelo sensor (800ms) ou modos manualmente fixados em vertical/horizontal. Opção na tela Transmitir → Mais → Orientação da câmera.
+- Orientação atualizada também pelo serviço da câmera com a tela apagada quando o sensor fornece eventos; preferência manual mantém ângulo previsível em aparelho fixo.
+- Na gravação MP4, a geometria fica congelada e eventuais mudanças são aplicadas ao finalizar REC, sem alterar dimensões no meio do arquivo.
+- Visualizador permite Seguir rotação do Android, Vertical fixo ou Horizontal fixo via Mais, com proporção de imagem preservada, inclusive PiP. Status de resolução informa dimensões reais após rotação aos consumidores MCRP.
+- App continua independente do Vigia IA; H.264 experimental pode exigir reconexão após giro. Build APK e validação em celulares ainda pendentes.
+
 ## 1.4.39+49 — 2026-10-15
 
 - Segunda passada de design na tela inicial, com herói premium e ações principais em destaque.

@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.39 (versionCode 49)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.40 (versionCode 50)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Novo em 1.4.40:** escolha Automático, Vertical fixo ou Horizontal fixo no transmissor em Mais → Orientação da câmera; MJPEG e H.264 usam orientação do dispositivo ou seleção manual, com estabilização de movimento. No receptor, o menu Mais permite Seguir Android, Vertical fixo ou Horizontal fixo; a imagem respeita a proporção real dos quadros. Durante REC, a orientação do MP4 fica travada para não mudar as dimensões do arquivo; novas escolhas são aplicadas após parar a gravação. No serviço com a tela apagada, a orientação automática depende da disponibilidade do sensor no aparelho: para câmera fixa use Vertical/Horizontal fixo.
 
 **Novo em 1.4.39:** segunda passada de design com tela inicial mais premium, biblioteca remota do outro celular redesenhada e acabamento moderno na tela de transmissão, preservando a Central Multimídia, o MCRP e as telas dedicadas de configurações.
 
@@ -106,11 +108,11 @@ Em **Celular → Assistir**, o receptor permanece em orientação vertical e mos
 
 O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara Android SDK 36 e executa `gradle testProtocol testReleaseUnitTest assembleRelease` uma única vez, com cache. Publica cada APK individualmente, sem ZIP, em **Actions > Artifacts**:
 
-- `MinhaCamera-1.4.39-universal.apk`: todas as quatro ABIs, para distribuição geral.
-- `MinhaCamera-1.4.39-armeabi-v7a.apk`: Android ARM de 32 bits.
-- `MinhaCamera-1.4.39-arm64-v8a.apk`: Android ARM de 64 bits.
-- `MinhaCamera-1.4.39-x86_64.apk`: Android Intel de 64 bits/emuladores.
-- `MinhaCamera-1.4.39-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
+- `MinhaCamera-1.4.40-universal.apk`: todas as quatro ABIs, para distribuição geral.
+- `MinhaCamera-1.4.40-armeabi-v7a.apk`: Android ARM de 32 bits.
+- `MinhaCamera-1.4.40-arm64-v8a.apk`: Android ARM de 64 bits.
+- `MinhaCamera-1.4.40-x86_64.apk`: Android Intel de 64 bits/emuladores.
+- `MinhaCamera-1.4.40-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
 
 No workflow assinado, todos têm `com.minhacamera`, versão 1.4.39, código 48 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
 

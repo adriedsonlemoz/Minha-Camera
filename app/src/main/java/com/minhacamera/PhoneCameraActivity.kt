@@ -21,6 +21,7 @@ import android.content.res.Configuration
 import android.content.Intent
 import android.os.SystemClock
 import android.view.TextureView
+import android.view.OrientationEventListener
 import android.view.WindowManager
 import android.view.View
 import android.widget.ImageView
@@ -106,6 +107,19 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private var selectedFacing = Camera.CameraInfo.CAMERA_FACING_BACK
     private var selectedId: Int? = null
     @Volatile private var frameRotation = 0
+    private var physicalDegrees = 0
+    private val orientationStabilizer = PhoneOrientationStabilizer()
+    private val orientationSensor by lazy { object : OrientationEventListener(this) {
+        override fun onOrientationChanged(orientation: Int) {
+            orientationStabilizer.observe(orientation, SystemClock.elapsedRealtime())?.let { degrees ->
+                physicalDegrees = degrees
+                if (!backgroundMode && !recordingRequested && visible) updateOrientation()
+            }
+        }
+    } }
+    private fun orientationMode() = PhoneOrientationMode.normalize(
+        getSharedPreferences("phone_video", MODE_PRIVATE).getString(PhoneOrientationMode.PREF_KEY, null))
+
     private var worker = Executors.newSingleThreadExecutor()
     private val recordWorker = Executors.newSingleThreadExecutor()
     private val encoding = AtomicBoolean(false)
@@ -262,6 +276,15 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     override fun onResume() {
         super.onResume()
         visible = true
+        physicalDegrees = when (windowManager.defaultDisplay.rotation) {
+            android.view.Surface.ROTATION_90 -> 90
+            android.view.Surface.ROTATION_180 -> 180
+            android.view.Surface.ROTATION_270 -> 270
+            else -> 0
+        }
+        if (orientationMode() == PhoneOrientationMode.AUTO && orientationSensor.canDetectOrientation())
+            orientationSensor.enable()
+        else orientationSensor.disable()
         backgroundMode = PhoneCameraBackgroundService.running || backgroundMode
         if (PhoneCameraBackgroundService.running) backgroundRequestedAt = SystemClock.elapsedRealtime() - 10_000L
         uiHandler.removeCallbacks(performanceTick)
@@ -284,6 +307,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
     override fun onPause() {
         visible = false
+        orientationSensor.disable()
         uiHandler.removeCallbacks(performanceTick)
         uiHandler.removeCallbacks(backgroundTick)
         uiHandler.removeCallbacks(clockTick)
@@ -507,7 +531,10 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                     }
                 },
                 deviceModel = { Build.MODEL },
-                resolutionStatus = { "${previewWidth}x${previewHeight}" },
+                resolutionStatus = {
+                    if (frameRotation % 180 == 0) "${previewWidth}x${previewHeight}"
+                    else "${previewHeight}x${previewWidth}"
+                },
                 mediaIndex = { remoteLibrary.json() }, mediaOpen = { remoteLibrary.open(it) },
                 changeCodec = { desired ->
                     if (desired != "h264" || !visible || recordingRequested || dualMode) false
@@ -810,6 +837,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             recordingRequested = false
             showRecordState(false)
             recordWorker.execute { finishRecording() }
+            if (visible && !backgroundMode) updateOrientation()
         } else {
             if (server == null || !publishedStreamFrame) {
                 Toast.makeText(this, R.string.phone_not_ready, Toast.LENGTH_SHORT).show()
@@ -944,6 +972,10 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             dialog.dismiss()
             findViewById<View>(R.id.phoneRevoke).performClick()
         }
+        content.findViewById<View>(R.id.moreOrientationRow).setOnClickListener {
+            dialog.dismiss()
+            chooseOrientationMode()
+        }
         content.findViewById<View>(R.id.moreQualityRow).setOnClickListener {
             dialog.dismiss(); chooseLocalQuality()
         }
@@ -985,6 +1017,30 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
 
         refreshStates()
         dialog.show()
+    }
+
+    private fun chooseOrientationMode() {
+        val modes = arrayOf(PhoneOrientationMode.AUTO, PhoneOrientationMode.PORTRAIT,
+            PhoneOrientationMode.LANDSCAPE)
+        val labels = arrayOf(getString(R.string.phone_orientation_auto),
+            getString(R.string.phone_orientation_portrait), getString(R.string.phone_orientation_landscape))
+        val current = modes.indexOf(orientationMode()).coerceAtLeast(0)
+        AlertDialog.Builder(this).setTitle(R.string.phone_orientation_title)
+            .setSingleChoiceItems(labels, current) { dlg, index ->
+                dlg.dismiss()
+                // A escolha fica salva e também é enviada ao serviço independente da tela.
+                getSharedPreferences("phone_video", MODE_PRIVATE).edit()
+                    .putString(PhoneOrientationMode.PREF_KEY, modes[index]).apply()
+                if (backgroundMode && PhoneCameraBackgroundService.running) {
+                    PhoneCameraBackgroundService.changeOrientationLocal(this, modes[index])
+                } else {
+                    if (modes[index] == PhoneOrientationMode.AUTO && orientationSensor.canDetectOrientation())
+                        orientationSensor.enable()
+                    else orientationSensor.disable()
+                    if (!recordingRequested) updateOrientation()
+                    else Toast.makeText(this, R.string.phone_orientation_deferred, Toast.LENGTH_LONG).show()
+                }
+            }.setNegativeButton(R.string.cancelar, null).show()
     }
 
     private fun chooseLocalQuality() {
@@ -1134,17 +1190,14 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         val c = camera ?: return
         val info = Camera.CameraInfo()
         Camera.getCameraInfo(id, info)
-        val rotation = when (windowManager.defaultDisplay.rotation) {
-            android.view.Surface.ROTATION_90 -> 90
-            android.view.Surface.ROTATION_180 -> 180
-            android.view.Surface.ROTATION_270 -> 270
-            else -> 0
-        }
+        val device = PhoneOrientationMode.deviceDegrees(orientationMode(), physicalDegrees)
+        val computed = PhoneOrientationMode.frameDegrees(info.orientation,
+            info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT, device)
         val display = if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT)
-            (360 - (info.orientation + rotation) % 360) % 360
-            else (info.orientation - rotation + 360) % 360
-        frameRotation = if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT)
-            (info.orientation + rotation) % 360 else display
+            (360 - computed) % 360 else computed
+        // Não trocar dimensões de um MP4 já iniciado.
+        if (recordingRequested) return
+        frameRotation = computed
         previewDisplayRotation = display
         c.setDisplayOrientation(display)
         updatePreviewTransform()
@@ -1158,7 +1211,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         val imageHeight = (if (rotated) previewWidth else previewHeight).toFloat()
         val viewWidth = preview.width.toFloat()
         val viewHeight = preview.height.toFloat()
-        val cover = maxOf(viewWidth / imageWidth, viewHeight / imageHeight)
+        // Prévia completa, sem cortar as bordas importantes para segurança na bicicleta.
+        val cover = minOf(viewWidth / imageWidth, viewHeight / imageHeight)
         val matrix = Matrix().apply {
             setScale(imageWidth * cover / viewWidth, imageHeight * cover / viewHeight,
                 viewWidth / 2f, viewHeight / 2f)

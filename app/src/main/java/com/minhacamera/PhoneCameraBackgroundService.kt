@@ -21,6 +21,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
+import android.view.OrientationEventListener
 import android.view.Surface
 import android.view.WindowManager
 import androidx.core.app.NotificationCompat
@@ -47,6 +48,14 @@ class PhoneCameraBackgroundService : Service() {
         const val ACTION_CODEC = "com.minhacamera.BACKGROUND_CODEC"
         const val ACTION_QUALITY = "com.minhacamera.BACKGROUND_QUALITY"
         const val ACTION_FPS = "com.minhacamera.BACKGROUND_FPS"
+        const val ACTION_ORIENTATION = "com.minhacamera.BACKGROUND_ORIENTATION"
+        const val EXTRA_ORIENTATION = "orientation_mode"
+        fun changeOrientationLocal(context: Context, mode: String) {
+            context.startService(Intent(context, PhoneCameraBackgroundService::class.java).apply {
+                action = ACTION_ORIENTATION
+                putExtra(EXTRA_ORIENTATION, PhoneOrientationMode.normalize(mode))
+            })
+        }
         const val EXTRA_CODEC = "codec"
         fun changeSettingsLocal(context: Context, action: String, value: Int) {
             context.startService(Intent(context, PhoneCameraBackgroundService::class.java).apply {
@@ -113,6 +122,37 @@ class PhoneCameraBackgroundService : Service() {
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
     private var lastCapture = 0L
+    @Volatile private var physicalDegrees = 0
+    @Volatile private var frameRotationDegrees = 0
+    private var activeSensorMount = 90
+    private var activeFrontFacing = false
+    private var currentOrientationMode = PhoneOrientationMode.AUTO
+    private val orientationStabilizer = PhoneOrientationStabilizer()
+    private val orientationSensor by lazy { object : OrientationEventListener(this) {
+        override fun onOrientationChanged(orientation: Int) {
+            orientationStabilizer.observe(orientation, SystemClock.elapsedRealtime())?.let { degrees ->
+                physicalDegrees = degrees
+                refreshFrameRotation()
+            }
+        }
+    } }
+    private fun refreshFrameRotation() {
+        if (recording || closing || switching || takingPhoto || !running) return
+        val device = PhoneOrientationMode.deviceDegrees(currentOrientationMode, physicalDegrees)
+        val computed = PhoneOrientationMode.frameDegrees(activeSensorMount, activeFrontFacing, device)
+        if (computed != frameRotationDegrees) {
+            val wasPortrait = frameRotationDegrees % 180 != 0
+            frameRotationDegrees = computed
+            if ((computed % 180 != 0) != wasPortrait) {
+                // H.264 só aceita dimensões fixas por encoder; limpa CSD e reinicia no worker.
+                try { encodeWorker.execute {
+                    liveEncoder?.close(); liveEncoder = null
+                    server?.clearAvc()
+                } } catch (_: Exception) { }
+            }
+            PhoneStreamDiagnostics.add("Orientação do fluxo atualizada: $computed graus")
+        }
+    }
     @Volatile private var lastPublishedAtMs = 0L
     private var watchdogRestarts = 0
     private val frameWatchdog = object : Runnable {
@@ -154,6 +194,15 @@ class PhoneCameraBackgroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> stopCaptureAndFinish()
+            ACTION_ORIENTATION -> if (running && !closing) {
+                currentOrientationMode = PhoneOrientationMode.normalize(intent.getStringExtra(EXTRA_ORIENTATION))
+                getSharedPreferences("phone_video", MODE_PRIVATE).edit()
+                    .putString(PhoneOrientationMode.PREF_KEY, currentOrientationMode).apply()
+                if (currentOrientationMode == PhoneOrientationMode.AUTO && orientationSensor.canDetectOrientation())
+                    orientationSensor.enable()
+                else orientationSensor.disable()
+                refreshFrameRotation()
+            }
             ACTION_RECORD -> if (running && !closing) toggleRecording()
             ACTION_QUALITY -> if (running && !closing && !recording && !switching && !takingPhoto) {
                 val profile = intent.getIntExtra("value", -1)
@@ -191,6 +240,15 @@ class PhoneCameraBackgroundService : Service() {
                     fpsLimit = getSharedPreferences("phone_video", MODE_PRIVATE).getInt("remote_fps", 10)
                     liveCodec = getSharedPreferences("phone_video", MODE_PRIVATE).getString("stream_codec", "mjpeg")
                         ?.takeIf { it == "h264" } ?: "mjpeg"
+                    currentOrientationMode = PhoneOrientationMode.normalize(
+                        getSharedPreferences("phone_video", MODE_PRIVATE)
+                            .getString(PhoneOrientationMode.PREF_KEY, null))
+                    physicalDegrees = when ((getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation) {
+                        Surface.ROTATION_90 -> 90
+                        Surface.ROTATION_180 -> 180
+                        Surface.ROTATION_270 -> 270
+                        else -> 0
+                    }
                     PhoneStreamDiagnostics.add("Solicitada captura em segundo plano: $liveCodec")
                     val facing = intent.getIntExtra(EXTRA_FACING, Camera.CameraInfo.CAMERA_FACING_BACK)
                     startCapture(facing)
@@ -294,6 +352,8 @@ class PhoneCameraBackgroundService : Service() {
             streamUrl = session.url
             lastError = null
             running = true
+            if (currentOrientationMode == PhoneOrientationMode.AUTO && orientationSensor.canDetectOrientation())
+                orientationSensor.enable()
             transmissionStartedMs = SystemClock.elapsedRealtime()
             PhoneStreamDiagnostics.add("Transmissão iniciada: perfil=$requestedQuality, fps=$fpsLimit, codec=$liveCodec")
             lastPublishedAtMs = SystemClock.elapsedRealtime()
@@ -375,15 +435,10 @@ class PhoneCameraBackgroundService : Service() {
         opened.parameters = params
         val info = Camera.CameraInfo()
         Camera.getCameraInfo(deviceId, info)
-        val rotation = (getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation
-        val degrees = when (rotation) {
-            Surface.ROTATION_90 -> 90
-            Surface.ROTATION_180 -> 180
-            Surface.ROTATION_270 -> 270
-            else -> 0
-        }
-        val frameRotation = if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT)
-            (info.orientation + degrees) % 360 else (info.orientation - degrees + 360) % 360
+        activeSensorMount = info.orientation
+        activeFrontFacing = info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT
+        frameRotationDegrees = PhoneOrientationMode.frameDegrees(info.orientation, activeFrontFacing,
+            PhoneOrientationMode.deviceDegrees(currentOrientationMode, physicalDegrees))
         val preview = PhoneHeadlessPreview.create(size.width, size.height)
         headlessPreview = preview
         opened.setPreviewTexture(preview.surfaceTexture)
@@ -400,13 +455,14 @@ class PhoneCameraBackgroundService : Service() {
                 encoding.compareAndSet(false, true)) {
                 lastCapture = SystemClock.elapsedRealtime()
                 val snapshot = bytes.copyOf(byteCount)
+                val rotationForFrame = frameRotationDegrees
                 try {
                     encodeWorker.execute {
                         try {
                             if (server === session && !closing && !switching) {
-                                val rotated = Nv21Frames.rotated(snapshot, size.width, size.height, frameRotation)
-                                val width = if (frameRotation % 180 == 0) size.width else size.height
-                                val height = if (frameRotation % 180 == 0) size.height else size.width
+                                val rotated = Nv21Frames.rotated(snapshot, size.width, size.height, rotationForFrame)
+                                val width = if (rotationForFrame % 180 == 0) size.width else size.height
+                                val height = if (rotationForFrame % 180 == 0) size.height else size.width
                                 publish(session, rotated, width, height)
                             }
                         } catch (_: Exception) { }
@@ -490,6 +546,8 @@ class PhoneCameraBackgroundService : Service() {
             battery.read().also { cachedBattery = it; lastBatteryReadAt = now }
         } else requireNotNull(cachedBattery)
         latestBattery = reading
+        // Relata a geometria PUBLICADA (não a dimensão bruta do sensor).
+        remoteResolution = "${width}x${height}"
         session.updateBattery(reading)
         heatState = PhoneEcoPolicy.heatState(reading.temperatureTenthsC, heatState)
         if (liveCodec == "h264") {
@@ -564,7 +622,10 @@ class PhoneCameraBackgroundService : Service() {
         PhoneStreamDiagnostics.add(if (recording) "Gravação encerrada" else "Gravação solicitada")
         recording = !recording
         recordingStartMs = if (recording) SystemClock.elapsedRealtime() else 0L
-        if (!recording) recordWorker.execute { finishRecording() }
+        if (!recording) {
+            recordWorker.execute { finishRecording() }
+            refreshFrameRotation()
+        }
         updateNotification()
     }
 
@@ -580,6 +641,7 @@ class PhoneCameraBackgroundService : Service() {
     private fun stopCaptureAndFinish() {
         if (closing) return
         closing = true
+        orientationSensor.disable()
         running = false
         recording = false
         recordingStartMs = 0L

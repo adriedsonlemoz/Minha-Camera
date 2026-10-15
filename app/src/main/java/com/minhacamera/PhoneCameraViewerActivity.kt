@@ -70,6 +70,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     private val statusHandler = Handler(Looper.getMainLooper())
     private var statusPollPending = false
     private var h264StartedAt = 0L
+    private var lastH264Resolution: String? = null
     private val codecStatusTick = object : Runnable {
         override fun run() {
             if (!active || viewerCodec != "h264") return
@@ -81,6 +82,13 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                         statusPollPending = false
                         if (!active || viewerCodec != "h264") return@runOnUiThread
                         if (snapshot.codec == "mjpeg") { stop(); start(); return@runOnUiThread }
+                        val resolution = snapshot.resolution
+                        if (resolution != null && lastH264Resolution != null &&
+                            resolution != lastH264Resolution) {
+                            PhoneStreamDiagnostics.add("Resolução H264 alterada; reconectando decoder")
+                            stop(); start(); return@runOnUiThread
+                        }
+                        if (resolution != null) lastH264Resolution = resolution
                         applyRemoteStatus(snapshot)
                     }
                 }, "h264-telemetry").apply { isDaemon = true; start() }
@@ -90,7 +98,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     }
     private data class RemoteStatus(val codec: String?, val transmissionSeconds: Long?,
         val recordSeconds: Long?, val recording: Boolean?, val battery: Int?, val temp: Int?,
-        val charging: Boolean?, val eco: Boolean?, val quality: Int?, val fps: Int?, val facing: Int?)
+        val charging: Boolean?, val eco: Boolean?, val quality: Int?, val fps: Int?, val facing: Int?,
+        val resolution: String? = null)
     private lateinit var batteryPill: TextView
     private lateinit var temperatureLabel: TextView
     private lateinit var resolutionLabel: TextView
@@ -152,7 +161,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        // Respeitar rotação do Android; o usuário pode assistir casa ou retrovisor em paisagem.
+        applyViewerOrientation()
         setContentView(R.layout.activity_phone_viewer)
         title = intent.getStringExtra("name") ?: getString(R.string.phone_camera)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -234,12 +244,53 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             } else setRemoteEco(remoteEco != true)
         }
         findViewById<View>(R.id.phoneViewerMore).setOnClickListener { openMoreDialog() }
+        refreshPreviewOrientation()
         refreshFitModeUi()
         refreshMirrorModeUi()
         refreshFocusModeUi()
         applyTelemetry(null)
         refreshRecordingUi()
         updateEcoUi()
+    }
+
+    /** O receptor pode seguir o Android, ficar vertical ou horizontal fixo. */
+    private fun applyViewerOrientation() {
+        requestedOrientation = when (getSharedPreferences("phone_viewer", MODE_PRIVATE)
+            .getString("orientation_mode", PhoneOrientationMode.AUTO)) {
+            PhoneOrientationMode.PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            PhoneOrientationMode.LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+            else -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
+
+    private fun chooseViewerOrientation() {
+        val modes = arrayOf(PhoneOrientationMode.AUTO, PhoneOrientationMode.PORTRAIT,
+            PhoneOrientationMode.LANDSCAPE)
+        val labels = arrayOf(getString(R.string.phone_viewer_orientation_auto),
+            getString(R.string.phone_viewer_orientation_portrait),
+            getString(R.string.phone_viewer_orientation_landscape))
+        val prefs = getSharedPreferences("phone_viewer", MODE_PRIVATE)
+        AlertDialog.Builder(this).setTitle(R.string.phone_viewer_orientation_title)
+            .setSingleChoiceItems(labels, modes.indexOf(prefs.getString("orientation_mode",
+                PhoneOrientationMode.AUTO)).coerceAtLeast(0)) { dialog, index ->
+                dialog.dismiss()
+                prefs.edit().putString("orientation_mode", modes[index]).apply()
+                applyViewerOrientation()
+            }.setNegativeButton(R.string.cancelar, null).show()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        refreshPreviewOrientation()
+    }
+
+    private fun refreshPreviewOrientation() {
+        if (!::previewContainer.isInitialized || isPipLayout || focusMode) return
+        // Tela horizontal: ampliar a área do vídeo sem distorcer o FIT_CENTER.
+        val heightDp = if (resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) 210 else 290
+        val layout = previewContainer.layoutParams
+        layout.height = (heightDp * resources.displayMetrics.density + 0.5f).toInt()
+        previewContainer.layoutParams = layout
     }
 
     // onPause acontece ao entrar no PiP: manter a leitura MJPEG enquanto a janela está visível.
@@ -402,6 +453,9 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             setTypeface(typeface, android.graphics.Typeface.BOLD)
         }
         content.addView(titleView, LinearLayout.LayoutParams(-1,-2).apply { bottomMargin = (12*resources.displayMetrics.density).toInt() })
+        addRow(getString(R.string.phone_viewer_orientation_title), R.drawable.ic_ui_screen) {
+            chooseViewerOrientation()
+        }
         addRow(getString(R.string.pip_window), R.drawable.ic_ui_pip) { enterPip() }
         addRow(getString(R.string.phone_view_focus), R.drawable.ic_fit, focusMode) { toggleFocusMode() }
         addRow(getString(R.string.phone_view_mirror), R.drawable.ic_ui_mirror, mirrorMode) { toggleMirrorMode() }
@@ -525,7 +579,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                     conn.getHeaderField("X-Transmission-Seconds")?.toLongOrNull(),
                     conn.getHeaderField("X-Recording-Seconds")?.toLongOrNull(), bool("X-Recording"),
                     int("X-Battery-Level"),int("X-Battery-Temp-Tenths"),bool("X-Battery-Charging"),
-                    bool("X-Eco"),int("X-Quality-Profile"),int("X-FPS-Target"),int("X-Camera-Facing"))
+                    bool("X-Eco"),int("X-Quality-Profile"),int("X-FPS-Target"),int("X-Camera-Facing"),
+                    conn.getHeaderField("X-Resolution"))
             } finally { conn.disconnect() }
         } catch (_: Exception) { RemoteStatus(null,null,null,null,null,null,null,null,null,null,null) }
     }
@@ -799,7 +854,10 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             while (active && attempts == session && !Thread.currentThread().isInterrupted) {
                 val state = probeStatus()
                 if (state.codec == "h264") {
-                    runOnUiThread { if (active && attempts == session) { applyRemoteStatus(state); startH264(session) } }
+                    runOnUiThread { if (active && attempts == session) {
+                        lastH264Resolution = state.resolution
+                        applyRemoteStatus(state); startH264(session)
+                    } }
                     return@Thread
                 }
                 if (state.codec == "mjpeg") runOnUiThread { if (active && attempts == session) applyRemoteStatus(state) }
