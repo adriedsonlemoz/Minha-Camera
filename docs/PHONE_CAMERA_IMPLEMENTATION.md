@@ -57,3 +57,7 @@ P3: atualizar Media3 e target SDK com testes de regressão. Essas melhorias **n�
 - Dupla experimental: Camera2 concorrente Android 11+, frontal e traseira empilhadas, com fallback para câmera única quando não suportado. Compatibilidade em hardware pendente.
 - MP4: MediaCodec AVC ByteBuffer + MediaMuxer em worker exclusivo da gravação; exportação após finalizar, Android 10+ via MediaStore Downloads, Android 7–9 com permissão de armazenamento. Sem áudio ou execução em segundo plano. Vídeo intermediário de sessão é apagado após exportação; encerramento abrupto não oferece recuperação.
 - Testes físicos de gravação, codec, economia de energia, duas lentes e latência pendentes.
+
+## Telemetria 1.4.18 (observações para adaptação)
+
+O quadro NV21 recebe selo de carga e temperatura da **bateria do transmissor** antes do MJPEG/MP4. Como é uma marca d'água gravada no vídeo, o receptor não precisa de endpoint de telemetria. Para alternar sem gravar dados no vídeo em uma futura arquitetura WebRTC, considerar canal de dados autenticado e overlay apenas no cliente. Leituras provêm do broadcast sticky `ACTION_BATTERY_CHANGED` e não representam a CPU.

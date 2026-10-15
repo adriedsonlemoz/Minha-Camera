@@ -49,6 +49,11 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private lateinit var dualPreviewContainer: View
     private lateinit var dualTop: ImageView
     private lateinit var dualBottom: ImageView
+    private lateinit var telemetryPreview: TextView
+    private val batteryTelemetry by lazy { PhoneBatteryTelemetry(applicationContext) }
+    private val batteryOverlay = PhoneBatteryOverlay()
+    @Volatile private var showBatteryOverlay = true
+    private var lastTelemetryLabel = ""
     private lateinit var recordLabel: TextView
     private lateinit var recordIcon: ImageView
     private lateinit var recordButton: View
@@ -99,6 +104,9 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         status = findViewById(R.id.phoneStatus)
         address = findViewById(R.id.phoneAddress)
         placeholder = findViewById(R.id.previewPlaceholder)
+        telemetryPreview = findViewById(R.id.phoneTelemetryPreview)
+        showBatteryOverlay = getSharedPreferences("phone_video", MODE_PRIVATE)
+            .getBoolean("show_battery_overlay", true)
         singlePreviewContainer = findViewById(R.id.phoneSinglePreview)
         dualPreviewContainer = findViewById(R.id.phoneDualPreview)
         dualTop = findViewById(R.id.phoneDualTop)
@@ -251,6 +259,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             c.setPreviewTexture(preview.surfaceTexture
                 ?: throw IllegalStateException("Superfície da prévia indisponível"))
             val session = PhoneCameraServer(ip, PhoneCameraAccess.token(this))
+            lastTelemetryLabel = ""
             server = session
             worker = if (worker.isShutdown) Executors.newSingleThreadExecutor() else worker
             encoding.set(false)
@@ -349,6 +358,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         })
         if (!controller.start()) { controller.close(); session.stop(); return false }
         dualController = controller
+        lastTelemetryLabel = ""
         server = session
         worker = if (worker.isShutdown) Executors.newSingleThreadExecutor() else worker
         session.start()
@@ -361,6 +371,19 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
 
     private fun publishFrame(session: PhoneCameraServer, frame: ByteArray, w: Int, h: Int, dual: Boolean) {
+        if (showBatteryOverlay) {
+            val label = batteryTelemetry.read().display()
+            batteryOverlay.burnInto(frame, w, h, label)
+            if (lastTelemetryLabel != label) {
+                lastTelemetryLabel = label
+                runOnUiThread {
+                    if (visible && server === session && showBatteryOverlay) {
+                        telemetryPreview.text = label
+                        telemetryPreview.visibility = if (dual) View.GONE else View.VISIBLE
+                    }
+                }
+            }
+        }
         val jpeg = ByteArrayOutputStream()
         if (!YuvImage(frame, ImageFormat.NV21, w, h, null)
                 .compressToJpeg(Rect(0, 0, w, h), 62, jpeg)) return
@@ -466,11 +489,24 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
 
     private fun openMoreDialog() {
+        val overlayOption = getString(if (showBatteryOverlay)
+            R.string.phone_hide_battery_overlay else R.string.phone_show_battery_overlay)
         AlertDialog.Builder(this).setTitle(R.string.ui_more)
-            .setItems(arrayOf(getString(R.string.ui_link), getString(R.string.ui_code), getString(R.string.phone_record_location))) { _, which ->
+            .setItems(arrayOf(getString(R.string.ui_link), getString(R.string.ui_code),
+                overlayOption, getString(R.string.phone_record_location))) { _, which ->
                 when (which) {
                     0 -> openLinkDialog()
                     1 -> findViewById<View>(R.id.phoneRevoke).performClick()
+                    2 -> {
+                        showBatteryOverlay = !showBatteryOverlay
+                        getSharedPreferences("phone_video", MODE_PRIVATE).edit()
+                            .putBoolean("show_battery_overlay", showBatteryOverlay).apply()
+                        lastTelemetryLabel = ""
+                        telemetryPreview.visibility = View.GONE
+                        Toast.makeText(this, if (showBatteryOverlay)
+                            R.string.phone_show_battery_overlay else R.string.phone_hide_battery_overlay,
+                            Toast.LENGTH_SHORT).show()
+                    }
                     else -> Toast.makeText(this, R.string.phone_record_location, Toast.LENGTH_LONG).show()
                 }
             }.setNegativeButton(R.string.cancelar, null).show()
@@ -568,6 +604,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         dualController = null
         dualTop.setImageDrawable(null)
         dualBottom.setImageDrawable(null)
+        lastTelemetryLabel = ""
+        telemetryPreview.visibility = View.GONE
         qrDialog?.dismiss()
         qrDialog = null
         val previous = server

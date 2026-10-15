@@ -89,3 +89,7 @@ Os testes simulados da 1.4.2 validam o **parser SDP e a sondagem RTSP**, não a 
 - GetDeviceInformation informa identidade de firmware, frequentemente genérica. GetServices/GetCapabilities anunciam PTZ, recording/search/replay, mas anúncio não é teste funcional ou certificação.
 - A câmera JT-9686 do usuário funciona com Yoosee e RTSP, e permite movimento/histórico no aplicativo original. Isso não comprova que esses recursos estejam expostos no ONVIF. Não determinar a lente móvel pelo nome do modelo; é necessária configuração de fontes/perfis e teste funcional separado.
 - Não adicionar SDK de fornecedor ou protocolo presumido antes de evidência do dispositivo. Consulta somente leitura primeiro; credenciais de ONVIF e RTSP podem diferir.
+
+## Minha Câmera 1.4.18: indicação de bateria no vídeo
+
+`PhoneBatteryTelemetry` lê nível e temperatura **da bateria local** pelo Android. `PhoneBatteryOverlay` aplica selo NV21 uma vez antes dos dois destinos, MJPEG e gravação MP4. Para o Vigia IA, considerar overlay opcional na visualização ou telemetria separada, pois o selo irreversível nos pixels pode não atender usos em que é necessário obter a imagem original. A função não foi incorporada ao Vigia IA.

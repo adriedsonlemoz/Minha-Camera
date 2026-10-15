@@ -1,3 +1,17 @@
+# Minha Câmera 1.4.18 (versionCode 28)
+
+## Telemetria de bateria incorporada à transmissão
+
+- Novo selo compacto `Bateria 61% | Bat. 34,7°C` (exemplo) no topo do vídeo do transmissor, recebido pelo outro celular e incorporado aos MP4 gravados.
+- A temperatura é **da bateria do transmissor**, não CPU, sensor ambiente ou do receptor. Não há valor falso quando o sistema deixa de informar o dado (`--`). Atualização consultada a cada 15 segundos.
+- A prévia da câmera única tem um indicador local correspondente. Menu **Mais** permite ocultar/mostrar o selo e guarda a escolha para próximas sessões.
+- Quadro NV21 recebe o selo antes do JPEG e antes da codificação H.264, mantendo só uma compressão JPEG por frame. Sem rede adicional, permissão nova ou envio de telemetria separada.
+- Preservados: navegação visual, QR pop-up, MJPEG adaptado, câmera dupla experimental, gravação `Downloads/MinhaCamera`, assinatura e Secrets (sem valores privados no ZIP).
+
+**Verificação:** validação estática de Kotlin/XML, testes JVM dos cálculos de bateria e integração, testes de assinatura e configuração. Android real, gravação efetiva e Gradle completo continuam pendentes.
+
+---
+
 # Minha Câmera 1.4.17 (versionCode 27)
 
 **Nova tela Ao vivo:** barra Virar · Dupla · QR · Gravar/Parar · Mais conforme design solicitado. O QR permanece em pop-up e o menu Mais contém Link e Código.

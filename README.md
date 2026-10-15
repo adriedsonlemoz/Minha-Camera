@@ -1,12 +1,12 @@
 # Minha Câmera
 
-**Versão atual: 1.4.17 (versionCode 27)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.18 (versionCode 28)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
 
 Desde a **1.4.13**, o projeto exige assinatura Release permanente por Secrets fixos do GitHub Actions e impede publicação com outro certificado. A chave privada fica fora do repositório. Consulte [assinatura permanente](docs/ASSINATURA_PERMANENTE.md) antes de instalar: a assinatura nova não é compatível com APKs antigos assinados por chave diferente.
 
 A **1.4.12** corrige a área preta na prévia do transmissor reportada em Android: substitui `SurfaceView` dentro de `ScrollView` por `TextureView` ligado à câmera e adapta o enquadramento à rotação, sem esticar a imagem. A prévia aparece antes do QR Code. O texto «Transmitindo» agora depende de a câmera realmente produzir e publicar um JPEG; após 5 segundos sem quadros ou sem desenhar a prévia, o app indica o problema. **Ainda precisa de teste físico** para confirmar a correção no aparelho afetado.
 
-A 1.4.11 adiciona **pareamento por QR Code**: ao tocar em «Usar este celular como câmera», escolha **Transmitir** ou **Visualizar**. O transmissor exibe um QR Code com a URL local e chave de acesso; o receptor abre o leitor de QR, valida o código, cadastra o dispositivo (sem duplicar endereços já existentes) e abre a imagem ao vivo. É necessário que os aparelhos estejam na mesma rede Wi-Fi (ou numa rede local em que possam se comunicar). Não há nuvem, IA ou áudio. A gravação MJPEG foi adicionada na 1.4.17, sem som e apenas durante a tela ativa. A transmissão para ao fechar/bloquear a tela do transmissor. A alternativa «Adicionar outro celular» por URL permanece disponível. O QR precisa ser escaneado novamente após mudança de IP ou revogação da chave. Veja [implementação e limites](docs/PHONE_CAMERA_IMPLEMENTATION.md).
+A 1.4.11 adiciona **pareamento por QR Code**: ao tocar em «Usar este celular como câmera», escolha **Transmitir** ou **Visualizar**. O transmissor mostra um QR Code sob demanda com a URL local e chave de acesso; o receptor abre o leitor de QR, valida o código, cadastra o dispositivo (sem duplicar endereços já existentes) e abre a imagem ao vivo. É necessário que os aparelhos estejam na mesma rede Wi-Fi (ou numa rede local em que possam se comunicar). Não há nuvem, IA ou áudio. A gravação MP4 a partir da captura de vídeo foi adicionada na 1.4.17, sem som e apenas durante a tela ativa. A transmissão para ao fechar/bloquear a tela do transmissor. A alternativa «Adicionar outro celular» por URL permanece disponível. O QR precisa ser escaneado novamente após mudança de IP ou revogação da chave. Veja [implementação e limites](docs/PHONE_CAMERA_IMPLEMENTATION.md).
 
 A 1.4.9 reorganiza os controles ao girar o celular, mostra cada lente inteira sem zoom e adiciona **Identificar câmera e serviços** ao menu do player. A identidade e os serviços são os informados pelo ONVIF; não identifica qual lente tem motor nem implementa histórico do Yoosee. Veja [validação 1.4.9](docs/PLAYER_FIT_VALIDATION.md).
 
@@ -37,6 +37,12 @@ Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.8 organiz
 5. Se a descoberta falhar, verifique as portas da câmera, Wi-Fi e ONVIF, ou use `rtsp://usuario:senha@IP:554/caminho`.
 
 
+### Indicadores de bateria no vídeo (1.4.18)
+
+No modo **Transmitir**, o app consulta a bateria do próprio celular transmissor via `ACTION_BATTERY_CHANGED`, no máximo a cada 15 segundos. Sobrepõe **percentual de carga** e **temperatura da bateria**, em °C, em um selo discreto no canto superior do vídeo. O selo é incorporado ao NV21 **antes da compressão MJPEG e do codificador MP4**, aparecendo tanto no celular receptor quanto nas gravações em `Downloads/MinhaCamera`. A prévia local de câmera única usa um selo visual equivalente; a prévia dupla já recebe a imagem codificada com o selo. **Mais → Ocultar/Mostrar bateria no vídeo** ativa/desativa a função, lembrando a preferência. Desativado, não adiciona o selo aos novos quadros.
+
+A temperatura exibida **não é de CPU nem do ambiente**. Leituras ausentes/inválidas aparecem como `--` (nunca como medições inventadas); sensores podem atrasar ou não reportar temperatura. O recurso não usa IA, internet nem novas permissões. O selo usa um bitmap pequeno em cache e aplica pixels diretamente no NV21, evitando uma segunda compressão JPEG por quadro. Como as informações são visíveis a qualquer receptor autorizado e às gravações, o recurso pode ser desligado no menu Mais. Compilação Android e validação no aparelho ainda pendentes.
+
 ### Interface e celular da 1.4.17
 
 No transmissor, o visual segue **Virar · Dupla · QR · Gravar/Parar · Mais**, com cinco cartões iguais na mesma linha. **Mais** reúne Link (copiar/enviar), Código (renovar acesso) e destino de gravação. **QR** continua em diálogo centralizado sob demanda. No modo Dupla, se o Android 11+ anunciar uma combinação frontal/traseira de câmeras concorrentes, Camera2 tenta capturá-las e compõe **traseira em cima/frontal embaixo**; em falha de hardware retorna à câmera única. **Não disponível em todos os aparelhos.**
@@ -51,13 +57,13 @@ A tela principal possui duas abas inferiores: **Câmeras** (câmeras RTSP/ONVIF 
 
 O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara Android SDK 36 e executa `gradle testProtocol testReleaseUnitTest assembleRelease` uma única vez, com cache. Publica cada APK individualmente, sem ZIP, em **Actions > Artifacts**:
 
-- `MinhaCamera-1.4.17-universal.apk`: todas as quatro ABIs, para distribuição geral.
-- `MinhaCamera-1.4.17-armeabi-v7a.apk`: Android ARM de 32 bits.
-- `MinhaCamera-1.4.17-arm64-v8a.apk`: Android ARM de 64 bits.
-- `MinhaCamera-1.4.17-x86_64.apk`: Android Intel de 64 bits/emuladores.
-- `MinhaCamera-1.4.17-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
+- `MinhaCamera-1.4.18-universal.apk`: todas as quatro ABIs, para distribuição geral.
+- `MinhaCamera-1.4.18-armeabi-v7a.apk`: Android ARM de 32 bits.
+- `MinhaCamera-1.4.18-arm64-v8a.apk`: Android ARM de 64 bits.
+- `MinhaCamera-1.4.18-x86_64.apk`: Android Intel de 64 bits/emuladores.
+- `MinhaCamera-1.4.18-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
 
-No workflow assinado, todos têm `com.minhacamera`, versão 1.4.17, código 27 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
+No workflow assinado, todos têm `com.minhacamera`, versão 1.4.18, código 28 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
 
 A 1.4.16 corrige o bloqueio do Build APK 18 causado por KEYSTORE_BASE64 inválido. O workflow prefere o novo Secret KEYSTORE_HEX, composto apenas de dígitos e letras a–f, mantendo Base64 como alternativa legada. É obrigatório importar KEYSTORE_HEX e conferir os outros três Secrets antes do novo build. O certificado original é mantido; nenhuma chave foi regenerada.
 

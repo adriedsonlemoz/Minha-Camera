@@ -14,6 +14,13 @@
         <FrameLayout android:id="@+id/phoneSinglePreview" android:layout_width="match_parent" android:layout_height="240dp"
             android:background="@drawable/bg_ui_preview" android:clipToOutline="true">
             <TextureView android:id="@+id/phonePreview" android:layout_width="match_parent" android:layout_height="match_parent"/>
+            <TextView android:id="@+id/phoneTelemetryPreview"
+                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_gravity="top|start" android:layout_margin="10dp"
+                android:background="@drawable/bg_phone_telemetry" android:paddingStart="9dp"
+                android:paddingEnd="9dp" android:paddingTop="6dp" android:paddingBottom="6dp"
+                android:textSize="12sp" android:textStyle="bold" android:textColor="#FFFFFFFF"
+                android:visibility="gone" android:contentDescription="@string/phone_battery_overlay_description" />
             <TextView android:id="@+id/previewPlaceholder" android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_gravity="center" android:text="@string/ui_preview_loading" android:textColor="#C4CCD7" android:textSize="14sp"/>
         </FrameLayout>

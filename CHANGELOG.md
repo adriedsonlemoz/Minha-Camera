@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.4.18+28 — bateria e temperatura no vídeo ao vivo
+
+- Adicionado selo discreto com **carga (%)** e **temperatura da bateria (°C)** do aparelho transmissor, incorporado em cada quadro MJPEG e também nos quadros usados para gravação MP4.
+- Leituras pelo `ACTION_BATTERY_CHANGED` com cache de 15 segundos, validação de leituras ausentes e sem novas permissões.
+- Prévia local possui indicação equivalente; opção **Mais → Ocultar/Mostrar bateria no vídeo**, persistida em preferências.
+- Sobreposição aplicada diretamente nos planos Y/UV do NV21, evitando decodificação e recompressão extra, inclusive em câmera dupla.
+- Mantidos QR sob demanda, câmera dupla experimental, gravação MP4 e assinatura estável. Build Android e testes de hardware ainda pendentes.
+
 ## 1.4.17+27 — transmissão mais fluida, gravação MP4 e câmera dupla experimental
 
 - O modo Transmitir passa do limite de 4 FPS (250 ms) para uma tentativa de até ~11 FPS (90 ms), conforme a capacidade de CPU e rede. MJPEG não garante esse FPS nem latência fixa.
