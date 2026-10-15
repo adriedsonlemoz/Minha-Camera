@@ -1,6 +1,9 @@
 package com.minhacamera
 
 import android.Manifest
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -79,6 +82,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
         supportActionBar?.hide()
         NetUtil.bindToWifi(this)
+        window.decorView.post { showPreviousCrashIfAny() }
 
         store = CameraStore(this)
         cams = store.load()
@@ -275,6 +279,23 @@ class MainActivity : AppCompatActivity() {
             dialog.dismiss()
             Toast.makeText(this, R.string.phone_saved, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    private fun showPreviousCrashIfAny() {
+        val prefs = getSharedPreferences("private_crash_diagnostics", MODE_PRIVATE)
+        val report = prefs.getString("last", null) ?: return
+        prefs.edit().remove("last").apply()
+        if (isFinishing || isDestroyed) return
+        AlertDialog.Builder(this)
+            .setTitle(R.string.crash_diagnostic_title)
+            .setMessage(getString(R.string.crash_diagnostic_intro) + "\n\n" + report)
+            .setPositiveButton(R.string.crash_diagnostic_copy) { _, _ ->
+                val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                clipboard.setPrimaryClip(ClipData.newPlainText("Minha Camera crash", report))
+                Toast.makeText(this, R.string.crash_diagnostic_copied, Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton(android.R.string.ok, null)
+            .show()
     }
 
     private fun openCamera(camera: Camera) {

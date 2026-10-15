@@ -1,8 +1,10 @@
 # Minha Câmera 1.4.25 (versionCode 35)
 
-- Tela receptora alinhada à transmissão, com barra principal mais completa.
-- Novo controle remoto do transmissor pelo receptor: trocar câmera e gravar/parar.
-- Indicador REC do outro celular mostrado no receptor, com estado devolvido pelo fluxo MJPEG.
+- PiP nativo para recepção MJPEG em **Celular → Assistir → Mais → Janela flutuante** e para câmera IP RTSP pelo botão **PiP**; sem nova permissão especial.
+- Leitura MJPEG contínua enquanto PiP visível, preservando modo espelho e descartando quadros antigos. Encerramento normal ao fechar a janela.
+- Tratamento de `LinkageError` de inicialização Media3 para tentar fallback LibVLC; relatório local copiável de crashes Java/Kotlin no próximo início para investigar fechamento RTSP relatado em vídeo.
+- Não é uma correção comprovada para fechamento nativo do player. Necessário Logcat se ocorrer de novo.
+- Android build, playback/compatibilidade PiP e aparelhos físicos ainda não validados.
 
 # Minha Câmera 1.4.24 (versionCode 34)
 

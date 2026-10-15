@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.view.Gravity
+import android.util.Rational
 import android.widget.LinearLayout
 import androidx.media3.common.VideoSize
 import android.view.Menu
@@ -71,6 +72,7 @@ class PlayerActivity : AppCompatActivity() {
     private var failedGeneration = -1
     private var videoReady = false
     private var fullscreen = false
+    private var pipVisible = false
     private var displayMode = 0 // full frame, upper half, lower half; never zoom
     private var videoAspect = 0.0
     private var identifying = false
@@ -122,6 +124,7 @@ class PlayerActivity : AppCompatActivity() {
                 getString(R.string.imagem_superior), getString(R.string.imagem_inferior)
             ), displayMode) { dialog, which -> displayMode = which; applyDisplayMode(); dialog.dismiss() }.show()
         }
+        findViewById<View>(R.id.btnPip).setOnClickListener { enterPip() }
         findViewById<View>(R.id.btnFullscreen).setOnClickListener { fullscreen = !fullscreen; applyFullscreen() }
         viewport.addOnLayoutChangeListener { _, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom ->
             if (right-left != oldRight-oldLeft || bottom-top != oldBottom-oldTop) applyDisplayMode()
@@ -136,6 +139,35 @@ class PlayerActivity : AppCompatActivity() {
         outState.putBoolean("fullscreen", fullscreen); outState.putInt("displayMode", displayMode)
         super.onSaveInstanceState(outState)
     }
+    override fun onPictureInPictureModeChanged(inPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(inPictureInPictureMode, newConfig)
+        pipVisible = inPictureInPictureMode
+        findViewById<View>(R.id.playerControls).visibility = if (pipVisible) View.GONE else View.VISIBLE
+        engineText.visibility = if (pipVisible) View.GONE else View.VISIBLE
+        recordTimer.visibility = if (pipVisible) View.GONE else if (recordingConfirmed) View.VISIBLE else View.GONE
+        if (pipVisible) toolbar.visibility = View.GONE else applyFullscreen()
+        viewport.post { applyDisplayMode() }
+    }
+
+    private fun enterPip() {
+        if (!PipSupport.available(this)) {
+            Toast.makeText(this, R.string.pip_unavailable, Toast.LENGTH_LONG).show()
+            return
+        }
+        if (!videoReady || !active) {
+            Toast.makeText(this, R.string.pip_wait_for_video, Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (recordingSession != null || recordPending) {
+            Toast.makeText(this, R.string.pip_stop_recording, Toast.LENGTH_LONG).show()
+            return
+        }
+        val ratio = if (videoAspect.isFinite() && videoAspect in 0.43..2.30)
+            Rational((videoAspect * 1000).toInt().coerceAtLeast(1), 1000) else Rational(16, 9)
+        if (!PipSupport.enter(this, viewport, ratio))
+            Toast.makeText(this, R.string.pip_unavailable, Toast.LENGTH_LONG).show()
+    }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         configureControls()
@@ -146,6 +178,7 @@ class PlayerActivity : AppCompatActivity() {
         menu.add(0, 2002, 1, R.string.usar_vlc)
         menu.add(0, 2003, 2, R.string.informacoes_tecnicas)
         menu.add(0, 2004, 3, R.string.identificar_camera)
+        menu.add(0, 2005, 4, R.string.pip_window)
         return true
     }
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
@@ -155,11 +188,16 @@ class PlayerActivity : AppCompatActivity() {
             R.string.engine_fluxo, if (engine == Engine.MEDIA3) "Media3" else "LibVLC", index+1, urls.size
         )).setPositiveButton(android.R.string.ok, null).show(); true }
         2004 -> { identifyCamera(); true }
+        2005 -> { enterPip(); true }
         else -> super.onOptionsItemSelected(item)
     }
     override fun onSupportNavigateUp(): Boolean { if (fullscreen) { fullscreen=false; applyFullscreen() } else finish(); return true }
-    override fun onStart() { super.onStart(); active = true; resetAndPlay(Engine.MEDIA3) }
+    override fun onStart() {
+        super.onStart()
+        if (!active) { active = true; resetAndPlay(Engine.MEDIA3) }
+    }
     override fun onStop() {
+        if (android.os.Build.VERSION.SDK_INT >= 26 && isInPictureInPictureMode) { super.onStop(); return }
         active = false; recordPending = false; generation++
         mainHandler.removeCallbacksAndMessages(null)
         releasePlayers()
@@ -167,7 +205,7 @@ class PlayerActivity : AppCompatActivity() {
     }
     override fun onDestroy() { identityThread?.interrupt(); identityThread = null; super.onDestroy() }
     private fun applyFullscreen() {
-        toolbar.visibility = if (fullscreen) View.GONE else View.VISIBLE
+        toolbar.visibility = if (fullscreen || pipVisible) View.GONE else View.VISIBLE
         val controller = WindowInsetsControllerCompat(window, window.decorView)
         if (fullscreen) {
             controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
@@ -314,7 +352,8 @@ class PlayerActivity : AppCompatActivity() {
             })
             exoView.player = next; next.setMediaSource(source); next.prepare(); next.playWhenReady = true
             applyDisplayMode()
-        } catch (error: Exception) { onAttemptFailed("Media3", error.javaClass.simpleName) }
+        } catch (error: Exception) { onAttemptFailed("Media3", causeSummary(error)) }
+          catch (error: LinkageError) { onAttemptFailed("Media3", "Componente de reprodução indisponível (${error.javaClass.simpleName})") }
     }
     private fun startVlc(url: String, current: Int) {
         try {
@@ -358,7 +397,7 @@ class PlayerActivity : AppCompatActivity() {
                 if (displayed > 0) videoAvailable() else mainHandler.postDelayed({ awaitPicture() }, 250L)
             }
             mainHandler.postDelayed({ awaitPicture() }, 250L)
-        } catch (error: Exception) { onAttemptFailed("LibVLC", error.javaClass.simpleName) }
+        } catch (error: Exception) { onAttemptFailed("LibVLC", causeSummary(error)) }
         catch (error: LinkageError) { onAttemptFailed("LibVLC", "Biblioteca nativa indisponível (${error.javaClass.simpleName})") }
     }
     private fun onRecordClick() {

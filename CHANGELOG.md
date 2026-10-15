@@ -1,7 +1,11 @@
 ## 1.4.25+35 — 2026-10-15
-- Receptor com barra principal mais próxima do transmissor: Trocar, Gravar/Parar, Inteira/Preencher, Espelho e Mais.
-- Botões remotos no receptor controlam o celular transmissor por HTTP local: trocar câmera e iniciar/parar gravação.
-- Estado de gravação do transmissor agora volta no fluxo MJPEG e aparece no receptor como indicador REC e botão Parar.
+
+- PiP nativo em **Celular → Assistir** (MJPEG), com vídeo isolado, sem controle extra ou sobreposição por permissão especial. A leitura sobrevive ao `onPause` e termina no `onStop` quando PiP não estiver ativo; reconexão e espelho preservados.
+- PiP nativo no player RTSP (botão PiP e menu) após primeira imagem; controles escondidos na janela, sem iniciar durante gravação para evitar cortes.
+- Falha reportada em vídeo: abertura da câmera RTSP “Câmera 209” retorna imediatamente à tela inicial. O vídeo não contém Logcat, então a causa exata permanece desconhecida.
+- Media3 captura `LinkageError` de inicialização para permitir fallback LibVLC em vez de término por erro não tratado, e mostra melhor resumo de falha sem revelar URL.
+- `CameraApplication` grava diagnóstico *Java/Kotlin* mínimo no armazenamento privado em crash e o oferece para cópia na próxima abertura do app (sem URL, senha ou stacktrace completo com parâmetros). Crashes nativos não são capturados.
+- Assinatura Release, Secrets, MJPEG, RTSP e gravação preservados. Faltam build completo Android e testes físicos com Logcat/firmware.
 
 ## 1.4.24+34 — 2026-10-15
 - Receptor em modo retrato com cinco ações compactas: Refazer, Enquadrar, Espelho, Foco e Mais.

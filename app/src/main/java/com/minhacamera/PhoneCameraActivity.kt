@@ -143,7 +143,20 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         preview.surfaceTextureListener = this
         // SurfaceTexture desenha como uma View normal, mesmo dentro de ScrollView.
         surfaceReady = preview.isAvailable
-        findViewById<View>(R.id.phoneSwitch).setOnClickListener { switchSingleCamera() }
+        findViewById<View>(R.id.phoneSwitch).setOnClickListener {
+            if (dualMode) {
+                Toast.makeText(this, R.string.phone_dual_has_both, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (recordingRequested) {
+                Toast.makeText(this, R.string.phone_stop_record_first, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            selectedFacing = if (selectedFacing == Camera.CameraInfo.CAMERA_FACING_BACK)
+                Camera.CameraInfo.CAMERA_FACING_FRONT else Camera.CameraInfo.CAMERA_FACING_BACK
+            stopStreaming()
+            tryStart()
+        }
         findViewById<View>(R.id.phoneQr).setOnClickListener { openQrDialog() }
 
         // Código de acesso acessível em "Mais", preservando as quatro ações anteriores.
@@ -162,35 +175,6 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         }
         status.setText(R.string.phone_waiting)
     }
-
-
-    private fun switchSingleCamera() {
-        if (dualMode) {
-            Toast.makeText(this, R.string.phone_dual_has_both, Toast.LENGTH_SHORT).show()
-            return
-        }
-        if (recordingRequested) {
-            Toast.makeText(this, R.string.phone_stop_record_first, Toast.LENGTH_SHORT).show()
-            return
-        }
-        selectedFacing = if (selectedFacing == Camera.CameraInfo.CAMERA_FACING_BACK)
-            Camera.CameraInfo.CAMERA_FACING_FRONT else Camera.CameraInfo.CAMERA_FACING_BACK
-        stopStreaming()
-        tryStart()
-    }
-
-    private fun createServer(ip: java.net.Inet4Address): PhoneCameraServer =
-        PhoneCameraServer(
-            ip,
-            PhoneCameraAccess.token(this),
-            onSwitchCamera = { runOnUiThread { switchSingleCamera() } },
-            onToggleRecording = { runOnUiThread { toggleRecording() } },
-            recordingActiveProvider = { recordingRequested },
-            recordingElapsedSecProvider = {
-                if (recordingRequested && recordingStartedAt > 0L)
-                    (SystemClock.elapsedRealtime() - recordingStartedAt) / 1000 else 0L
-            }
-        )
 
     override fun onResume() {
         super.onResume()
@@ -305,7 +289,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             updateOrientation()
             c.setPreviewTexture(preview.surfaceTexture
                 ?: throw IllegalStateException("Superfície da prévia indisponível"))
-            val session = createServer(ip)
+            val session = PhoneCameraServer(ip, PhoneCameraAccess.token(this))
             lastTelemetryLabel = ""
             cachedTelemetryLabel = ""
             previousBatteryReading = null
@@ -385,7 +369,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
 
     private fun startDual(ip: java.net.Inet4Address): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
-        val session = try { createServer(ip) }
+        val session = try { PhoneCameraServer(ip, PhoneCameraAccess.token(this)) }
             catch (_: Exception) { return false }
         val controller = PhoneDualCamera(this, { PhoneEcoPolicy.intervalMs(ecoEnabled, heatState) }, { a, b, w, h ->
             val now = SystemClock.elapsedRealtime()

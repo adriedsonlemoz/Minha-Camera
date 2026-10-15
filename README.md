@@ -12,6 +12,12 @@ A 1.4.9 reorganiza os controles ao girar o celular, mostra cada lente inteira se
 
 Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.8 organiza o cadastro RTSP em lista, renova o player e adiciona gravação local e biblioteca por dia. Mantém APKs por arquitetura, ONVIF, RTSP, H.264/H.265, Media3 e LibVLC. Consulte [CHANGELOG.md](CHANGELOG.md), [notas de release](docs/RELEASE_NOTES.md) e [validação do build](docs/BUILD_VALIDATION.md).
 
+## Janela flutuante PiP (1.4.25)
+
+No receptor **Celular → Assistir**, aguarde a primeira imagem e escolha **Mais → Janela flutuante (PiP)**. No player RTSP, use o botão **PiP** na barra inferior (ou o menu), após aparecer o primeiro quadro e antes de iniciar qualquer gravação. Em seguida é possível abrir o app de mapas com o vídeo visível. No PiP, o receptor MJPEG mantém leitura e reconexão enquanto sua Activity permanece visível; ao fechar o PiP, interrompe a rede. O transmissor NÃO passa a transmitir com a tela apagada nem em segundo plano. Requer Android 8+ e suporte do fabricante ao PiP; sem permissão "Exibir sobre outros apps". O uso real em Xiaomi/HyperOS é pendente.
+
+**Diagnóstico de fechamento**: um vídeo enviado pelo usuário mostra fechamento abrupto ao abrir uma câmera RTSP (não o receptor MJPEG). A causa exata depende de um Logcat. Adicionado registro local e privado de *exceções Java/Kotlin não tratadas*, exibido no próximo início para cópia. Não captura crashes nativos do LibVLC, e não salva URLs/senhas. Adicionado tratamento para `LinkageError` na inicialização Media3, permitindo tentativa de fallback LibVLC. Sem confirmação de correção em dispositivo.
+
 ## Descoberta automática
 
 - **ONVIF WS-Discovery:** envia probes multicast UDP a `239.255.255.250:3702`, recebe `ProbeMatch`, identifica o IP de quem respondeu e aproveita os `XAddrs` para consultar o serviço da câmera com credenciais.
@@ -61,7 +67,7 @@ A leitura de temperatura **da bateria** já existia: agora, quando ela atinge 42
 
 Nenhuma biblioteca ou permissão nova; transmissão continua MJPEG local. Build e medições físicas pendentes.
 
-### Modo Retrovisor do receptor (1.4.25)
+### Modo Retrovisor do receptor (1.4.24)
 
 Em **Celular → Assistir**, o receptor permanece em orientação vertical e mostra cinco controles compactos: **Refazer · Inteira/Preencher · Espelho/Normal · Foco · Mais**. **Espelho** faz apenas uma transformação de exibição (`ImageView.scaleX=-1`) no celular receptor. Nenhum quadro é recodificado, nenhuma alteração é enviada ao transmissor, e o ajuste fica salvo no aparelho receptor. O padrão é imagem normal, sem espelhamento. Importante: textos já gravados nos pixels do vídeo são invertidos junto com a imagem; a telemetria nativa sobreposta à prévia permanece legível.
 
