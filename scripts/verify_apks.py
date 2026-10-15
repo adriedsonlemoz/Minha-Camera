@@ -74,6 +74,10 @@ def main():
         results[label] = result
     assert set(results) == ABIS | {'universal'}, f'APKs faltantes: {set(results)}'
     universal = results['universal']
+    # Impede publicar acidentalmente com outro certificado, mesmo que os cinco APKs coincidam.
+    expected_cert = (ROOT / 'docs/SIGNING_CERT_SHA256.txt').read_text().strip().lower().replace(':', '')
+    actual_cert = universal['certificate'].lower().replace(':', '')
+    assert actual_cert == expected_cert, 'APK com certificado diferente do release permanente fixado'
     for label, result in results.items():
         assert result['certificate'] == universal['certificate'], f'Certificado divergente: {label}'
         assert result['payload'] == universal['payload'], f'Código/recursos divergentes: {label}'

@@ -1,3 +1,15 @@
+# Minha Câmera 1.4.13 (versionCode 23)
+
+Data: 2026-10-14.
+
+**Assinatura permanente:** APKs Release passam a exigir os quatro Secrets KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS e KEY_PASSWORD. O workflow verifica o certificado SHA-256 fixado no projeto e não usa a chave Debug temporária. A assinatura deve ser preservada para todas as atualizações futuras.
+
+**ATENÇÃO:** a chave desta versão é nova. A instalação existente só poderá atualizar diretamente se tiver o mesmo certificado, o que **não foi comprovado**. Não desinstale antes de salvar os dados importantes; recuperar a chave original é a única alternativa de atualização normal que preserve a instalação com assinatura anterior diferente.
+
+Nenhuma mudança funcional no modo câmera, QR, RTSP ou gravação. Compilação Android e testes de atualização no dispositivo continuam pendentes. Veja [ASSINATURA_PERMANENTE.md](ASSINATURA_PERMANENTE.md).
+
+---
+
 # Minha Câmera 1.4.12 (versionCode 22)
 
 Data: 2026-10-14.

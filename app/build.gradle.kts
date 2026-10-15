@@ -13,8 +13,8 @@ android {
         applicationId = "com.minhacamera"
         minSdk = 24
         targetSdk = 34
-        versionCode = 22
-        versionName = "1.4.12"
+        versionCode = 23
+        versionName = "1.4.13"
     }
 
     // O AAR LibVLC 3.7.7 contém as quatro ABIs; manter x86 para compatibilidade.
@@ -28,12 +28,22 @@ android {
         }
     }
 
+    // A assinatura de release vem exclusivamente de Secrets do GitHub Actions,
+    // nunca da chave Debug temporária do runner.
+    signingConfigs {
+        create("stableRelease") {
+            storeType = "PKCS12"
+            storeFile = file(System.getenv("MINHACAMERA_KEYSTORE_PATH") ?: "keystore-release-NAO-CONFIGURADA.p12")
+            storePassword = System.getenv("MINHACAMERA_KEYSTORE_PASSWORD") ?: ""
+            keyAlias = System.getenv("MINHACAMERA_KEY_ALIAS") ?: ""
+            keyPassword = System.getenv("MINHACAMERA_KEY_PASSWORD") ?: ""
+        }
+    }
     buildTypes {
         release {
             isMinifyEnabled = false
             isShrinkResources = false
-            // Assinado com a chave de debug para o APK instalar direto.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("stableRelease")
         }
     }
 

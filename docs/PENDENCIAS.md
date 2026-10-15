@@ -1,9 +1,9 @@
-# Pauta técnica após 1.4.12
+# Pauta técnica após 1.4.13
 
 ## P0: preservação de dados / segurança
 
 - Persistir credenciais RTSP com proteção baseada no Android Keystore e migração sem perda das câmeras legadas.
-- Garantir assinatura de APK estável; recuperar a assinatura original antes de prometer upgrade direto sem perda.
+- **Assinatura permanente configurada em 1.4.13 (não testada no Actions)**. Importar os quatro Secrets, executar build e guardar backup privado. Recuperar a assinatura original se quiser atualizar instalações antigas sem desinstalação.
 
 ## P1: robustez
 

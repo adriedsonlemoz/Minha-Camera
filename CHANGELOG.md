@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.4.13+23 — 2026-10-14
+- Assinatura Release permanente por quatro Secrets do GitHub Manager / GitHub Actions, usando keystore PKCS12 específica deste projeto.
+- GitHub Actions valida a presença dos Secrets e o SHA-256 do certificado antes de compilar; falha de modo seguro se os dados estiverem incorretos.
+- Gradle não usa mais a assinatura Debug em builds Release; o verificador de APKs confere o certificado fixado.
+- Keystore e arquivos de importação gerados separadamente do código-fonte, excluídos do repositório por `.gitignore`.
+- Não garante atualização sobre APK anteriormente assinado com chave diferente; instalação legada exige chave original ou migração com backup.
+- Mantidos câmera/QR, RTSP/ONVIF, gravação e cinco APKs por ABI; build Android e teste de atualização em aparelho pendentes.
+
 ## 1.4.12+22 — 2026-10-14
 - Corrigida a implementação da prévia local que podia aparecer preta mesmo com o QR e servidor iniciados: `SurfaceView` dentro de `ScrollView` foi substituído por `TextureView` com ciclo de vida de `SurfaceTexture` (inclui pausa, retorno e troca de câmera).
 - Prévia posicionada antes do QR Code, com ajuste de proporção sem achatamento durante rotação/redimensionamento.

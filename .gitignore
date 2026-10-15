@@ -7,3 +7,12 @@ captures/
 .cxx/
 dist/
 .kotlin/
+
+# Chaves/credenciais de assinatura (NUNCA commit)
+*.keystore
+*.jks
+*.p12
+*.pfx
+*Secrets-IMPORTAR*
+*.env
+keystore-release-*
