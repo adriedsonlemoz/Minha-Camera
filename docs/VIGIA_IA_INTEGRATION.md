@@ -1,6 +1,6 @@
 # Descobertas do Minha Câmera úteis para o Vigia IA
 
-Atualizado em **1.4.30+40** (2026-10-15).
+Atualizado em **1.4.31+41** (2026-10-15).
 
 Este material serve como registro técnico: **não significa que o Vigia IA foi modificado**.
 

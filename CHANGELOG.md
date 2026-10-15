@@ -1,3 +1,9 @@
+## 1.4.31+41 — 2026-10-15
+- Corrigidos os quatro erros Kotlin do workflow Build APK 31 (`:app:compileReleaseKotlin`).
+- Callbacks de qualidade e troca remota passam a resolver o servidor ativo após sua inicialização, sem capturar `session` no próprio construtor.
+- Seletores remotos de qualidade/FPS agora tratam valores `Int?` não informados sem causar erro de tipos.
+- Não há mudança de protocolo, permissões ou assinatura; recursos da 1.4.30 preservados.
+
 ## 1.4.30+40 — 2026-10-15
 - Transmissor passou a oferecer prévia sem transmissão e botão Iniciar/Parar transmissão, distinto de REC.
 - Serviço com tela apagada ganhou consumidor OpenGL da SurfaceTexture, corrigindo provável bloqueio da fila de buffers do preview.

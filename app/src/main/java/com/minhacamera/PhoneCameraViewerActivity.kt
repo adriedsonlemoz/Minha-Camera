@@ -419,7 +419,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         val options = intArrayOf(360, 480, 720)
         AlertDialog.Builder(this).setTitle(R.string.viewer_remote_quality_title)
             .setSingleChoiceItems(arrayOf("360p · economia", "480p · normal", "720p · qualidade"),
-                options.indexOf(remoteQuality)) { dialog, index ->
+                options.indexOf(remoteQuality ?: -1)) { dialog, index ->
                 dialog.dismiss()
                 postRemote(PhoneCameraUrls.qualityCommandUrl(intent.getStringExtra("url").orEmpty(), options[index]),
                     R.string.viewer_remote_quality_requested) { remoteQuality = options[index] }
@@ -429,7 +429,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     private fun chooseRemoteFps() {
         val options = intArrayOf(5, 10, 15)
         AlertDialog.Builder(this).setTitle(R.string.viewer_remote_fps_title)
-            .setSingleChoiceItems(arrayOf("5 FPS", "10 FPS", "15 FPS"), options.indexOf(remoteFps)) { dialog, index ->
+            .setSingleChoiceItems(arrayOf("5 FPS", "10 FPS", "15 FPS"), options.indexOf(remoteFps ?: -1)) { dialog, index ->
                 dialog.dismiss()
                 postRemote(PhoneCameraUrls.fpsCommandUrl(intent.getStringExtra("url").orEmpty(), options[index]),
                     R.string.viewer_remote_fps_updated) { remoteFps = options[index] }

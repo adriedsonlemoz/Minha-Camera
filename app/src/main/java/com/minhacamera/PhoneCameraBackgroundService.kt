@@ -208,7 +208,7 @@ class PhoneCameraBackgroundService : Service() {
             }, ecoStatus = { ecoEnabled },
             changeQuality = { quality ->
                 if (!running || closing || switching || recording || takingPhoto || quality !in listOf(360, 480, 720)) false
-                else { mainHandler.post { reconfigure(session, selectedFacing, quality) }; true }
+                else { mainHandler.post { server?.let { active -> reconfigure(active, selectedFacing, quality) } }; true }
             }, qualityStatus = { requestedQuality },
             changeFps = { desired ->
                 if (!running || closing || desired !in listOf(5, 10, 15)) false else {
@@ -222,7 +222,7 @@ class PhoneCameraBackgroundService : Service() {
                 if (!running || closing || switching || recording || takingPhoto ||
                     desired !in listOf(Camera.CameraInfo.CAMERA_FACING_BACK, Camera.CameraInfo.CAMERA_FACING_FRONT) ||
                     !hasFacing(desired)) false
-                else { mainHandler.post { reconfigure(session, desired, requestedQuality) }; true }
+                else { mainHandler.post { server?.let { active -> reconfigure(active, desired, requestedQuality) } }; true }
             }, facingStatus = { selectedFacing },
             takePhoto = {
                 if (!running || closing || switching || recording || takingPhoto || camera == null) false

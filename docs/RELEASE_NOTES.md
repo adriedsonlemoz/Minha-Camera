@@ -1,3 +1,10 @@
+# Minha Câmera 1.4.31 (versionCode 41)
+
+- Correção dos quatro erros de compilação Kotlin confirmados pelo workflow Build APK 31.
+- Tratamento seguro da sessão ativa nos callbacks do serviço e de valores opcionais nos seletores remotos.
+- Mantidas transmissão manual, REC independente, foto, resolução/FPS remotos, troca de câmera, tela apagada e PiP.
+- Compilação APK da 1.4.31 ainda não confirmada; executar GitHub Actions.
+
 # Minha Câmera 1.4.30 (versionCode 40)
 
 - Modo transmissor inicia em prévia. Pressione **Iniciar transmissão**; REC é separado e sempre opcional.

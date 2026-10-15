@@ -7,7 +7,7 @@
 - Não usar credenciais reais em logs, testes ou repositório.
 - Documentar os resultados úteis para migração futura ao Vigia IA, sem modificar esse segundo aplicativo automaticamente.
 
-- Versão atual: 1.4.30+40. APKs diretos compartilham versionCode 40; não aplicar offsets por ABI.
+- Versão atual: 1.4.31+41. APKs diretos compartilham versionCode 41; não aplicar offsets por ABI.
 - Manter Universal e splits das quatro ABIs fornecidas pelo LibVLC; verificar o AAR e os APKs.
 - Executar `gradle testProtocol testReleaseUnitTest assembleRelease --build-cache` uma única vez; depois `scripts/verify_apks.py`.
 - Assinar TODO release com a keystore estável dos Secrets KEYSTORE_HEX (preferido) ou KEYSTORE_BASE64 (legado), com KEYSTORE_PASSWORD, KEY_ALIAS e KEY_PASSWORD.
