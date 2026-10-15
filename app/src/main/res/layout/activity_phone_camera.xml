@@ -16,10 +16,16 @@
                 android:clickable="true" android:focusable="true" android:contentDescription="@string/phone_codec_title"/>
             <ImageView android:id="@+id/phoneDiagnosticTop"
                 android:layout_width="40dp" android:layout_height="40dp"
-                android:padding="10dp" android:layout_marginEnd="3dp"
+                android:padding="10dp" android:layout_marginEnd="2dp"
                 android:src="@drawable/ic_ui_bug" android:background="?attr/selectableItemBackgroundBorderless"
                 android:clickable="true" android:focusable="true" android:contentDescription="@string/phone_diagnostic_title"/>
-            <TextView android:id="@+id/phoneStatus" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            <ImageView android:id="@+id/phoneNetworkTop"
+                android:layout_width="40dp" android:layout_height="40dp"
+                android:padding="10dp" android:layout_marginStart="1dp"
+                android:src="@drawable/ic_ui_tower" android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="@string/phone_waiting"/>
+            <TextView android:id="@+id/phoneStatus" android:layout_width="1dp" android:layout_height="1dp"
+                android:visibility="gone"
                 android:text="@string/phone_waiting" android:textColor="@color/brand_secondary" android:layout_marginStart="7dp" android:textSize="13sp"/>
         </LinearLayout>
         <FrameLayout android:id="@+id/phoneSinglePreview" android:layout_width="match_parent" android:layout_height="240dp"

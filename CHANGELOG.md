@@ -1,9 +1,9 @@
-## 1.4.37+47 — 2026-10-15
+## 1.4.38+48 — 2026-10-15
 
-- Corrigido o Build APK 37 (`:app:compileReleaseKotlin`): import explícito de `android.content.Intent` em `PhoneCameraViewerActivity.kt`, usado para abrir a Central Multimídia remota.
-- Verificação preventiva de construtores `Intent(...)` sem import integrada ao preflight Kotlin do GitHub Actions; testes de regressão adicionados.
-- Preservados MCRP v1, MJPEG/H.264, biblioteca remota, interface, dados locais e assinatura estável. APK e testes entre aparelhos ainda pendentes.
-
+- Reformulação visual da tela inicial, da Central Multimídia e dos cartões de dispositivos.
+- Configurações, aparência, sobre, apoio e novidades migrados para telas dedicadas sem pop-ups.
+- Nova tela de boas-vindas mais bonita e topo do transmissor com ícone de rede ao lado do diagnóstico.
+- Alteração focada em interface; build APK e testes em aparelho continuam pendentes.
 ## 1.4.36+46 — 2026-10-15
 
 - Protocolo MCRP v1 versionado e retrocompatível com HTTP/QR existentes.

@@ -122,17 +122,8 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Exception) { return }
         val prefs = getSharedPreferences("welcome_versions", MODE_PRIVATE)
         if (prefs.getInt("last_shown_code", -1) >= versionCode) return
-        val text = getString(R.string.welcome_latest_summary)
-        AlertDialog.Builder(this)
-            .setTitle(R.string.welcome_latest_title)
-            .setMessage(text)
-            .setPositiveButton(R.string.welcome_latest_continue) { _, _ ->
-                prefs.edit().putInt("last_shown_code", versionCode).apply()
-            }
-            .setOnCancelListener {
-                prefs.edit().putInt("last_shown_code", versionCode).apply()
-            }
-            .show()
+        prefs.edit().putInt("last_shown_code", versionCode).apply()
+        startActivity(Intent(this, WelcomeActivity::class.java))
     }
 
 
@@ -151,14 +142,7 @@ class MainActivity : AppCompatActivity() {
             startActivity(Intent(this, RecordingsActivity::class.java)); return true
         }
         if (item.itemId == 1001) {
-            val version = try {
-                packageManager.getPackageInfo(packageName, 0).versionName ?: "?"
-            } catch (_: Exception) { "?" }
-            AlertDialog.Builder(this)
-                .setTitle(getString(R.string.novidades) + " • $version")
-                .setMessage(R.string.novidades_text)
-                .setPositiveButton(android.R.string.ok, null)
-                .show()
+            startActivity(Intent(this, WelcomeActivity::class.java).putExtra("full_history", true))
             return true
         }
         return super.onOptionsItemSelected(item)
@@ -471,8 +455,9 @@ class MainActivity : AppCompatActivity() {
             val view = convertView ?: LayoutInflater.from(parent.context).inflate(R.layout.item_camera, parent, false)
             val realPosition = position
             val camera = cams[realPosition]
-            view.findViewById<TextView>(R.id.tvName).text =
-                (if (isPhoneCamera(camera)) "📱 " else "📷 ") + camera.name
+            val phone = isPhoneCamera(camera)
+            view.findViewById<TextView>(R.id.tvName).text = (if (phone) "📱 " else "📷 ") + camera.name
+            view.findViewById<TextView>(R.id.tvType).text = if (phone) "Celular" else "Câmera IP"
             view.findViewById<TextView>(R.id.tvMasked).text = masked(camera.url)
             view.findViewById<TextView>(R.id.tvInfo).text = infoSummary(camera)
             view.findViewById<MaterialButton>(R.id.btnOpen).setOnClickListener { openCamera(camera) }

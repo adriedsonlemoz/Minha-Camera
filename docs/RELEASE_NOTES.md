@@ -1,8 +1,9 @@
-# Minha Câmera 1.4.37 (versionCode 47)
+# Minha Câmera 1.4.38 (versionCode 48)
 
-- Corrige `Unresolved reference Intent` em `PhoneCameraViewerActivity.kt` no Build APK 37, causado por import Android ausente.
-- Acrescenta verificação estática para `Intent(...)` sem import e testes de regressão.
-- Mantém MCRP v1, Central Multimídia remota, MJPEG/H.264 e comandos remotos sem alterar seu contrato; requer novo build Android para confirmação.
+- Reformulação visual da tela inicial, dos cartões de dispositivos e da Central Multimídia.
+- Configurações, aparência, sobre, apoio e novidades agora possuem telas dedicadas, sem pop-ups para os fluxos principais.
+- Nova tela de boas-vindas após atualização e topo do transmissor simplificado com ícone de rede ao lado do diagnóstico.
+- Alteração focada em interface. Build Android e testes em aparelho continuam pendentes.
 
 # Minha Câmera 1.4.36 (versionCode 46)
 

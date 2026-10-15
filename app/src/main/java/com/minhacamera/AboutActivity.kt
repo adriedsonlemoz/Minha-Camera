@@ -1,0 +1,61 @@
+package com.minhacamera
+
+import android.content.Intent
+import android.os.Bundle
+import android.widget.LinearLayout
+import android.widget.ScrollView
+import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.button.MaterialButton
+
+class AboutActivity : AppCompatActivity() {
+    private fun dp(n: Int) = (n * resources.displayMetrics.density + .5f).toInt()
+    private fun currentTheme() = getSharedPreferences(CameraTheme.PREFS, MODE_PRIVATE).getString(CameraTheme.KEY, CameraTheme.SYSTEM)
+
+    private fun addBlock(parent: LinearLayout, title: String, detail: String) {
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            setBackgroundResource(R.drawable.bg_ui_card)
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) }
+        }
+        card.addView(TextView(this).apply { text = title; textSize = 18f; setTextColor(getColor(R.color.app_text)) })
+        card.addView(TextView(this).apply { text = detail; textSize = 13.5f; setTextColor(getColor(R.color.ui_muted)); setPadding(0, dp(6), 0, 0) })
+        parent.addView(card)
+    }
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        if (currentTheme() == CameraTheme.AMOLED) setTheme(R.style.Theme_MinhaCamera_Amoled)
+        super.onCreate(savedInstanceState)
+        supportActionBar?.title = getString(R.string.settings_about)
+        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(18), dp(18), dp(28))
+            setBackgroundColor(getColor(R.color.app_background))
+        }
+        val scroll = ScrollView(this).apply { addView(content) }
+        setContentView(scroll)
+        val version = try { packageManager.getPackageInfo(packageName, 0).versionName ?: "?" } catch (_: Exception) { "?" }
+        content.addView(TextView(this).apply { text = "Minha Câmera $version"; textSize = 25f; setTextColor(getColor(R.color.app_text)); setPadding(0, 0, 0, dp(4)) })
+        content.addView(TextView(this).apply { text = "Transmissão e visualização de câmera por rede local, sem nuvem obrigatória."; textSize = 14f; setTextColor(getColor(R.color.ui_muted)); setPadding(0, 0, 0, dp(16)) })
+        addBlock(content, "O que é o app", "Projeto auxiliar do Vigia IA voltado para transmissão local entre celulares, MJPEG/H.264 experimental, modo de tela apagada, gravação opcional e acesso remoto à multimídia.")
+        addBlock(content, "Últimas versões", """1.4.38+48
+• Visual renovado: telas dedicadas para novidades, sobre, temas e apoio.
+• Lista de dispositivos com ações mais fortes e Central Multimídia reorganizada.
+
+1.4.37+47
+• Correção do Build APK 37 por falta de import Intent no visualizador.
+
+1.4.36+46
+• Protocolo MCRP para integração com Vigia IA e biblioteca remota do outro celular.""".trimIndent())
+        addBlock(content, "Privacidade e rede", "O foco permanece em rede local. O app não depende de envio obrigatório à nuvem para transmitir, assistir ou consultar a biblioteca do outro celular.")
+        content.addView(MaterialButton(this).apply {
+            text = getString(R.string.novidades)
+            isAllCaps = false
+            setOnClickListener { startActivity(Intent(this@AboutActivity, WelcomeActivity::class.java).putExtra("full_history", true)) }
+        })
+    }
+
+    override fun onSupportNavigateUp(): Boolean { finish(); return true }
+}

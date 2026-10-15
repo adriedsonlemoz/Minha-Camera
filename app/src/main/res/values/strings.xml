@@ -140,40 +140,26 @@ Experimente habilitar H.264 ou outro perfil na câmera e refazer a busca.</strin
     <string name="phone_delay_unavailable">atraso --</string>
     <string name="phone_reconnecting">Sinal perdido. Reconectando…</string>
     <string name="phone_access_denied">Acesso negado. Escaneie o novo QR.</string>
-    <string name="novidades_text">Versão 1.4.37 (código 47)\n• Corrigida falha do Build APK 37 por falta de import Intent no visualizador.\n• Novo verificador detecta uso de Intent sem import e evita regressões no CI.\n• MCRP, mídia remota e MJPEG/H.264 preservados.\n\nVersão 1.4.36 (código 46)\n• Novo protocolo MCRP para controlar e identificar remotamente o aparelho.\n• Central Multimídia remota para consultar, abrir e baixar fotos e gravações pela rede local.\n• Integração inicial com Vigia IA, mantendo MJPEG e compatibilidade com celulares comuns.\n\nVersão 1.4.35 (código 45)\n• Corrigida falha de compilação causada por import duplicado em PhoneHeadlessPreview.\n• Adicionada verificação automática de imports Kotlin repetidos antes de gerar APK.\n• Funcionalidades MJPEG/H.264, tela apagada e interface preservadas.\n\nVersão 1.4.34 (código 44)\n• Corrigida a compilação dos testes de protocolo que impedia o Build APK 34 (classe H.264 não incluída na lista Gradle).\n• Verificação preventiva garante que Gradle e testes locais compilem as mesmas fontes de protocolo.\n• Câmeras, transmissão MJPEG/H.264, gravação e interface preservados.\n\nVersão 1.4.33 (código 43)\n• Tela inicial unificada, câmeras IP e celulares com ações visíveis.\n• Central Multimídia, engrenagem de Configurações, temas, Sobre e apoio Pix.\n• Controles remotos nas duas modalidades, com mensagem clara quando REC impede operações.\n• Identificação do modelo e resolução quando o transmissor está conectado.\n\nVersão 1.4.32 (código 42)\n• Novo formato H.264 experimental via Wi-Fi, mantendo MJPEG para compatibilidade.\n• Troque MJPEG ou H.264 no topo do transmissor ou remotamente no receptor.\n• Cronômetro AO VIVO nos dois aparelhos, independente da gravação REC.\n• Painel de diagnóstico: falhas na câmera, EGL, codificação, Wi-Fi e congelamentos.\n• Resolução, FPS e perfis de bitrate ajustáveis conforme hardware.\n\nVersão 1.4.31 (código 41)\n• Corrigidos quatro erros de compilação Kotlin do Build APK 31.\n• Mantidos transmissão manual, REC, PiP, foto e comandos de câmera remotos.\n\nVersão 1.4.30 (código 40)\n• Início manual da transmissão, separado de prévia e REC.\n• Correção de possível travamento no modo com tela apagada: consumo EGL da SurfaceTexture.\n• Comandos autenticados para foto JPEG nativa, resolução, FPS e troca de câmera.\n• Cronômetro REC recebido do transmissor e modo expandido com botões discretos.\n• Novidades apresentadas uma vez a cada atualização.\n\nVersão 1.4.29 (código 39)\n• Visualizador remodelado com painel claro, card de vídeo escuro e telemetria compacta.\n• Atalhos Gravar, Foto local do quadro recebido, Girar, Expandir, PiP, Espelho, Inteira e Refazer.\n• Eco remoto autenticado no modo persistente; FPS e resolução reais exibidos sem inventar valores.\n• Mais opções renovado e indicadores completos apenas quando solicitados.\n\nVersão 1.4.28 (código 38)
-• Pop-up Mais do transmissor renovado com layout moderno, ícones e switches para opções liga/desliga.
-• Link, Código e Gravações ficaram mais claros com descrições curtas e ações melhor organizadas.
-• Bateria no vídeo, modo Eco e tela apagada agora mostram estado visual imediato no próprio menu.
+    <string name="novidades_text">Versão 1.4.38 (código 48)
+• Reformulação visual da tela inicial, dos cartões de dispositivos e da Central Multimídia.
+• Configurações, aparência, sobre, apoio e novidades agora abrem em telas dedicadas, não em pop-ups.
+• Nova tela de boas-vindas mais bonita e organizada após atualizar.
+• No transmissor, o topo ficou mais limpo: o texto fixo de rede foi trocado por um ícone de conexão ao lado do diagnóstico.
 
-Versão 1.4.27 (código 37)\n• Nova opção de transmitir e gravar com tela apagada por serviço de câmera com notificação.\n• Gravação opcional: botão REC, notificação ou comando remoto no receptor (Mais).\n• Indicadores do PiP configuráveis: bateria, temperatura e raio de carregamento.\n• Etiqueta não é gravada nos pixels do MP4/MJPEG, evitando sobreposição duplicada.\n\nVersão 1.4.26 (código 36)\n• Corrigido fechamento ao conectar RTSP: contorno para falha de CSeq no Media3 1.3.1.\n• Câmeras RTSP agora abrem direto com LibVLC; opção Media3 suspensa temporariamente.\n• PiP, gravação, descoberta ONVIF e câmeras existentes preservados.\n\nVersão 1.4.25 (código 35)\n• Janela PiP no receptor MJPEG (Mais) e no player RTSP (botão PiP), após iniciar o vídeo.\n• Vídeo permanece visível ao abrir mapas e outros aplicativos, onde o Android permitir PiP.\n• Registro local de falha Java/Kotlin copiável ao reabrir, para investigar fechamento ao conectar RTSP.\n• Tratamento extra para erro de componente Media3; Logcat ainda necessário para identificar a causa.\n\nVersão 1.4.24 (código 34)\n• Retrovisor: opção Espelho horizontal no receptor, sem processamento extra dos quadros.\n• Botão Foco amplia o vídeo; toque na imagem para voltar aos controles.\n• Em queda do Wi-Fi, o último quadro é removido para não parecer imagem ao vivo.\n• Persistência dos ajustes de enquadramento e espelhamento.\n\nVersão 1.4.23 (código 33)\n• Corrigida a falha de recursos do Build APK 24 na tela Novidades, com apóstrofo escapado.\n• Verificação preventiva das strings do Android incluída no GitHub Actions.\n• Assinatura e funções de retrovisor e telemetria preservadas.\n\nVersão 1.4.22 (código 32)\n• Corrigidos os testes de protocolo da telemetria que impediam a compilação no GitHub Actions.\n• Bateria, temperatura e status de carga são transmitidos sem dependências Android nos testes.\n• Assinatura permanente e visual do retrovisor preservados.\n\nVersão 1.4.21 (código 31)\n• Receptor em layout retrato, visual parecido com o Ao vivo do transmissor e melhor uso no celular do guidão.\n• Recebimento da telemetria do outro celular: bateria, temperatura, carregando/não carregando e consumo médio do dia.\n• A marca d\'água no vídeo também ficou mais completa, sem depender só da tela do transmissor.\n\nVersão 1.4.20 (código 30)\n• Modo Eco opcional em Mais: até 5 FPS, compressão JPEG mais leve, sem reiniciar o stream.\n• Alerta térmico discreto no transmissor, com limitação automática quando a bateria aquece muito.\n• Sem dependências, permissões ou serviços novos; gravação e câmera dupla continuam disponíveis.\n\nVersão 1.4.19 (código 29)\n• FPS de envio e FPS exibido no receptor, com atualizações leves a cada 2 segundos.\n• Atraso aproximado na rede, com -- quando a amostra não é confiável.\n• Reconexão automática após falhas de Wi-Fi, com espera progressiva e cancelamento ao sair.\n• Sem bibliotecas extras ou alterações de assinatura.\n\nVersão 1.4.18 (código 28)\n• Indicador de bateria (%) e temperatura da bateria (°C) diretamente no vídeo recebido e nos MP4.\n• Atualização periódica, valores ausentes identificados, opção Mostrar/Ocultar em Mais.\n• Preservada a transmissão otimizada, câmera dupla experimental e assinatura permanente.\n\nVersão 1.4.17 (código 27)\n• Transmissão mais fluida: limite de até 11 FPS e quadro mais recente no receptor.\n• Barra Virar, Dupla, QR, Gravar/Parar, Mais seguindo o novo design.\n• Camera2 dupla frontal/traseira quando o Android anunciar suporte.\n• Gravação MP4 H.264 sem áudio em Downloads/MinhaCamera.\n\nVersão 1.4.16 (código 26)\n• Corrigido Build 18 com importação por KEYSTORE_HEX; mantém mesma chave e certificado.\n• Base64 anterior continua compatível como fallback.\n\nVersão 1.4.15 (código 25)\n• Corrigida preparação de assinatura após erro de Base64 do Build APK 17.\n• Aceita quebras de linha e padding perdido, sem trocar a chave.\n• Se o Secret estiver corrompido, importar novamente o JSON original.\n\nVersão 1.4.14 (código 24)\n• Navegação em Câmeras/Celular, cartões Transmitir/Assistir e ícones personalizados.\n• Prévia Ao vivo e barra única Virar, QR, Link e Código.\n• QR e leitura em pop-ups centralizados; QR só é gerado ao tocar.\n\nVersão 1.4.13 (código 23)\n• Assinatura permanente para APKs futuros usando Secrets do GitHub Actions.\n• Build bloqueado se os Secrets estiverem ausentes ou assinatura divergir.\n• APK antigo com outra assinatura NÃO atualiza automaticamente; faça backup antes de migrar.\n\nVersão 1.4.12 (código 22)\n• Prévia da própria câmera corrigida com TextureView, sem área preta causada pela superfície anterior.\n• Prévia aparece antes do QR Code, sem distorcer a imagem.\n• Transmitindo só aparece após gerar o primeiro quadro; alerta quando a câmera não envia imagem.\n\nVersão 1.4.11 (código 21)\n• Ao tocar em Usar este celular como câmera, escolha Transmitir ou Visualizar.\n• Transmitir gera QR Code com endereço de acesso local; Visualizar abre leitor e reproduz o vídeo.\n• O cadastro por endereço continua disponível como alternativa.\n\nVersão 1.4.10 (código 20)\n• Use a câmera de outro Android pela rede local, com transmissão MJPEG temporária.\n• Adicione o endereço exibido pelo celular transmissor e visualize sem IA.\n• Câmera para ao fechar a tela; URL protegida por código aleatório revogável, sem áudio.\n• Compartilhe a URL pelo compartilhamento do Android.\n\nVersão 1.4.9 (código 19)\n• Controles compactos na horizontal, reorganizados ao girar.\n• Lente superior/inferior inteira, sem zoom cortando bordas.\n• Identificação ONVIF de modelo, firmware e serviços anunciados.\n\nVersão 1.4.8 (código 18)\n• Novo visual azul e player com controles organizados.\n• Sugestões RTSP em lista editável, sem excesso de botões.\n• Carregando sua imagem, aguarde; indicação até a primeira imagem.\n• Gravação local via LibVLC, contador e biblioteca por dia.\n• Tela cheia e recortes para vídeo com duas lentes.\n\nVersão 1.4.7 (código 17)\n• APKs menores por arquitetura e opção Universal.\n• Preservados ONVIF, RTSP, Media3, LibVLC, H.264 e H.265.\n• Mesma versão em todos os APKs; escolha a arquitetura compatível com o Android.\n\nVersão 1.4.6 (código 16)\n• Cache de tarefas Gradle habilitado para builds futuros.\n• Ação Gradle atualizada e duração do build registrada no GitHub Actions.\n• Mantido LibVLC e suporte H.265; build #9 compilou, mas o job foi cancelado antes do upload.\n\nVersão 1.4.5 (código 15)\n• Corrigida falha do build #8: sdkmanager ausente no runner GitHub Actions.\n• Preparação automática do Android SDK e instalação explícita da API 36.\n• Atualizadas ações GitHub e reforçadas verificações do workflow.\n\nVersão 1.4.4 (código 14)
-• Corrigida a configuração de build: Android API 36, Gradle, AGP e Kotlin compatíveis com LibVLC 3.7.7.
-• Corrigido mascaramento de URL RTSP que poderia interromper a compilação Kotlin.
-• Verificação preventiva do SDK/Gradle no GitHub Actions.
+Versão 1.4.37 (código 47)
+• Corrigida falha do Build APK 37 por falta de import Intent no visualizador.
+• Novo verificador detecta uso de Intent sem import e evita regressões no CI.
+• MCRP, mídia remota e MJPEG/H.264 preservados.
 
-Versão 1.4.3 (código 13)
-• Repaginada a tela de câmeras salvas com cartões e ações rápidas.
-• Botão para copiar o endereço RTSP completo com usuário e senha.
-• Edição reformulada com IP, porta, usuário, senha e sugestões de caminho.
-• Diálogos de adicionar/configurar com ver, copiar e colar senha.
-• Sugestões de caminhos RTSP com opção Default para descoberta automática.
+Versão 1.4.36 (código 46)
+• Novo protocolo MCRP para controlar e identificar remotamente o aparelho.
+• Central Multimídia remota para consultar, abrir e baixar fotos e gravações pela rede local.
+• Integração inicial com Vigia IA, mantendo MJPEG e compatibilidade com celulares comuns.
 
-Versão 1.4.2 (código 12)
-• Fallback automático Media3 → LibVLC para fluxos RTSP e H.265.
-• Seleção de fluxo secundário H.264 por codec confirmado no SDP.
-• Escolha manual do motor pelo menu da reprodução.
-• Melhor diagnóstico sem expor credenciais na tela de erro.
-
-Versão 1.4.1 (código 11)
-• Busca ONVIF WS-Discovery por multicast UDP.
-• Busca TCP conforme a máscara da rede e mais portas.
-• Conciliação de dispositivos ONVIF e RTSP por IP.
-• Testes RTSP em todas as portas detectadas.
-• Corrigidos a leitura do corpo RTSP em bytes e o fallback de autenticação.
-
-Versão 1.4.0 (código 10)
-• Cliente ONVIF para consultar fluxos, reprodução RTSP e fluxos alternativos.
-
-Observação: H.265 ainda depende do codec e das informações enviadas pela câmera. Testes reais pendentes.</string>
+Versão 1.4.35 (código 45)
+• Corrigida falha de compilação causada por import duplicado em PhoneHeadlessPreview.
+• Adicionada verificação automática de imports Kotlin repetidos antes de gerar APK.
+• Funcionalidades MJPEG/H.264, tela apagada e interface preservadas.</string>
     <string name="carregando_imagem">Carregando sua imagem…</string>
     <string name="aguarde_imagem">Aguarde, conectando à câmera.</string>
     <string name="conexao_alternativa">Aguarde, testando outro fluxo compatível.</string>
@@ -338,7 +324,7 @@ Abra uma câmera e toque em Gravar.</string>
     <string name="viewer_remote_facing_requested">Troca de câmera solicitada. A imagem pode pausar brevemente.</string>
     <string name="viewer_fullscreen_hint">Controles compactos na parte inferior. Toque no vídeo para ocultar ou mostrar.</string>
     <string name="welcome_latest_title">Bem-vindo à nova versão!</string>
-    <string name="welcome_latest_summary">Novidades 1.4.37: corrigida a compilação do visualizador e preservado o protocolo MCRP v1 para conexão com o Vigia IA. A Central Multimídia permite consultar, reproduzir e baixar fotos e vídeos do celular transmissor pela rede Wi-Fi local. O Minha Câmera continua funcionando entre dois celulares e preserva o MJPEG/H.264.</string>
+    <string name="welcome_latest_summary">Novidades 1.4.38: visual renovado com telas dedicadas para configurações, sobre, apoio e novidades; lista de dispositivos com ações mais fortes; Central Multimídia reorganizada; e topo da transmissão mais limpo com ícone de rede ao lado do diagnóstico.</string>
     <string name="welcome_latest_continue">Começar</string>
     <string name="phone_codec_title">Formato da transmissão</string>
     <string name="phone_codec_changed">Formato solicitado. Reconectando…</string>
@@ -381,6 +367,11 @@ Abra uma câmera e toque em Gravar.</string>
     <string name="settings_google">Apoio pelo Google</string>
     <string name="settings_google_unavailable">Os valores são sugestões. Compras pelo Google só estarão disponíveis após configurar os produtos no Play Console e a integração com o Google Play Billing.</string>
     <string name="settings_google_values">R$ 5 · R$ 10 · R$ 20 · R$ 50</string>
+    <string name="settings_intro">Aparência, informações e apoio ao aplicativo</string>
+    <string name="settings_back_detail">Retornar às câmeras</string>
+    <string name="settings_theme_detail">Sistema, claro, escuro ou preto AMOLED</string>
+    <string name="settings_about_detail">Versão atual, histórico recente e privacidade local</string>
+    <string name="settings_donate_detail">Pix e contribuições opcionais</string>
     <string name="media_title">Central multimídia</string>
     <string name="media_intro">Gravações das câmeras e arquivos de foto/vídeo do aparelho, sem precisar de internet.</string>
     <string name="media_recordings">Biblioteca de gravações RTSP</string>

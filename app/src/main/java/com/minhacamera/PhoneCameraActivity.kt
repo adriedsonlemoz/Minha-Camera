@@ -44,6 +44,7 @@ import java.util.Locale
 class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListener {
     private lateinit var preview: TextureView
     private lateinit var status: TextView
+    private lateinit var networkTop: ImageView
     private lateinit var address: TextView
     private lateinit var placeholder: TextView
     private lateinit var singlePreviewContainer: View
@@ -180,6 +181,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         preview = findViewById(R.id.phonePreview)
         backgroundPreview = findViewById(R.id.phoneBackgroundPreview)
         status = findViewById(R.id.phoneStatus)
+        networkTop = findViewById(R.id.phoneNetworkTop)
         address = findViewById(R.id.phoneAddress)
         placeholder = findViewById(R.id.previewPlaceholder)
         telemetryPreview = findViewById(R.id.phoneTelemetryPreview)
@@ -254,6 +256,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                 .setNegativeButton(R.string.cancelar, null).show()
         }
         status.setText(R.string.phone_waiting)
+        refreshNetworkIndicator(false)
     }
 
     override fun onResume() {
@@ -340,8 +343,18 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
 
     private fun refreshTransmissionButton() {
+        val live = transmissionEnabled || backgroundMode || server != null || PhoneCameraBackgroundService.running
         if (::transmissionButton.isInitialized) transmissionButton.setText(
             if (transmissionEnabled || backgroundMode) R.string.phone_transmit_stop else R.string.phone_transmit_start)
+        refreshNetworkIndicator(live)
+    }
+
+    private fun refreshNetworkIndicator(active: Boolean) {
+        if (!::networkTop.isInitialized) return
+        val color = getColor(if (active) R.color.brand_secondary else R.color.ui_muted)
+        networkTop.setColorFilter(color)
+        networkTop.alpha = if (active) 1f else 0.65f
+        networkTop.contentDescription = getString(if (active) R.string.phone_online else R.string.phone_waiting)
     }
 
     private fun toggleTransmission() {
