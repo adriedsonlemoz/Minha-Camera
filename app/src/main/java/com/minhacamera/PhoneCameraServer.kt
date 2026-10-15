@@ -6,8 +6,12 @@ import java.net.Inet4Address
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketException
+import java.io.InputStream
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicInteger
+
+/** Uma mídia autorizada e identificada por ID opaco; não recebe caminhos do cliente. */
+data class McrpMediaStream(val name: String, val mime: String, val length: Long, val open: () -> InputStream?)
 
 /** Servidor MJPEG local; a Activity ou o serviço foreground controlam sua vida útil. */
 class PhoneCameraServer(
@@ -31,7 +35,9 @@ class PhoneCameraServer(
     private val requestKeyframe: (() -> Unit)? = null,
     private val diagnostics: (() -> String)? = null,
     private val deviceModel: (() -> String)? = null,
-    private val resolutionStatus: (() -> String)? = null
+    private val resolutionStatus: (() -> String)? = null,
+    private val mediaIndex: (() -> String)? = null,
+    private val mediaOpen: ((String) -> McrpMediaStream?)? = null
 ) {
     init { require(token.matches(Regex("[0-9a-f]{32}"))) }
     private val server = ServerSocket(8765, 4, address)
@@ -53,7 +59,7 @@ class PhoneCameraServer(
             while (running) {
                 val peer = try { server.accept() } catch (_: SocketException) { break }
                     catch (_: Exception) { break }
-                if (!running || peerCount.incrementAndGet() > 2) {
+                if (!running || peerCount.incrementAndGet() > 5) {
                     peerCount.decrementAndGet()
                     try { peer.close() } catch (_: Exception) { }
                     continue
@@ -113,15 +119,39 @@ class PhoneCameraServer(
             val input = BufferedInputStream(peer.getInputStream())
             val line = readLine(input) ?: return
             var size = 0
+            var requestedRange: String? = null
             while (true) {
                 val header = readLine(input) ?: return
                 size += header.length
                 if (header.isEmpty()) break
+                if (header.startsWith("Range:", ignoreCase = true)) requestedRange = header.substringAfter(':').trim()
                 if (size > 8192) return
             }
             val wanted = url.substringAfter(":${server.localPort}")
             // Controle somente com POST + mesmo token aleatório do MJPEG (não há CORS).
             val control = wanted.replaceFirst("/live/", "/control/")
+            val mcrpRoot = "$control/mcrp"
+            if (line == "GET $mcrpRoot/info HTTP/1.1" || line == "GET $mcrpRoot/info HTTP/1.0") {
+                val model = (deviceModel?.invoke() ?: "Android").replace(Regex("[^A-Za-z0-9 ._-]"), "").take(50)
+                val body = ("{\"protocol\":\"mcrp\",\"version\":1,\"device\":{\"model\":\"$model\"}," +
+                    "\"stream\":{\"codec\":\"${if (codecStatus?.invoke() == "h264") "h264" else "mjpeg"}\",\"mjpeg\":\"$wanted\",\"h264\":\"${wanted.replace("/live/", "/h264/")}\"}," +
+                    "\"capabilities\":{\"record\":${changeRecording != null},\"photo\":${takePhoto != null},\"eco\":${changeEco != null},\"facing\":${changeFacing != null},\"quality\":${changeQuality != null},\"fps\":${changeFps != null},\"codec\":${changeCodec != null},\"media\":${mediaIndex != null}}}")
+                writeJson(peer, body)
+                return
+            }
+            if (line == "GET $mcrpRoot/media HTTP/1.1" || line == "GET $mcrpRoot/media HTTP/1.0") {
+                val body = try { mediaIndex?.invoke() } catch (_: Exception) { null }
+                if (body == null) writeError(peer, 503, "Service Unavailable") else writeJson(peer, body)
+                return
+            }
+            val mediaPrefix = "$mcrpRoot/media/"
+            if ((line.endsWith(" HTTP/1.1") || line.endsWith(" HTTP/1.0")) && line.startsWith("GET $mediaPrefix")) {
+                val id = line.substringAfter("GET $mediaPrefix").substringBefore(' ')
+                val media = if (id.matches(Regex("[A-Za-z0-9._-]{1,180}")))
+                    try { mediaOpen?.invoke(id) } catch (_: Exception) { null } else null
+                if (media == null) writeError(peer, 404, "Not Found") else serveMedia(peer, media, requestedRange)
+                return
+            }
             val recordAction = when (line) {
                 "POST $control/record/start HTTP/1.1" -> true
                 "POST $control/record/stop HTTP/1.1" -> false
@@ -282,6 +312,55 @@ class PhoneCameraServer(
             peers.remove(peer)
             peerCount.decrementAndGet()
             try { peer.close() } catch (_: Exception) { }
+        }
+    }
+
+    private fun writeError(peer: Socket, code: Int, reason: String) {
+        peer.getOutputStream().write("HTTP/1.1 $code $reason\r\nContent-Length: 0\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n".toByteArray(Charsets.US_ASCII))
+    }
+
+    private fun writeJson(peer: Socket, text: String) {
+        val body = text.toByteArray(Charsets.UTF_8)
+        peer.getOutputStream().write(("HTTP/1.1 200 OK\r\nContent-Type: application/json; charset=utf-8\r\n" +
+            "X-MCRP-Version: 1\r\nCache-Control: no-store\r\nContent-Length: ${body.size}\r\nConnection: close\r\n\r\n").toByteArray(Charsets.US_ASCII))
+        peer.getOutputStream().write(body)
+    }
+
+    private fun serveMedia(peer: Socket, media: McrpMediaStream, range: String?) {
+        val size = media.length
+        if (size <= 0L || size > 4_294_967_296L) { writeError(peer, 404, "Not Found"); return }
+        val parts = range?.let { Regex("bytes=([0-9]+)-([0-9]*)").matchEntire(it) }
+        if (range != null && parts == null) { writeError(peer, 416, "Range Not Satisfiable"); return }
+        val start = parts?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+        val end = parts?.groupValues?.get(2)?.takeIf { it.isNotBlank() }?.toLongOrNull() ?: (size - 1L)
+        if (start !in 0 until size || end < start || end >= size) {
+            writeError(peer, 416, "Range Not Satisfiable"); return
+        }
+        val length = end - start + 1L
+        val input = try { media.open() } catch (_: Exception) { null }
+        if (input == null) { writeError(peer, 404, "Not Found"); return }
+        input.use { source ->
+            var offset = start
+            while (offset > 0) {
+                val skipped = source.skip(offset)
+                if (skipped <= 0) { writeError(peer, 503, "Service Unavailable"); return }
+                offset -= skipped
+            }
+            val mime = if (media.mime.startsWith("video/") || media.mime.startsWith("image/")) media.mime else "application/octet-stream"
+            val disposition = media.name.replace(Regex("[^A-Za-z0-9._-]"), "_").take(100)
+            peer.getOutputStream().write(("HTTP/1.1 ${if (parts == null) "200 OK" else "206 Partial Content"}\r\n" +
+                "Content-Type: $mime\r\nContent-Disposition: attachment; filename=\"$disposition\"\r\n" +
+                "Accept-Ranges: bytes\r\n" +
+                (if (parts == null) "" else "Content-Range: bytes $start-$end/$size\r\n") +
+                "Content-Length: $length\r\nCache-Control: no-store\r\nConnection: close\r\n\r\n").toByteArray(Charsets.US_ASCII))
+            val buf = ByteArray(32 * 1024)
+            var remaining = length
+            while (running && remaining > 0) {
+                val count = source.read(buf, 0, minOf(buf.size.toLong(), remaining).toInt())
+                if (count <= 0) break
+                peer.getOutputStream().write(buf, 0, count)
+                remaining -= count
+            }
         }
     }
 

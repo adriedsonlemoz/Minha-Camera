@@ -36,6 +36,11 @@ object PhoneCameraUrls {
 
     fun diagnosticUrl(input: String): String? = controlUrl(input, "diagnostic")
 
+    fun mcrpInfoUrl(input: String): String? = controlUrl(input, "mcrp/info")
+    fun mcrpMediaUrl(input: String): String? = controlUrl(input, "mcrp/media")
+    fun mcrpMediaFileUrl(input: String, id: String): String? =
+        if (id.matches(Regex("[A-Za-z0-9._-]{1,180}"))) controlUrl(input, "mcrp/media/$id") else null
+
     fun h264Url(input: String): String? = normalize(input)?.replace("/live/", "/h264/")
 
     private fun controlUrl(input: String, suffix: String): String? =

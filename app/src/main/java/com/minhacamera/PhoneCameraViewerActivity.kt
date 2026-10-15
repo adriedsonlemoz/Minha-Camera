@@ -190,6 +190,9 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         previewIndex = normalPreviewParent.indexOfChild(previewContainer)
         controls = findViewById(R.id.phoneViewerControls)
         receiverInstructions = findViewById(R.id.phoneViewerInstructions)
+        PhoneCameraUrls.normalize(intent.getStringExtra("url").orEmpty())?.let { savedUrl ->
+            getSharedPreferences("phone_viewer", MODE_PRIVATE).edit().putString("last_url", savedUrl).apply()
+        }
         val settings = getSharedPreferences("phone_viewer", MODE_PRIVATE)
         fillMode = settings.getBoolean("fill", false)
         mirrorMode = settings.getBoolean("mirror", false)
@@ -409,6 +412,9 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         }
         addRow(getString(R.string.phone_view_telemetry_options), R.drawable.ic_ui_battery) { openTelemetryOptions() }
         addRow(getString(R.string.tentar_novamente), R.drawable.ic_ui_scan) { stop(); start() }
+        addRow("Central Multimídia remota", R.drawable.ic_ui_video) {
+            startActivity(Intent(this, RemoteMultimediaActivity::class.java).putExtra("url", intent.getStringExtra("url")))
+        }
         addRow(getString(if (remoteRecording == true) R.string.phone_remote_record_stop else R.string.phone_remote_record_start), R.drawable.ic_ui_record) {
             setRemoteRecording(remoteRecording != true)
         }

@@ -159,6 +159,7 @@ fun main() {
     checkPhoneEcoPolicy()
     checkStreamStats()
     checkPhoneCamera()
+    checkMcrpV1Media()
     checkRemoteRecordingApi()
     checkVideoGeometry()
     checkOnvifIdentity()
@@ -308,6 +309,58 @@ private fun checkPhoneCamera() {
         bad.disconnect()
     } finally { server.stop() }
     println("OK: URL local, rotação NV21 e servidor MJPEG/token com quadro binário")
+}
+
+private fun checkMcrpV1Media() {
+    val token = "0123456789abcdef0123456789abcdef"
+    val local = java.net.InetAddress.getByName("127.0.0.1") as java.net.Inet4Address
+    val bytes = ByteArray(256) { it.toByte() }
+    val server = PhoneCameraServer(local, token,
+        deviceModel = { "Android teste" }, codecStatus = { "mjpeg" },
+        mediaIndex = { """{"protocol":"mcrp","version":1,"items":[{"id":"v_7","name":"clipe.mp4","mime":"video/mp4","size":256,"modified":1}]}""" },
+        mediaOpen = { id -> if (id == "v_7") McrpMediaStream("clipe.mp4", "video/mp4", bytes.size.toLong()) {
+            java.io.ByteArrayInputStream(bytes)
+        } else null }
+    )
+    server.start()
+    val root = server.url.substringBefore("/live/")
+    try {
+        fun request(path: String, range: String? = null): java.net.HttpURLConnection {
+            val c = java.net.URL(root + path).openConnection() as java.net.HttpURLConnection
+            c.connectTimeout = 3000; c.readTimeout = 3000
+            if (range != null) c.setRequestProperty("Range", range)
+            return c
+        }
+        request("/control/$token/mcrp/info").useHttp { c ->
+            check(c.responseCode == 200)
+            val body = c.inputStream.bufferedReader().readText()
+            check(body.contains("\"protocol\":\"mcrp\"") && body.contains("\"version\":1"))
+            check(body.contains("Android teste") && body.contains("/live/$token"))
+        }
+        request("/control/$token/mcrp/media").useHttp { c ->
+            check(c.responseCode == 200)
+            check(c.inputStream.bufferedReader().readText().contains("clipe.mp4"))
+        }
+        request("/control/$token/mcrp/media/v_7", "bytes=5-9").useHttp { c ->
+            check(c.responseCode == 206)
+            check(c.getHeaderField("Content-Range") == "bytes 5-9/256")
+            check(c.inputStream.readBytes().contentEquals(bytes.sliceArray(5..9)))
+        }
+        request("/control/$token/mcrp/media/v_7").useHttp { c ->
+            check(c.responseCode == 200)
+            check(c.inputStream.readBytes().contentEquals(bytes))
+        }
+        request("/control/$token/mcrp/media/v_8").useHttp { c -> check(c.responseCode == 404) }
+        request("/control/$token/mcrp/media/v_7", "bytes=999-1000").useHttp { c -> check(c.responseCode == 416) }
+        request("/control/${"0".repeat(32)}/mcrp/media").useHttp { c -> check(c.responseCode == 403) }
+        request("/control/${"0".repeat(32)}/mcrp/media/v_7").useHttp { c -> check(c.responseCode == 403) }
+        request("/control/$token/mcrp/media/v_7/../../status").useHttp { c -> check(c.responseCode != 200) }
+    } finally { server.stop() }
+    println("OK: MCRP v1, lista e mídia autenticadas, intervalos HTTP 206 e rejeição de acesso indevido")
+}
+
+private inline fun java.net.HttpURLConnection.useHttp(action: (java.net.HttpURLConnection) -> Unit) {
+    try { action(this) } finally { disconnect() }
 }
 
 private fun checkStreamStats() {

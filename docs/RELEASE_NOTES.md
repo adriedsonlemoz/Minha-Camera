@@ -1,3 +1,10 @@
+# Minha Câmera 1.4.36 (versionCode 46)
+
+- MCRP v1, compatível com o QR e comandos anteriores: identificação e capacidades do dispositivo, status e diagnósticos.
+- Biblioteca multimídia remota com listagem, leitura por intervalo (HTTP 206), reprodução e download autenticados, sem exclusão remota.
+- Mesma aplicação continua transmitindo e recebendo MJPEG/H.264; o Vigia IA ganha um módulo cliente independente na versão 1.0.242.
+- Testes Kotlin/JVM de autenticação, protocolo e transporte de arquivos passaram. APK e validação entre aparelhos pendentes.
+
 # Minha Câmera 1.4.35 (versionCode 45)
 
 - Correção dos erros `Conflicting import` de `android.os.SystemClock` no Build APK 35.

@@ -240,6 +240,7 @@ class PhoneCameraBackgroundService : Service() {
 
     private fun startCapture(facing: Int) {
         val ip = NetUtil.wifiIpv4(this) ?: throw IllegalStateException("Wi-Fi indisponível")
+        val remoteLibrary = PhoneRemoteLibrary(applicationContext)
         val session = PhoneCameraServer(ip, PhoneCameraAccess.token(this),
             changeRecording = { desired ->
                 if (!running || closing || switching || (desired && latestJpeg == null)) false
@@ -285,7 +286,7 @@ class PhoneCameraBackgroundService : Service() {
             takePhoto = {
                 if (!running || closing || switching || recording || takingPhoto || camera == null) false
                 else { takingPhoto = true; mainHandler.post { captureFullPhoto() }; true }
-            })
+            }, mediaIndex = { remoteLibrary.json() }, mediaOpen = { remoteLibrary.open(it) })
         try {
             server = session
             openPreview(session, facing, requestedQuality)

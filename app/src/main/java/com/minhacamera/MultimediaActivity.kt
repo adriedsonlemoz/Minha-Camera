@@ -55,6 +55,8 @@ class MultimediaActivity : AppCompatActivity() {
         item(R.string.media_recordings) { startActivity(Intent(this, RecordingsActivity::class.java)) }
         item(R.string.media_videos) { openPicker("video/*") }
         item(R.string.media_photos) { openPicker("image/*") }
+        content.addView(Button(this).apply { text = "Biblioteca do outro celular (Wi-Fi)"; isAllCaps = false
+            setOnClickListener { startActivity(Intent(this@MultimediaActivity, RemoteMultimediaActivity::class.java)) } })
         content.addView(TextView(this).apply {
             setText(R.string.media_file_help); setTextColor(getColor(R.color.ui_muted)); setPadding(0, dp(10), 0, 0)
         })

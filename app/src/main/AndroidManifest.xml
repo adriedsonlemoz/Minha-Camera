@@ -24,6 +24,7 @@
         android:theme="@style/Theme.MinhaCamera">
 
         <activity android:name=".SettingsActivity" android:exported="false" />
+        <activity android:name=".RemoteMultimediaActivity" android:exported="false" />
         <activity android:name=".MultimediaActivity" android:exported="false" />
         <activity
             android:name=".MainActivity"

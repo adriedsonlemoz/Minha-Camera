@@ -1,3 +1,11 @@
+## 1.4.36+46 — 2026-10-15
+
+- Protocolo MCRP v1 versionado e retrocompatível com HTTP/QR existentes.
+- Servidor de biblioteca remota autenticado: MP4/fotos do Minha Câmera, cabeçalhos Range e retorno 206 para reprodução parcial, sem excluir arquivos.
+- Central Multimídia e visualizador com acesso à biblioteca do outro celular para consultar, reproduzir e baixar cópias.
+- Cliente Vigia IA 1.0.242 com leitura QR, MJPEG/H.264, estado, comandos e arquivos (em projeto separado).
+- Testes Kotlin/JVM de autenticação, listagem, download e HTTP Range. Compilação Android e aparelho pendentes.
+
 ## 1.4.35+45 — 2026-10-15
 - Corrigido Build APK 35: remoção do import `android.os.SystemClock` duplicado em `PhoneHeadlessPreview.kt`, que causava `Conflicting import` nas linhas 11/13 durante `:app:compileReleaseKotlin`.
 - Adicionado `scripts/check_kotlin_imports.py` ao preflight do GitHub Actions para sinalizar imports Kotlin duplicados ou nomes de imports ambíguos antes do build.

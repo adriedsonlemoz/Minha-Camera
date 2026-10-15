@@ -442,6 +442,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             updateOrientation()
             c.setPreviewTexture(preview.surfaceTexture
                 ?: throw IllegalStateException("Superfície da prévia indisponível"))
+            val remoteLibrary = PhoneRemoteLibrary(applicationContext)
             val session = PhoneCameraServer(ip, PhoneCameraAccess.token(this),
                 changeRecording = { desired ->
                     if (!visible || dualMode || (desired && server == null)) false else {
@@ -494,6 +495,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                 },
                 deviceModel = { Build.MODEL },
                 resolutionStatus = { "${previewWidth}x${previewHeight}" },
+                mediaIndex = { remoteLibrary.json() }, mediaOpen = { remoteLibrary.open(it) },
                 changeCodec = { desired ->
                     if (desired != "h264" || !visible || recordingRequested || dualMode) false
                     else {
@@ -618,7 +620,9 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
 
     private fun startDual(ip: java.net.Inet4Address): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
-        val session = try { PhoneCameraServer(ip, PhoneCameraAccess.token(this)) }
+        val session = try { PhoneCameraServer(ip, PhoneCameraAccess.token(this),
+            mediaIndex = { PhoneRemoteLibrary(applicationContext).json() },
+            mediaOpen = { PhoneRemoteLibrary(applicationContext).open(it) }) }
             catch (_: Exception) { return false }
         val controller = PhoneDualCamera(this, { PhoneEcoPolicy.intervalMs(ecoEnabled, heatState) }, { a, b, w, h ->
             val now = SystemClock.elapsedRealtime()

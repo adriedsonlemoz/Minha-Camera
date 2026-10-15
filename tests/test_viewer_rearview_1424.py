@@ -42,8 +42,8 @@ class RearviewTests(unittest.TestCase):
 
     def test_no_new_permissions_or_dependencies(self):
         gradle = (ROOT / 'app/build.gradle.kts').read_text()
-        self.assertIn('versionName = "1.4.35"', gradle)
-        self.assertIn('versionCode = 45', gradle)
+        self.assertIn('versionName = "1.4.36"', gradle)
+        self.assertIn('versionCode = 46', gradle)
         self.assertNotIn('implementation("androidx.camera', gradle)
 
     def test_vertical_layout_and_labels(self):
