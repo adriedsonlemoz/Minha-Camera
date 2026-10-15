@@ -4,7 +4,7 @@
 
 Foram gerados três arquivos PRIVADOS **fora** do código-fonte: uma chave `Minha-Camera-CHAVE-ASSINATURA-PRIVADA.p12` e importadores `Minha-Camera-Secrets-IMPORTAR-GitHub-Manager.txt` / `.json`. Os importadores têm os quatro Secrets `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 
-No GitHub Manager: Repositório **Minha Câmera > Secrets > Importar** > selecione o `.txt` (UTF-8) > confira os quatro nomes > confirme criar/substituir. O workflow do repositório deve ser atualizado para **1.4.13** antes de compilar. No GitHub, o mesmo pode ser feito em Settings > Secrets and variables > Actions.
+No GitHub Manager: Repositório **Minha Câmera > Secrets > Importar** > selecione o `.txt` (UTF-8) > confira os quatro nomes > confirme criar/substituir. O workflow do repositório deve ser atualizado para a versão atual antes de compilar. No GitHub, o mesmo pode ser feito em Settings > Secrets and variables > Actions.
 
 Os Secrets devem ser *repository secrets* acessíveis ao workflow. Não publicar a keystore ou importadores, não incluí-los no ZIP do projeto e não enviá-los ao GitHub como arquivos versionados. `KEYSTORE_BASE64` é base64 de uma keystore binária, **não criptografia**. A keystore PKCS12 é protegida por senha; o arquivo de importação contém a senha.
 
@@ -34,3 +34,13 @@ Para comparar: obtenha o APK antigo sem desinstalar o aplicativo e execute `apks
 ## Validação pendente
 
 `keytool` gerou a keystore, validou seu alias e exportou o certificado em formato DER. O fingerprint gravado foi calculado por SHA-256 dos bytes DER, igual ao algoritmo de digest do certificado. Testes estáticos e parsing YAML/XML passam localmente; execução real do GitHub Actions, `assembleRelease`, assinatura com `apksigner` e teste de atualização no Android ainda precisam ser executados.
+
+## Build APK 17: Base64 inválido e solução (1.4.15+25)
+
+A etapa **Preparar assinatura Release permanente** de uma execução da versão **1.4.13+23** encerrou com `base64: invalid input`, antes da compilação Android. Todos os quatro Secrets tinham valores não vazios, mas o `KEYSTORE_BASE64` fornecido ao runner não era um Base64 aceito pelo decodificador GNU. O importador original TXT/JSON foi conferido localmente e gera exatamente a keystore de backup, portanto o valor salvo no repositório precisa ser revisado. Os logs não revelam qual caractere foi alterado ou removido.
+
+1. Atualize o código/workflow para **1.4.15+25**. Esta versão aceita quebras de linha, espaços, aspas externas e padding `=` omitido no Base64 e valida o PKCS12 e o certificado antes do Gradle.
+2. No GitHub Manager: **Repositório > Secrets > Importar** e selecione o **arquivo JSON ORIGINAL já guardado de forma privada** (ou o TXT original) e use **Substituir** para os quatro nomes. Isto mantém a mesma chave e o mesmo certificado. Não cole as linhas do `.env` como valor de um Secret individual.
+3. Rode manualmente **Build APK**. Procure `Assinatura verificada: Base64, keystore PKCS12 e certificado SHA-256 conferidos.` antes da etapa Gradle. Se ainda falhar, reporte a mensagem nova, sem expor o Base64/credenciais.
+
+Um Secret genuinamente truncado **não pode ser reconstruído a partir dos logs**; a solução nesse caso exige restaurar o valor íntegro. Nunca contornar a verificação do certificado, nem gerar outra keystore só para fazer o workflow passar.

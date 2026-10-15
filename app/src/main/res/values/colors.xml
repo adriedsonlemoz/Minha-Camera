@@ -2,4 +2,4 @@
  <color name="brand_primary">#176BCE</color><color name="brand_on_primary">#FFFFFF</color><color name="brand_secondary">#007F8B</color>
  <color name="app_background">#F2F6FB</color><color name="app_surface">#FFFFFF</color><color name="app_text">#17283E</color><color name="app_outline">#DBE4EF</color>
  <color name="player_background">#090F19</color><color name="player_panel">#142033</color><color name="player_text">#F0F6FF</color><color name="player_muted">#A9B8CA</color><color name="live_accent">#60E1D7</color>
-</resources>
+<color name="ui_selected">#DCEBFB</color><color name="ui_muted">#63748B</color></resources>

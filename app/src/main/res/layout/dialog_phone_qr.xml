@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_ui_card"
+    android:orientation="vertical" android:gravity="center_horizontal" android:padding="20dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/ui_connect"
+        android:gravity="center" android:textSize="22sp" android:textStyle="bold" android:textColor="@color/app_text"/>
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp"
+        android:gravity="center" android:text="@string/ui_qr_hint" android:textColor="@color/ui_muted"/>
+    <ImageView android:id="@+id/dialogQr" android:layout_width="220dp" android:layout_height="220dp" android:layout_marginTop="16dp"
+        android:background="@drawable/bg_ui_qr" android:padding="14dp" android:scaleType="fitCenter"
+        android:contentDescription="@string/phone_qr_code_description"/>
+    <com.google.android.material.button.MaterialButton android:id="@+id/dialogClose" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/ui_close"/>
+</LinearLayout>

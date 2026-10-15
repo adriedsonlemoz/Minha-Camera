@@ -47,6 +47,7 @@ jobs:
           python3 scripts/check_version.py
           python3 scripts/check_build_config.py
           python3 tests/test_qr_integration.py
+          python3 -m unittest discover -s tests -p test_signing_preflight.py -q
 
       - name: Preparar assinatura Release permanente
         shell: bash
@@ -57,30 +58,10 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          for name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
-            if [[ -z "${!name:-}" ]]; then
-              echo "::error::Secret obrigatório ausente: ${name}. Importe os quatro Secrets no repositório."
-              exit 1
-            fi
-          done
-          umask 077
-          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "${RUNNER_TEMP}/minha-camera-release.p12"
-          keytool -list -storetype PKCS12 \
-            -keystore "${RUNNER_TEMP}/minha-camera-release.p12" \
-            -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" > /dev/null
-          keytool -exportcert -storetype PKCS12 \
-            -keystore "${RUNNER_TEMP}/minha-camera-release.p12" \
-            -storepass "$KEYSTORE_PASSWORD" -alias "$KEY_ALIAS" \
-            -file "${RUNNER_TEMP}/minha-camera-cert.der" > /dev/null
-          python3 - <<'PY_CERT'
-          from pathlib import Path
-          import hashlib, os
-          expected = Path('docs/SIGNING_CERT_SHA256.txt').read_text().strip().lower()
-          actual = hashlib.sha256((Path(os.environ['RUNNER_TEMP']) / 'minha-camera-cert.der').read_bytes()).hexdigest()
-          if actual != expected:
-              raise SystemExit('Certificado diferente do fixado no projeto. Não publicar APKs com assinatura inesperada.')
-          print('Certificado de assinatura permanente confirmado.')
-          PY_CERT
+          # Aceita padding Base64 perdido na importação, espaços e quebras de linha.
+          # Falha com mensagem útil se o Secret foi truncado ou o certificado mudou.
+          # A senha nunca aparece na linha de comando, nos logs ou no repositório.
+          python3 scripts/prepare_signing.py
 
       # Compilação de código/recursos compartilhada: não usar matrix por ABI.
       - name: Testar protocolos e compilar todos os APKs release

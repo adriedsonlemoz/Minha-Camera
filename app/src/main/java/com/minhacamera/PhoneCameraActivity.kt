@@ -3,6 +3,9 @@ package com.minhacamera
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.ImageFormat
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import android.view.LayoutInflater
 import android.graphics.Matrix
 import android.graphics.SurfaceTexture
 import android.graphics.Rect
@@ -19,6 +22,7 @@ import android.widget.ImageView
 import com.google.zxing.BarcodeFormat
 import com.journeyapps.barcodescanner.BarcodeEncoder
 import android.widget.Button
+import androidx.appcompat.app.AlertDialog
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -33,7 +37,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private lateinit var preview: TextureView
     private lateinit var status: TextView
     private lateinit var address: TextView
-    private lateinit var qrCode: ImageView
+    private lateinit var placeholder: TextView
+    private var qrDialog: AlertDialog? = null
     private var surfaceReady = false
     private var previewWidth = 0
     private var previewHeight = 0
@@ -61,25 +66,19 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         preview = findViewById(R.id.phonePreview)
         status = findViewById(R.id.phoneStatus)
         address = findViewById(R.id.phoneAddress)
-        qrCode = findViewById(R.id.phoneQrCode)
+        placeholder = findViewById(R.id.previewPlaceholder)
         preview.surfaceTextureListener = this
         // SurfaceTexture desenha como uma View normal, mesmo dentro de ScrollView.
         surfaceReady = preview.isAvailable
-        findViewById<Button>(R.id.phoneSwitch).setOnClickListener {
+        findViewById<View>(R.id.phoneSwitch).setOnClickListener {
             selectedFacing = if (selectedFacing == Camera.CameraInfo.CAMERA_FACING_BACK)
                 Camera.CameraInfo.CAMERA_FACING_FRONT else Camera.CameraInfo.CAMERA_FACING_BACK
             stopStreaming()
             tryStart()
         }
-        findViewById<Button>(R.id.phoneCopy).setOnClickListener {
-            val live = server?.url
-            if (live == null) Toast.makeText(this, R.string.phone_not_ready, Toast.LENGTH_SHORT).show()
-            else {
-                CameraFormUi.copyText(this, live, getString(R.string.phone_stream_url), true)
-                Toast.makeText(this, R.string.phone_copied, Toast.LENGTH_SHORT).show()
-            }
-        }
-        findViewById<Button>(R.id.phoneRevoke).setOnClickListener {
+        findViewById<View>(R.id.phoneQr).setOnClickListener { openQrDialog() }
+        findViewById<View>(R.id.phoneLink).setOnClickListener { openLinkDialog() }
+        findViewById<View>(R.id.phoneRevoke).setOnClickListener {
             androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(R.string.phone_revoke)
                 .setMessage(R.string.phone_revoke_confirm)
@@ -91,14 +90,6 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                     } catch (_: Exception) { status.setText(R.string.phone_start_failed) }
                 }
                 .setNegativeButton(R.string.cancelar, null).show()
-        }
-        findViewById<Button>(R.id.phoneShare).setOnClickListener {
-            val live = server?.url
-            if (live == null) Toast.makeText(this, R.string.phone_not_ready, Toast.LENGTH_SHORT).show()
-            else startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
-                type = "text/plain"
-                putExtra(Intent.EXTRA_TEXT, live)
-            }, getString(R.string.phone_share)))
         }
         status.setText(R.string.phone_waiting)
     }
@@ -134,6 +125,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
         renderedPreviewFrames = true
+        if (placeholder.visibility != View.GONE) placeholder.visibility = View.GONE
     }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
@@ -185,6 +177,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             receivedCameraFrames = false
             renderedPreviewFrames = false
             publishedStreamFrame = false
+            placeholder.visibility = View.VISIBLE
             // TextureView evita a superfície externa do SurfaceView em ScrollViews MIUI.
             // O JPEG da rede continua orientado por NV21, independente da prévia.
             updateOrientation()
@@ -235,7 +228,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             session.start()
             address.text = session.url
             status.setText(R.string.phone_waiting_frames)
-            showQrCode(session.url)
+            // O QR só é criado ao tocar no botão QR, nunca automaticamente.
             // Uma sessão TCP/QR ativa não prova que a câmera esteja fornecendo imagem.
             // Informa precisamente se faltam quadros ou se a prévia gráfica não os desenha.
             preview.postDelayed({
@@ -253,17 +246,50 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         }
     }
 
-    private fun showQrCode(url: String) {
+    private fun openQrDialog() {
+        val live = server?.url
+        if (live == null) {
+            Toast.makeText(this, R.string.phone_not_ready, Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (qrDialog?.isShowing == true) return
         try {
-            val bitmap = BarcodeEncoder().encodeBitmap(url, BarcodeFormat.QR_CODE, 512, 512)
-            qrCode.setImageBitmap(bitmap)
-            qrCode.visibility = View.VISIBLE
+            val bitmap = BarcodeEncoder().encodeBitmap(live, BarcodeFormat.QR_CODE, 512, 512)
+            val content = LayoutInflater.from(this).inflate(R.layout.dialog_phone_qr, null)
+            content.findViewById<ImageView>(R.id.dialogQr).setImageBitmap(bitmap)
+            val dialog = AlertDialog.Builder(this).setView(content).create()
+            qrDialog = dialog
+            content.findViewById<View>(R.id.dialogClose).setOnClickListener { dialog.dismiss() }
+            dialog.setOnDismissListener { if (qrDialog === dialog) qrDialog = null }
+            dialog.show()
+            dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+            dialog.window?.setLayout((resources.displayMetrics.widthPixels * 0.91f).toInt(),
+                WindowManager.LayoutParams.WRAP_CONTENT)
         } catch (_: Exception) {
-            // Sem QR o usuário ainda pode copiar/compartilhar a URL.
-            qrCode.setImageDrawable(null)
-            qrCode.visibility = View.GONE
             Toast.makeText(this, R.string.phone_qr_generation_error, Toast.LENGTH_SHORT).show()
         }
+    }
+
+    /** Link mantém as duas ações legadas em um único item da barra. */
+    private fun openLinkDialog() {
+        val live = server?.url
+        if (live == null) {
+            Toast.makeText(this, R.string.phone_not_ready, Toast.LENGTH_SHORT).show()
+            return
+        }
+        AlertDialog.Builder(this)
+            .setTitle(R.string.ui_link_actions)
+            .setItems(arrayOf(getString(R.string.ui_link_copy), getString(R.string.ui_link_share))) { _, selection ->
+                if (selection == 0) {
+                    CameraFormUi.copyText(this, live, getString(R.string.phone_stream_url), true)
+                    Toast.makeText(this, R.string.phone_copied, Toast.LENGTH_SHORT).show()
+                } else {
+                    startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, live)
+                    }, getString(R.string.phone_share)))
+                }
+            }.setNegativeButton(R.string.cancelar, null).show()
     }
 
     private fun updateOrientation() {
@@ -304,8 +330,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
 
     private fun stopStreaming() {
-        qrCode.setImageDrawable(null)
-        qrCode.visibility = View.GONE
+        qrDialog?.dismiss()
+        qrDialog = null
         val previous = server
         server = null
         previous?.stop()

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent" android:layout_height="wrap_content" android:background="@drawable/bg_ui_card"
+    android:orientation="vertical" android:gravity="center_horizontal" android:padding="16dp">
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="@string/ui_scan_title"
+        android:gravity="center" android:textSize="22sp" android:textStyle="bold" android:textColor="@color/app_text"/>
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp"
+        android:gravity="center" android:text="@string/ui_scan_hint" android:textColor="@color/ui_muted"/>
+    <FrameLayout android:layout_width="match_parent" android:layout_height="248dp" android:layout_marginTop="16dp"
+        android:background="@drawable/bg_ui_preview" android:clipToOutline="true">
+        <com.journeyapps.barcodescanner.BarcodeView android:id="@+id/phoneScanner" android:layout_width="match_parent" android:layout_height="match_parent" app:zxing_use_texture_view="true" />
+        <com.minhacamera.PhoneScanOverlayView android:layout_width="match_parent" android:layout_height="match_parent" android:importantForAccessibility="no"/>
+    </FrameLayout>
+    <com.google.android.material.button.MaterialButton android:id="@+id/scanCancel" android:layout_width="wrap_content"
+        android:layout_height="wrap_content" android:layout_marginTop="14dp" android:text="@string/cancelar"/>
+</LinearLayout>

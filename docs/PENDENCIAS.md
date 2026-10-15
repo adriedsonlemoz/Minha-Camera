@@ -1,9 +1,9 @@
-# Pauta técnica após 1.4.13
+# Pauta técnica após 1.4.15
 
 ## P0: preservação de dados / segurança
 
 - Persistir credenciais RTSP com proteção baseada no Android Keystore e migração sem perda das câmeras legadas.
-- **Assinatura permanente configurada em 1.4.13 (não testada no Actions)**. Importar os quatro Secrets, executar build e guardar backup privado. Recuperar a assinatura original se quiser atualizar instalações antigas sem desinstalação.
+- **Build APK 17 falhou ao ler Base64 do Secret na v1.4.13**, apesar de o original armazenado em backup ser válido. A v1.4.15 tornou o pré-processador tolerante a padding/espaços, mas reimportar o JSON original caso o valor persistido no GitHub esteja corrompido e confirmar um novo build bem-sucedido. Guardar backup privado. Recuperar a assinatura original se quiser atualizar instalações antigas sem desinstalação.
 
 ## P1: robustez
 
@@ -24,3 +24,9 @@
 
 - Atualizar Media3 e target SDK somente com validação Android por versão e regressões de RTSP.
 - Não modificar Vigia IA automaticamente. Transferir conclusões técnicas após os testes.
+
+## P4: interface 1.4.14
+
+- Validar janelas QR e scanner retrato em dois dispositivos, inclusive MIUI e autorização de câmera.
+- Confirmar que ao fechar o QR a transmissão não é interrompida e que a leitura abre o espectador.
+- Verificar tamanhos reduzidos, modo noturno e acessibilidade dos controles de 4 ícones.

@@ -1,5 +1,23 @@
 # Histórico de versões
 
+## 1.4.15+25 — 2026-10-14
+
+- Corrigido pré-processamento da assinatura após o Build APK 17 falhar com `base64: invalid input` na v1.4.13+23. O erro ocorreu antes de qualquer compilação.
+- Novo `scripts/prepare_signing.py`: aceita espaços, quebras de linha, aspas externas e padding Base64 ausente; rejeita conteúdo inválido e verifica o certificado SHA-256 antes de disponibilizar a keystore ao Gradle.
+- Mensagens claras para reimportar Secrets corrompidos, sem mostrar valores ou passwords; `keytool` usa senha por variável de ambiente.
+- Adicionados testes de regressão Base64 à etapa pré-build; preservadas a chave PKCS12, a assinatura e a interface 1.4.14.
+- A recompilação Android e a correção do valor armazenado no Secret no repositório ainda precisam ser validadas no GitHub Actions.
+
+## 1.4.14+24 — 2026-10-14
+
+- Nova navegação inferior Câmeras/Celular, com listas separadas, ícones vetoriais e cartões personalizados.
+- Cartões Transmitir/Assistir no menu Celular; câmera IP e cadastro manual preservados.
+- Prévia da câmera com ações compactas Virar/QR/Link/Código.
+- QR criado sob demanda em diálogo centralizado; sem endereço secreto no corpo da tela.
+- Leitor QR via BarcodeView incorporado em diálogo de leitura retrato, sem Activity de captura em paisagem.
+- Manutenção do token, assinatura Release estável e versionamento sequencial.
+- Sem compilação Android ou ensaio em celular nesta rodada.
+
 ## 1.4.13+23 — 2026-10-14
 - Assinatura Release permanente por quatro Secrets do GitHub Manager / GitHub Actions, usando keystore PKCS12 específica deste projeto.
 - GitHub Actions valida a presença dos Secrets e o SHA-256 do certificado antes de compilar; falha de modo seguro se os dados estiverem incorretos.

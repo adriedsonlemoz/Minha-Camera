@@ -1,4 +1,26 @@
-# Minha Câmera 1.4.13 (versionCode 23)
+# Minha Câmera 1.4.15 (versionCode 25)
+
+## Correção do Build APK 17: Secret Base64 inválido
+
+O Build APK 17 falhou antes do Gradle no passo de preparação da assinatura da versão 1.4.13+23: `base64: invalid input`. A execução encontrou os quatro nomes de Secrets, mas não pôde decodificar o `KEYSTORE_BASE64`. O TXT/JSON original é válido; não é possível garantir pelos logs o conteúdo que ficou armazenado no GitHub.
+
+- Preparador robusto em Python normaliza whitespace, aspas externas e `=` ausente, valida PKCS12 e verifica o mesmo fingerprint SHA-256 antes de publicar qualquer keystore para o Gradle.
+- Secrets realmente alterados/truncados continuam bloqueando o build e devem ser substituídos por meio do importador JSON original do GitHub Manager.
+- Nenhuma chave nova foi criada; todos os APKs continuam usando o mesmo certificado e versionamento sequencial.
+- Os recursos da v1.4.14 (Câmeras/Celular, pop-ups QR, prévia e reprodução) foram preservados.
+- Testes locais de decodificação e certificado aprovados; compile/assinatura Android no GitHub Actions e atualização no celular pendentes.
+
+# Minha Câmera 1.4.14 (versionCode 24)
+
+## Novidade principal: interface redesenhada
+
+- Barra inferior com dois menus, Câmeras e Celular, com listas separadas e cartões Transmitir/Assistir.
+- Tela Ao vivo com prévia local e quatro ações compactas: Virar, QR, Link e Código.
+- QR sob demanda e leitor incorporado em pop-ups centralizados, modo retrato.
+- Link reúne copiar/enviar sem remover recursos anteriores; servidor MJPEG, RTSP/ONVIF e assinatura estável preservados.
+- Build Android e validação em aparelhos reais ainda pendentes.
+
+## Histórico: Minha Câmera 1.4.13 (versionCode 23)
 
 Data: 2026-10-14.
 

@@ -1,8 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.13 (versionCode 23)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.15 (versionCode 25)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
 
-A **1.4.13** exige assinatura Release permanente por quatro Secrets do GitHub Actions e impede publicação com outro certificado. A chave privada fica fora do repositório. Consulte [assinatura permanente](docs/ASSINATURA_PERMANENTE.md) antes de instalar: a assinatura nova não é compatível com APKs antigos assinados por chave diferente.
+Desde a **1.4.13**, o projeto exige assinatura Release permanente por quatro Secrets do GitHub Actions e impede publicação com outro certificado. A chave privada fica fora do repositório. Consulte [assinatura permanente](docs/ASSINATURA_PERMANENTE.md) antes de instalar: a assinatura nova não é compatível com APKs antigos assinados por chave diferente.
 
 A **1.4.12** corrige a área preta na prévia do transmissor reportada em Android: substitui `SurfaceView` dentro de `ScrollView` por `TextureView` ligado à câmera e adapta o enquadramento à rotação, sem esticar a imagem. A prévia aparece antes do QR Code. O texto «Transmitindo» agora depende de a câmera realmente produzir e publicar um JPEG; após 5 segundos sem quadros ou sem desenhar a prévia, o app indica o problema. **Ainda precisa de teste físico** para confirmar a correção no aparelho afetado.
 
@@ -36,17 +36,24 @@ Aplicativo para cadastrar e reproduzir câmeras IP RTSP. A versão 1.4.8 organiz
 4. A lista principal mostra cartões com ações rápidas para abrir, copiar o endereço RTSP completo e editar/excluir a câmera.
 5. Se a descoberta falhar, verifique as portas da câmera, Wi-Fi e ONVIF, ou use `rtsp://usuario:senha@IP:554/caminho`.
 
+
+### Interface da 1.4.14
+
+A tela principal possui duas abas inferiores: **Câmeras** (câmeras RTSP/ONVIF persistidas, Buscar e Adicionar manualmente) e **Celular** (cartões **Transmitir** e **Assistir**, conexões de celulares já salvas). No transmissor, a prévia local fica em destaque; **Virar, QR, Link e Código** aparecem na mesma barra. O QR é gerado apenas ao abrir o pop-up centralizado e não interrompe a câmera ao fechar. **Link** reúne Copiar e Enviar endereço; **Código** revoga o token após confirmação. Em Assistir, a captura QR é incorporada a um pop-up vertical na própria Activity, com opção manual. A URL privada não fica exposta na tela principal. O servidor MJPEG, cadastro RTSP e assinaturas permanecem os mesmos. Teste físico pendente.
+
 ## GitHub Actions
 
 O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara Android SDK 36 e executa `gradle testProtocol testReleaseUnitTest assembleRelease` uma única vez, com cache. Publica cada APK individualmente, sem ZIP, em **Actions > Artifacts**:
 
-- `MinhaCamera-1.4.13-universal.apk`: todas as quatro ABIs, para distribuição geral.
-- `MinhaCamera-1.4.13-armeabi-v7a.apk`: Android ARM de 32 bits.
-- `MinhaCamera-1.4.13-arm64-v8a.apk`: Android ARM de 64 bits.
-- `MinhaCamera-1.4.13-x86_64.apk`: Android Intel de 64 bits/emuladores.
-- `MinhaCamera-1.4.13-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
+- `MinhaCamera-1.4.15-universal.apk`: todas as quatro ABIs, para distribuição geral.
+- `MinhaCamera-1.4.15-armeabi-v7a.apk`: Android ARM de 32 bits.
+- `MinhaCamera-1.4.15-arm64-v8a.apk`: Android ARM de 64 bits.
+- `MinhaCamera-1.4.15-x86_64.apk`: Android Intel de 64 bits/emuladores.
+- `MinhaCamera-1.4.15-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
 
-No workflow assinado, todos têm `com.minhacamera`, versão 1.4.13, código 23 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
+No workflow assinado, todos têm `com.minhacamera`, versão 1.4.15, código 25 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
+
+A 1.4.15 corrige o pré-processamento de Base64 após a falha do Build APK 17 e valida o certificado antes do Gradle. Se o valor do Secret estiver corrompido, reimporte o JSON original para substituí-lo. Nenhuma chave foi regenerada.
 
 A partir da 1.4.13, o Release **exige quatro Secrets e uma keystore PKCS12 permanente**, e o verificador confere o SHA-256 do certificado com `docs/SIGNING_CERT_SHA256.txt`. Sem os Secrets, o workflow falha antes da compilação. Chaves privadas ficam somente no arquivo de backup e nos Secrets do repositório; não são commitadas. **Se o APK instalado foi assinado com outra chave, não é possível atualizar sem recuperar a assinatura original**. Preserve dados antes de qualquer desinstalação. Consulte [configuração detalhada](docs/ASSINATURA_PERMANENTE.md).
 O cache de tarefas é habilitado com `org.gradle.caching=true`; o `gradle/actions/setup-gradle@v6` restaura/salva o Gradle User Home após um job concluído. A execução não deve ser cancelada assim que aparecer `BUILD SUCCESSFUL`, porque ainda faltam nomear/publicar o APK e finalizar o cache. O primeiro build pode continuar demorado, e mudanças no projeto invalidam parte do cache. A mensagem `BUILD SUCCESSFUL in 2m 8s` do build #9 foi seguida de cancelamento externo, antes de publicar o APK.

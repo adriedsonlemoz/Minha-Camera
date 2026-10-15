@@ -2,52 +2,54 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent" android:layout_height="match_parent"
     android:background="@color/app_background" android:fillViewport="true">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:orientation="vertical" android:padding="16dp">
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/phone_camera_instructions" android:textColor="@color/app_text"
-            android:layout_marginBottom="8dp" />
-        <TextView android:id="@+id/phoneStatus" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:text="@string/phone_waiting"
-            android:gravity="center" android:textStyle="bold" android:textColor="@color/app_text" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/phone_preview_label" android:textColor="@color/app_text"
-            android:gravity="center" android:layout_marginTop="12dp" android:layout_marginBottom="6dp" />
-        <FrameLayout android:layout_width="match_parent" android:layout_height="260dp"
-            android:background="#000000">
-            <TextureView android:id="@+id/phonePreview" android:layout_width="match_parent"
-                android:layout_height="match_parent" />
-        </FrameLayout>
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/phone_pairing_label" android:textColor="@color/app_text"
-            android:gravity="center" android:layout_marginTop="16dp" />
-        <ImageView android:id="@+id/phoneQrCode" android:layout_width="224dp"
-            android:layout_height="224dp" android:layout_gravity="center_horizontal"
-            android:layout_marginTop="8dp" android:layout_marginBottom="8dp"
-            android:padding="8dp" android:background="#FFFFFF"
-            android:scaleType="fitCenter" android:visibility="gone"
-            android:contentDescription="@string/phone_qr_code_description" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="@string/phone_qr_hint" android:textColor="@color/app_text"
-            android:gravity="center" android:layout_marginBottom="8dp" />
-        <TextView android:id="@+id/phoneAddress" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:text="@string/phone_no_address"
-            android:textIsSelectable="true" android:layout_marginTop="8dp"
-            android:textSize="12sp" android:textColor="@color/app_text"
-            android:breakStrategy="simple" />
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:orientation="horizontal" android:layout_marginTop="8dp">
-            <Button android:id="@+id/phoneSwitch" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="wrap_content" android:text="@string/phone_switch" />
-            <Button android:id="@+id/phoneCopy" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="wrap_content" android:text="@string/phone_copy" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal"
+            android:layout_marginBottom="12dp">
+            <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+                android:text="@string/ui_live" android:textColor="@color/app_text" android:textSize="23sp" android:textStyle="bold"/>
+            <View android:layout_width="8dp" android:layout_height="8dp" android:background="@drawable/bg_ui_live"/>
+            <TextView android:id="@+id/phoneStatus" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="@string/phone_waiting" android:textColor="@color/brand_secondary" android:layout_marginStart="7dp" android:textSize="13sp"/>
         </LinearLayout>
-        <Button android:id="@+id/phoneShare" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:text="@string/phone_share" />
-        <Button android:id="@+id/phoneRevoke" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:text="@string/phone_revoke" />
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="8dp" android:text="@string/phone_security_notice"
-            android:textColor="@color/app_text" android:textSize="12sp" />
+        <FrameLayout android:layout_width="match_parent" android:layout_height="240dp"
+            android:background="@drawable/bg_ui_preview" android:clipToOutline="true">
+            <TextureView android:id="@+id/phonePreview" android:layout_width="match_parent" android:layout_height="match_parent"/>
+            <TextView android:id="@+id/previewPlaceholder" android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:layout_gravity="center" android:text="@string/ui_preview_loading" android:textColor="#C4CCD7" android:textSize="14sp"/>
+        </FrameLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:orientation="horizontal">
+            <LinearLayout android:id="@+id/phoneSwitch" android:layout_width="0dp" android:layout_weight="1" android:layout_height="76dp"
+                android:layout_marginEnd="4dp" android:padding="8dp" android:background="@drawable/bg_ui_card" android:gravity="center" android:orientation="vertical"
+                android:clickable="true" android:focusable="true" android:contentDescription="@string/ui_flip">
+                <ImageView android:layout_width="25dp" android:layout_height="25dp" android:src="@drawable/ic_ui_flip" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="5dp"
+                    android:text="@string/ui_flip" android:textColor="@color/app_text" android:textSize="12sp"/>
+            </LinearLayout>
+            <LinearLayout android:id="@+id/phoneQr" android:layout_width="0dp" android:layout_weight="1" android:layout_height="76dp"
+                android:layout_marginStart="4dp" android:layout_marginEnd="4dp" android:padding="8dp" android:background="@drawable/bg_ui_card" android:gravity="center" android:orientation="vertical"
+                android:clickable="true" android:focusable="true" android:contentDescription="@string/ui_qr">
+                <ImageView android:layout_width="25dp" android:layout_height="25dp" android:src="@drawable/ic_ui_qr" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="5dp"
+                    android:text="@string/ui_qr" android:textColor="@color/app_text" android:textSize="12sp"/>
+            </LinearLayout>
+            <LinearLayout android:id="@+id/phoneLink" android:layout_width="0dp" android:layout_weight="1" android:layout_height="76dp"
+                android:layout_marginStart="4dp" android:layout_marginEnd="4dp" android:padding="8dp" android:background="@drawable/bg_ui_card" android:gravity="center" android:orientation="vertical"
+                android:clickable="true" android:focusable="true" android:contentDescription="@string/ui_link">
+                <ImageView android:layout_width="25dp" android:layout_height="25dp" android:src="@drawable/ic_ui_link" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="5dp"
+                    android:text="@string/ui_link" android:textColor="@color/app_text" android:textSize="12sp"/>
+            </LinearLayout>
+            <LinearLayout android:id="@+id/phoneRevoke" android:layout_width="0dp" android:layout_weight="1" android:layout_height="76dp"
+                android:layout_marginStart="4dp" android:padding="8dp" android:background="@drawable/bg_ui_card" android:gravity="center" android:orientation="vertical"
+                android:clickable="true" android:focusable="true" android:contentDescription="@string/ui_code">
+                <ImageView android:layout_width="25dp" android:layout_height="25dp" android:src="@drawable/ic_ui_key" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="5dp"
+                    android:text="@string/ui_code" android:textColor="@color/app_text" android:textSize="12sp"/>
+            </LinearLayout>
+        </LinearLayout>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp"
+            android:text="@string/ui_stream_instructions" android:textColor="@color/ui_muted" android:textSize="13sp"/>
+        <TextView android:id="@+id/phoneAddress" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:visibility="gone" android:text="@string/phone_no_address"/>
     </LinearLayout>
 </ScrollView>
