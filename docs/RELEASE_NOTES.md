@@ -1,3 +1,9 @@
+# Minha Câmera 1.4.35 (versionCode 45)
+
+- Correção dos erros `Conflicting import` de `android.os.SystemClock` no Build APK 35.
+- Preflight de imports Kotlin duplicados e ambíguos integrado ao GitHub Actions, com testes de regressão.
+- Funcionalidades e chave de assinatura da 1.4.34 preservadas; `assembleRelease` pendente de execução no GitHub Actions.
+
 # Minha Câmera 1.4.34 (versionCode 44)
 
 - Corrige `Unresolved reference PhoneAvcAnnexB` no Build APK 34: a fonte pura Kotlin agora faz parte da compilação Gradle dos testes de protocolo.

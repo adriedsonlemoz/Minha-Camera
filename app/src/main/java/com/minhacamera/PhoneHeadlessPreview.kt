@@ -8,7 +8,6 @@ import android.opengl.EGLDisplay
 import android.opengl.EGLSurface
 import android.opengl.GLES11Ext
 import android.opengl.GLES20
-import android.os.SystemClock
 import android.os.Handler
 import android.os.SystemClock
 import android.os.HandlerThread

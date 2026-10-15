@@ -1,3 +1,9 @@
+## 1.4.35+45 — 2026-10-15
+- Corrigido Build APK 35: remoção do import `android.os.SystemClock` duplicado em `PhoneHeadlessPreview.kt`, que causava `Conflicting import` nas linhas 11/13 durante `:app:compileReleaseKotlin`.
+- Adicionado `scripts/check_kotlin_imports.py` ao preflight do GitHub Actions para sinalizar imports Kotlin duplicados ou nomes de imports ambíguos antes do build.
+- Incluídos testes de regressão de imports sem alterar transmissão MJPEG/H.264, câmera com tela apagada, UI, gravação ou assinatura.
+- Compilação Android completa e teste em dispositivo dependem do próximo workflow do GitHub Actions.
+
 ## 1.4.34+44 — 2026-10-15
 - Corrigido Build APK 34 (`:compileProtocolTests`): incluído `PhoneAvcAnnexB.kt` nas fontes do compilador Kotlin/JVM configurado em `build.gradle.kts`.
 - Adicionado verificador `scripts/check_protocol_sources.py`, executado no preflight do GitHub Actions, para impedir divergência entre as fontes de teste do Gradle e de `scripts/test_protocol.sh`.
