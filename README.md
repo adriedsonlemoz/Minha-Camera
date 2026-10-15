@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.33 (versionCode 43)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.34 (versionCode 44)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Correção Build APK 34 (1.4.34):** adicionada a classe `PhoneAvcAnnexB.kt` à lista `protocolSources` do Gradle. O compilador Kotlin/JVM dos testes de protocolo agora recebe as mesmas fontes do script local; o preflight do GitHub Actions valida automaticamente essa correspondência. Nenhuma mudança nos codecs ou na interface.
 
 **Tela inicial unificada 1.4.33:** Câmeras RTSP e celulares HTTP na mesma lista, com ícones de tipo e botões Abrir, Copiar, Editar e Excluir visíveis. O topo concentra Transmitir, Assistir e a engrenagem de Configurações; a Central Multimídia permite acessar gravações RTSP e selecionar fotos/vídeos do dispositivo. Modelo, FPS alvo e resolução real aparecem quando informados pelo transmissor conectado, sem inventar dados de câmeras IP.
 
@@ -98,13 +100,13 @@ Em **Celular → Assistir**, o receptor permanece em orientação vertical e mos
 
 O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara Android SDK 36 e executa `gradle testProtocol testReleaseUnitTest assembleRelease` uma única vez, com cache. Publica cada APK individualmente, sem ZIP, em **Actions > Artifacts**:
 
-- `MinhaCamera-1.4.33-universal.apk`: todas as quatro ABIs, para distribuição geral.
-- `MinhaCamera-1.4.33-armeabi-v7a.apk`: Android ARM de 32 bits.
-- `MinhaCamera-1.4.33-arm64-v8a.apk`: Android ARM de 64 bits.
-- `MinhaCamera-1.4.33-x86_64.apk`: Android Intel de 64 bits/emuladores.
-- `MinhaCamera-1.4.33-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
+- `MinhaCamera-1.4.34-universal.apk`: todas as quatro ABIs, para distribuição geral.
+- `MinhaCamera-1.4.34-armeabi-v7a.apk`: Android ARM de 32 bits.
+- `MinhaCamera-1.4.34-arm64-v8a.apk`: Android ARM de 64 bits.
+- `MinhaCamera-1.4.34-x86_64.apk`: Android Intel de 64 bits/emuladores.
+- `MinhaCamera-1.4.34-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
 
-No workflow assinado, todos têm `com.minhacamera`, versão 1.4.33, código 43 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
+No workflow assinado, todos têm `com.minhacamera`, versão 1.4.34, código 44 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
 
 A 1.4.16 corrige o bloqueio do Build APK 18 causado por KEYSTORE_BASE64 inválido. O workflow prefere o novo Secret KEYSTORE_HEX, composto apenas de dígitos e letras a–f, mantendo Base64 como alternativa legada. É obrigatório importar KEYSTORE_HEX e conferir os outros três Secrets antes do novo build. O certificado original é mantido; nenhuma chave foi regenerada.
 

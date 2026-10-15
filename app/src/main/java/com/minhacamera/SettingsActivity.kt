@@ -49,7 +49,7 @@ class SettingsActivity : AppCompatActivity() {
         addHeader(content, getString(R.string.home_settings), "Aparência, informações e apoio ao aplicativo")
         addAction(content, "← Voltar", "Retornar às câmeras", { finish() })
         addAction(content, getString(R.string.settings_theme), "Sistema, claro, escuro ou preto AMOLED", { chooseTheme() })
-        addAction(content, getString(R.string.settings_about), "1.4.33 · 1.4.32 · 1.4.31", { showAbout() })
+        addAction(content, getString(R.string.settings_about), "1.4.34 · 1.4.33 · 1.4.32", { showAbout() })
         addAction(content, getString(R.string.settings_donate), "Pix e contribuições opcionais", { showDonate() })
     }
     private fun chooseTheme() {
@@ -67,7 +67,7 @@ class SettingsActivity : AppCompatActivity() {
     }
     private fun showAbout() {
         AlertDialog.Builder(this).setTitle(R.string.settings_about)
-            .setMessage("Minha Câmera 1.4.33+43\n• Tela inicial unificada, Central Multimídia, controles remotos e configurações.\n\n1.4.32+42\n• MJPEG/H.264 experimental, telemetria e diagnóstico.\n\n1.4.31+41\n• Correções de compilação Kotlin e comandos de captura.\n\nDesenvolvimento independente. Rede local, sem envio obrigatório à nuvem.")
+            .setMessage("Minha Câmera 1.4.34+44\n• Correção do build dos testes H.264; lista de fontes Gradle sincronizada.\n\n1.4.33+43\n• Tela inicial unificada, Central Multimídia, controles remotos e configurações.\n\n1.4.32+42\n• MJPEG/H.264 experimental, telemetria e diagnóstico.\n\nDesenvolvimento independente. Rede local, sem envio obrigatório à nuvem.")
             .setPositiveButton(R.string.novidades) { _, _ -> AlertDialog.Builder(this)
                 .setTitle(R.string.novidades).setMessage(R.string.novidades_text).setPositiveButton(android.R.string.ok, null).show() }
             .setNegativeButton(R.string.ui_close, null).show()

@@ -1,3 +1,9 @@
+## 1.4.34+44 — 2026-10-15
+- Corrigido Build APK 34 (`:compileProtocolTests`): incluído `PhoneAvcAnnexB.kt` nas fontes do compilador Kotlin/JVM configurado em `build.gradle.kts`.
+- Adicionado verificador `scripts/check_protocol_sources.py`, executado no preflight do GitHub Actions, para impedir divergência entre as fontes de teste do Gradle e de `scripts/test_protocol.sh`.
+- Mantidas as funções H.264/MJPEG, nova tela inicial, controles remotos, gravação e assinatura permanente sem alterações de comportamento.
+- Compilação do APK da 1.4.34 ainda depende de novo workflow no GitHub Actions.
+
 ## 1.4.33+43 — 2026-10-15
 - Tela inicial reformulada: câmeras IP RTSP e celulares HTTP na mesma lista, ações Abrir/Copiar/Editar/Excluir visíveis e atalhos Transmitir/Assistir no topo.
 - Central Multimídia com gravações RTSP e seleção de fotos/vídeos do dispositivo.

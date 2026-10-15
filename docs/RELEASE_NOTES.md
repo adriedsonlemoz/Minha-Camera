@@ -1,3 +1,9 @@
+# Minha Câmera 1.4.34 (versionCode 44)
+
+- Corrige `Unresolved reference PhoneAvcAnnexB` no Build APK 34: a fonte pura Kotlin agora faz parte da compilação Gradle dos testes de protocolo.
+- Novo verificador de consistência das fontes dos testes rodando antes de preparar a assinatura Release.
+- Preserva funções e metadados da 1.4.33. APK completo e testes físicos pendentes.
+
 # Minha Câmera 1.4.33 (versionCode 43)
 
 - Nova tela inicial com câmeras IP e celulares unificados e ações explícitas.
