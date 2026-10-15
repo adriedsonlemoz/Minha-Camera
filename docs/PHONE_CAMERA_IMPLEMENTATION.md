@@ -1,10 +1,10 @@
-# Modo celular como câmera | Minha Câmera 1.4.11+21
+# Modo celular como câmera | Minha Câmera 1.4.12+22
 
 ## Escopo implementado
 
 - Instale o mesmo APK em **dois celulares Android**. Um funciona como transmissor e outro como monitor.
 - **Entrada unificada:** toque em «Usar este celular como câmera» e escolha **Transmitir** ou **Visualizar**. O seletor também vale para a opção equivalente do menu superior.
-- **No transmissor:** escolha **Transmitir**, permita CAMERA e mantenha a tela aberta com Wi-Fi conectado. A tela exibe o **QR Code** contendo `http://IP:8765/live/TOKEN`, a prévia e botões para alternar a lente, copiar, enviar ou revogar o acesso. O QR é renovado a cada reinício de sessão, mudança de IP ou rotação do token, e ocultado ao parar a transmissão.
+- **No transmissor:** escolha **Transmitir**, permita CAMERA e mantenha a tela aberta com Wi-Fi conectado. A tela exibe o **QR Code** contendo `http://IP:8765/live/TOKEN`, a prévia local (exibida acima do QR) e botões para alternar a lente, copiar, enviar ou revogar o acesso. O QR é renovado a cada reinício de sessão, mudança de IP ou rotação do token, e ocultado ao parar a transmissão.
 - **No receptor:** escolha **Visualizar**, permita acesso à câmera ao leitor ZXing, enquadre o QR do transmissor; um QR válido é cadastrado, se ainda não constar da lista, e o MJPEG abre automaticamente. QR inválido é rejeitado, com opção de nova leitura. Não se abre qualquer link arbitrário que venha de QR.
 - **Alternativa manual:** menu «Adicionar outro celular», colar o endereço e salvar. O novo cartão abre um visualizador MJPEG nativo; «Tentar novamente» reconecta.
 - Não usa ONVIF, RTSP, Media3 nem LibVLC no caminho MJPEG. As câmeras RTSP/ONVIF existentes continuam em fluxo separado.
@@ -12,7 +12,7 @@
 
 ## Modelo técnico
 
-- `PhoneCameraActivity` usa `android.hardware.Camera` (Camera1, legado) para prévia, NV21 com buffers reutilizados, ~4 quadros/s e tamanho preferencial 640×480, escolhido entre resoluções anunciadas pelo hardware. Apenas uma conversão JPEG (qualidade 65); `Nv21Frames` corrige orientação de 0, 90, 180 e 270 graus. Trabalhador único evita codificações simultâneas.
+- `PhoneCameraActivity` usa `android.hardware.Camera` (Camera1, legado) para captura e `TextureView` como prévia vinculada por `setPreviewTexture`, evitando `SurfaceView` dentro de `ScrollView`, com correção de proporção da imagem no Android; NV21 com buffers reutilizados, ~4 quadros/s e tamanho preferencial 640×480, escolhido entre resoluções anunciadas pelo hardware. Apenas uma conversão JPEG (qualidade 65); `Nv21Frames` corrige orientação de 0, 90, 180 e 270 graus. Trabalhador único evita codificações simultâneas.
 - `PhoneCameraServer`: ServerSocket vinculado somente ao IPv4 da interface Wi-Fi/AP, porta fixa 8765, máximo 2 conexões simultâneas, token aleatório de 128 bits persistente no aparelho (em preferências privadas, sem criptografia) e revogável pelo botão «Trocar código de acesso», resposta `multipart/x-mixed-replace` com `Content-Length`, limites de cabeçalho/frame e desligamento ao sair da Activity. Não expõe URL em logs.
 - `PhoneCameraViewerActivity`: HttpURLConnection sem redirecionamento HTTP, limita imagens a 1 MiB, valida MIME, decodifica cada frame JPEG, apresenta em ImageView e fecha a conexão ao sair.
 - `PhoneCameraUrls`: aceita apenas HTTP IPv4 privado/link-local, porta explícita e rota `/live/` com token em hexadecimal de 32 caracteres. O resultado do escaneamento passa por essa validação antes de qualquer conexão HTTP.
@@ -25,6 +25,7 @@
 - A transmissão é HTTP **sem criptografia**. O **QR Code contém a URL e o token secreto**: qualquer pessoa que fotografá-lo e tiver acesso à mesma rede pode conectar durante a sessão. Use apenas Wi-Fi confiável e não publique o QR ou o endereço. Quem tiver a URL completa enquanto a sessão estiver ativa pode ver a transmissão na mesma rede. O código é aleatório, privado e revogável, mas é reutilizado entre sessões para viabilizar o compartilhamento por outros aplicativos. Não é impresso em logs.
 - É necessário que os dois aparelhos se alcancem pela LAN; redes com isolamento de clientes e certas configurações de hotspot podem bloquear o tráfego. A opção de hotspot pode não fornecer uma interface IPv4 identificável em todos os fabricantes.
 - A transmissão para ao sair da tela ou bloquear o celular transmissor. Não há serviço de câmera em segundo plano. O aparelho mantém tela ligada enquanto a Activity está ativa; pode haver consumo sensível de bateria, CPU e Wi-Fi. Ao compartilhar o endereço com outro app, a câmera pausa e volta a transmitir quando o usuário retorna à tela. Não há compressão H.264, áudio ou acesso remoto via internet.
+- O estado «Transmitindo» só aparece depois de publicar o primeiro JPEG. Se nenhum quadro chegar ou a prévia local não renderizar em 5 s, a tela apresenta diagnóstico específico. A mudança para TextureView **não foi validada em aparelho físico** e não é uma garantia de compatibilidade com todos os fabricantes.
 - A API Camera1 é obsoleta, embora compatível com API 24+. Fabricantes que restringem Camera1 podem exigir implementação Camera2/CameraX. A prévia poderá falhar se a câmera estiver ocupada.
 - O receptor MJPEG não tem gravação. O cartão salvo preserva somente o endereço, que deixa de funcionar quando a sessão é encerrada.
 - O leitor QR depende da resolução das bibliotecas ZXing pelo Gradle durante a compilação Android. **Não foram executados testes físicos nem build Android completo neste ambiente**. A validação funcional depende de dois celulares na mesma rede.

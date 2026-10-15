@@ -1,5 +1,13 @@
 # Histórico de versões
 
+## 1.4.12+22 — 2026-10-14
+- Corrigida a implementação da prévia local que podia aparecer preta mesmo com o QR e servidor iniciados: `SurfaceView` dentro de `ScrollView` foi substituído por `TextureView` com ciclo de vida de `SurfaceTexture` (inclui pausa, retorno e troca de câmera).
+- Prévia posicionada antes do QR Code, com ajuste de proporção sem achatamento durante rotação/redimensionamento.
+- «Transmitindo pela rede local» só é exibido após publicação efetiva do primeiro JPEG; tempo de espera de 5 s distingue ausência de quadros e falha na renderização da prévia.
+- Não alterados MJPEG/QR, permissões, token, RTSP/ONVIF, gravações nem configuração de assinatura.
+- Validação estática e testes sintéticos locais; build Android completo e confirmação no celular que apresentou a falha permanecem pendentes.
+
+
 ## 1.4.11+21 — 2026-10-14
 - Ação «Usar este celular como câmera» agora pergunta o papel do aparelho: «Transmitir» ou «Visualizar».
 - Em «Transmitir», a URL com o token de acesso é convertida em QR Code visível, atualizado ao trocar o código, a câmera ou o IP de rede; a imagem QR desaparece quando a transmissão para.

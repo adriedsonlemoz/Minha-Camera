@@ -10,6 +10,17 @@
         <TextView android:id="@+id/phoneStatus" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:text="@string/phone_waiting"
             android:gravity="center" android:textStyle="bold" android:textColor="@color/app_text" />
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/phone_preview_label" android:textColor="@color/app_text"
+            android:gravity="center" android:layout_marginTop="12dp" android:layout_marginBottom="6dp" />
+        <FrameLayout android:layout_width="match_parent" android:layout_height="260dp"
+            android:background="#000000">
+            <TextureView android:id="@+id/phonePreview" android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </FrameLayout>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="@string/phone_pairing_label" android:textColor="@color/app_text"
+            android:gravity="center" android:layout_marginTop="16dp" />
         <ImageView android:id="@+id/phoneQrCode" android:layout_width="224dp"
             android:layout_height="224dp" android:layout_gravity="center_horizontal"
             android:layout_marginTop="8dp" android:layout_marginBottom="8dp"
@@ -19,8 +30,6 @@
         <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
             android:text="@string/phone_qr_hint" android:textColor="@color/app_text"
             android:gravity="center" android:layout_marginBottom="8dp" />
-        <SurfaceView android:id="@+id/phonePreview" android:layout_width="match_parent"
-            android:layout_height="210dp" android:background="#000000" />
         <TextView android:id="@+id/phoneAddress" android:layout_width="match_parent"
             android:layout_height="wrap_content" android:text="@string/phone_no_address"
             android:textIsSelectable="true" android:layout_marginTop="8dp"

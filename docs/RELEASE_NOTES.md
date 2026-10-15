@@ -1,3 +1,17 @@
+# Minha Câmera 1.4.12 (versionCode 22)
+
+Data: 2026-10-14.
+
+**Correção da prévia preta no celular transmissor:** a visualização da própria câmera mudou de SurfaceView para TextureView, para funcionar de forma mais confiável dentro da tela rolável. A prévia aparece antes do QR Code, sem distorção de proporção. As orientações e recursos de Transmitir/Visualizar permanecem.
+
+**Diagnóstico:** o estado «Transmitindo pela rede local» depende de um quadro JPEG publicado; se não houver quadros ou se a textura local não desenhar o vídeo após cinco segundos, aparece uma mensagem que permite distinguir essas duas falhas.
+
+**Validação:** testes locais estáticos e de protocolos não substituem compilação nem execução no aparelho afetado. Sem atualização na assinatura: verifique o certificado antes de instalar sobre o aplicativo existente. Não desinstale sem proteger dados locais.
+
+Mais detalhes em [VALIDATION_1.4.12.md](VALIDATION_1.4.12.md).
+
+---
+
 # Minha Câmera 1.4.11 (versionCode 21)
 
 Data: 2026-10-14.

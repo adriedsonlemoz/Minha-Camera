@@ -3,6 +3,8 @@ package com.minhacamera
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.ImageFormat
+import android.graphics.Matrix
+import android.graphics.SurfaceTexture
 import android.graphics.Rect
 import android.graphics.YuvImage
 import android.hardware.Camera
@@ -10,8 +12,7 @@ import android.os.Bundle
 import android.content.res.Configuration
 import android.content.Intent
 import android.os.SystemClock
-import android.view.SurfaceHolder
-import android.view.SurfaceView
+import android.view.TextureView
 import android.view.WindowManager
 import android.view.View
 import android.widget.ImageView
@@ -28,12 +29,18 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 
 @Suppress("DEPRECATION")
-class PhoneCameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
-    private lateinit var preview: SurfaceView
+class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListener {
+    private lateinit var preview: TextureView
     private lateinit var status: TextView
     private lateinit var address: TextView
     private lateinit var qrCode: ImageView
     private var surfaceReady = false
+    private var previewWidth = 0
+    private var previewHeight = 0
+    private var previewDisplayRotation = 0
+    @Volatile private var receivedCameraFrames = false
+    @Volatile private var renderedPreviewFrames = false
+    @Volatile private var publishedStreamFrame = false
     private var camera: Camera? = null
     @Volatile private var server: PhoneCameraServer? = null
     private var selectedFacing = Camera.CameraInfo.CAMERA_FACING_BACK
@@ -55,7 +62,9 @@ class PhoneCameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         status = findViewById(R.id.phoneStatus)
         address = findViewById(R.id.phoneAddress)
         qrCode = findViewById(R.id.phoneQrCode)
-        preview.holder.addCallback(this)
+        preview.surfaceTextureListener = this
+        // SurfaceTexture desenha como uma View normal, mesmo dentro de ScrollView.
+        surfaceReady = preview.isAvailable
         findViewById<Button>(R.id.phoneSwitch).setOnClickListener {
             selectedFacing = if (selectedFacing == Camera.CameraInfo.CAMERA_FACING_BACK)
                 Camera.CameraInfo.CAMERA_FACING_FRONT else Camera.CameraInfo.CAMERA_FACING_BACK
@@ -94,21 +103,38 @@ class PhoneCameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         status.setText(R.string.phone_waiting)
     }
 
-    override fun onResume() { super.onResume(); visible = true; tryStart() }
+    override fun onResume() {
+        super.onResume()
+        visible = true
+        surfaceReady = preview.isAvailable
+        tryStart()
+    }
     override fun onPause() { visible = false; stopStreaming(); super.onPause() }
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         try { updateOrientation() } catch (_: Exception) { stopStreaming(); tryStart() }
     }
     override fun onDestroy() {
-        preview.holder.removeCallback(this)
+        preview.surfaceTextureListener = null
         worker.shutdownNow()
         super.onDestroy()
     }
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
-    override fun surfaceCreated(holder: SurfaceHolder) { surfaceReady = true; tryStart() }
-    override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) = Unit
-    override fun surfaceDestroyed(holder: SurfaceHolder) { surfaceReady = false; stopStreaming() }
+    override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+        surfaceReady = true
+        tryStart()
+    }
+    override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {
+        updatePreviewTransform()
+    }
+    override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+        surfaceReady = false
+        stopStreaming()
+        return true // Android libera a textura após a câmera deixar de utilizá-la.
+    }
+    override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
+        renderedPreviewFrames = true
+    }
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
@@ -119,7 +145,7 @@ class PhoneCameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
     }
 
     private fun tryStart() {
-        if (!visible || !surfaceReady || camera != null) return
+        if (!visible || !surfaceReady || !preview.isAvailable || camera != null) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             if (!permissionRequested) {
                 permissionRequested = true
@@ -154,15 +180,25 @@ class PhoneCameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
             if (params.supportedFocusModes?.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO) == true)
                 params.focusMode = Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO
             c.parameters = params
-            // O JPEG é orientado sem rotacionar e recomprimir o bitmap.
+            previewWidth = size.width
+            previewHeight = size.height
+            receivedCameraFrames = false
+            renderedPreviewFrames = false
+            publishedStreamFrame = false
+            // TextureView evita a superfície externa do SurfaceView em ScrollViews MIUI.
+            // O JPEG da rede continua orientado por NV21, independente da prévia.
             updateOrientation()
-            c.setPreviewDisplay(preview.holder)
+            c.setPreviewTexture(preview.surfaceTexture
+                ?: throw IllegalStateException("Superfície da prévia indisponível"))
             val session = PhoneCameraServer(ip, PhoneCameraAccess.token(this))
             server = session
             worker = if (worker.isShutdown) Executors.newSingleThreadExecutor() else worker
             encoding.set(false)
             val byteCount = size.width * size.height * 3 / 2
             c.setPreviewCallbackWithBuffer { data, source ->
+                if (data != null && visible && server === session && data.size >= byteCount) {
+                    receivedCameraFrames = true
+                }
                 if (data != null && visible && server === session && data.size >= byteCount &&
                     !encoding.get() && SystemClock.elapsedRealtime() - lastCapture >= 250 &&
                     encoding.compareAndSet(false, true)) {
@@ -178,7 +214,15 @@ class PhoneCameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
                                 val jpeg = ByteArrayOutputStream()
                                 if (YuvImage(frame, ImageFormat.NV21, w, h, null)
                                         .compressToJpeg(Rect(0, 0, w, h), 65, jpeg)) {
-                                    if (visible && server === session) session.publish(jpeg.toByteArray())
+                                    if (visible && server === session) {
+                                        session.publish(jpeg.toByteArray())
+                                        if (!publishedStreamFrame) {
+                                            publishedStreamFrame = true
+                                            runOnUiThread {
+                                                if (visible && server === session) status.setText(R.string.phone_online)
+                                            }
+                                        }
+                                    }
                                 }
                             } catch (_: Exception) { } finally { encoding.set(false) }
                         }
@@ -190,8 +234,18 @@ class PhoneCameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
             c.startPreview()
             session.start()
             address.text = session.url
-            status.setText(R.string.phone_online)
+            status.setText(R.string.phone_waiting_frames)
             showQrCode(session.url)
+            // Uma sessão TCP/QR ativa não prova que a câmera esteja fornecendo imagem.
+            // Informa precisamente se faltam quadros ou se a prévia gráfica não os desenha.
+            preview.postDelayed({
+                if (visible && server === session) {
+                    when {
+                        !receivedCameraFrames || !publishedStreamFrame -> status.setText(R.string.phone_no_frames)
+                        !renderedPreviewFrames -> status.setText(R.string.phone_preview_not_rendered)
+                    }
+                }
+            }, 5000)
         } catch (_: Exception) {
             stopStreaming()
             status.setText(R.string.phone_start_failed)
@@ -228,7 +282,25 @@ class PhoneCameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
             else (info.orientation - rotation + 360) % 360
         frameRotation = if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT)
             (info.orientation + rotation) % 360 else display
+        previewDisplayRotation = display
         c.setDisplayOrientation(display)
+        updatePreviewTransform()
+    }
+
+    /** Centraliza a imagem sem achatamento, com recorte apenas do excedente. */
+    private fun updatePreviewTransform() {
+        if (previewWidth <= 0 || previewHeight <= 0 || preview.width <= 0 || preview.height <= 0) return
+        val rotated = previewDisplayRotation % 180 != 0
+        val imageWidth = (if (rotated) previewHeight else previewWidth).toFloat()
+        val imageHeight = (if (rotated) previewWidth else previewHeight).toFloat()
+        val viewWidth = preview.width.toFloat()
+        val viewHeight = preview.height.toFloat()
+        val cover = maxOf(viewWidth / imageWidth, viewHeight / imageHeight)
+        val matrix = Matrix().apply {
+            setScale(imageWidth * cover / viewWidth, imageHeight * cover / viewHeight,
+                viewWidth / 2f, viewHeight / 2f)
+        }
+        preview.setTransform(matrix)
     }
 
     private fun stopStreaming() {
@@ -240,6 +312,9 @@ class PhoneCameraActivity : AppCompatActivity(), SurfaceHolder.Callback {
         val c = camera
         camera = null
         selectedId = null
+        receivedCameraFrames = false
+        renderedPreviewFrames = false
+        publishedStreamFrame = false
         try { c?.setPreviewCallbackWithBuffer(null) } catch (_: Exception) { }
         try { c?.stopPreview() } catch (_: Exception) { }
         try { c?.release() } catch (_: Exception) { }

@@ -1,4 +1,4 @@
-# Pauta técnica após 1.4.11
+# Pauta técnica após 1.4.12
 
 ## P0: preservação de dados / segurança
 
@@ -14,6 +14,7 @@
 
 ## P2: câmera entre celulares
 
+- Validar correção de prévia preta com TextureView no aparelho que apresentou a falha, alternando câmeras, girando a tela, rolando e retornando do segundo plano.
 - Testar transmissão e pareamento QR no mínimo em dois aparelhos distintos, incluindo Wi-Fi sem internet e hotspot.
 - Revisar disponibilidade da API Camera1, desempenho, largura de banda, reconexão e consumo energético.
 - Não usar HTTP MJPEG em redes inseguras; avaliar TLS, WebRTC ou H.264 para confidencialidade e eficiência.
