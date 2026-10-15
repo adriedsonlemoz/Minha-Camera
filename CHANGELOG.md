@@ -1,3 +1,15 @@
+## 1.4.29+39 — 2026-10-15
+- Visualizador MJPEG renovado: cabeçalho da câmera real, bateria compacta, card de vídeo, temperatura, resolução real e FPS efetivo.
+- Comandos funcionais: REC remoto, foto do frame salva no receptor, giro local 180°, expandir, PiP, inteira, espelho e refazer.
+- Painel com Eco remoto autenticado quando o transmissor opera em foreground service; indicadores técnicos somente sob demanda.
+- Menu Mais redesenhado com ícones e switches. Mantidos PiP, reconexão, RTSP LibVLC e demais módulos.
+- Zoom, flash, troca remota de lentes e resolução configurável não estão habilitados; evitam-se controles sem backend.
+
+## 1.4.28+38 — 2026-10-15
+- Renovado o pop-up **Mais** do transmissor com layout personalizado, ícones e switches para opções ativáveis.
+- Link, Código e Gravações receberam subtítulos e visual mais claro.
+- Estados de bateria no vídeo, modo Eco e tela apagada agora aparecem imediatamente no diálogo.
+
 ## 1.4.27+37 — 2026-10-15
 
 - Transmissão e gravação opcional com tela apagada: ForegroundService de câmera, superfície independente da Activity, notificação com Gravar/Parar e Encerrar, proteção de suspensão e trava Wi-Fi durante a captura. Habilitação explícita com tela visível e apenas uma câmera.

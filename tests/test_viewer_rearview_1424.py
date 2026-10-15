@@ -19,8 +19,11 @@ class RearviewTests(unittest.TestCase):
     def test_five_controls(self):
         ids = ["phoneRetry", "phoneViewerFit", "phoneViewerMirror", "phoneViewerFocus", "phoneViewerMore"]
         controls = next(e for e in self.layout.iter() if e.attrib.get(ANDROID_NS + "id") == "@+id/phoneViewerControls")
-        found = [e.attrib.get(ANDROID_NS + "id") for e in controls]
-        self.assertEqual(found, ["@+id/" + x for x in ids])
+        found = {e.attrib.get(ANDROID_NS + "id") for e in controls.iter()}
+        self.assertTrue({"@+id/" + x for x in ids[:4]}.issubset(found))
+        # Menu Mais integra o cabeçalho do painel remoto nesta versão.
+        whole = {e.attrib.get(ANDROID_NS + "id") for e in self.layout.iter()}
+        self.assertIn("@+id/phoneViewerMore", whole)
 
     def test_mirror_is_view_transform_not_reencode(self):
         self.assertIn("image.scaleX = if (mirrorMode) -1f else 1f", self.code)
@@ -39,8 +42,8 @@ class RearviewTests(unittest.TestCase):
 
     def test_no_new_permissions_or_dependencies(self):
         gradle = (ROOT / 'app/build.gradle.kts').read_text()
-        self.assertIn('versionName = "1.4.27"', gradle)
-        self.assertIn('versionCode = 37', gradle)
+        self.assertIn('versionName = "1.4.29"', gradle)
+        self.assertIn('versionCode = 39', gradle)
         self.assertNotIn('implementation("androidx.camera', gradle)
 
     def test_vertical_layout_and_labels(self):

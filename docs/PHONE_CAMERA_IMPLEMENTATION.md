@@ -62,6 +62,9 @@ P3: atualizar Media3 e target SDK com testes de regressão. Essas melhorias **n�
 
 O quadro NV21 recebe selo de carga e temperatura da **bateria do transmissor** antes do MJPEG/MP4. Como é uma marca d'água gravada no vídeo, o receptor não precisa de endpoint de telemetria. Para alternar sem gravar dados no vídeo em uma futura arquitetura WebRTC, considerar canal de dados autenticado e overlay apenas no cliente. Leituras provêm do broadcast sticky `ACTION_BATTERY_CHANGED` e não representam a CPU.
 
+## Menu Mais renovado (1.4.28+38)
+A Activity transmissora agora usa um diálogo customizado em vez de uma lista simples do AlertDialog. As ações Link, Código e Gravações exibem ícones e descrições curtas; as opções Bateria no vídeo, Eco e Tela apagada usam switches visuais com estado imediato.
+
 ## Modo persistente com tela apagada (1.4.27+37)
 
 O serviço `PhoneCameraBackgroundService` é iniciado exclusivamente enquanto a tela `PhoneCameraActivity` está visível após consentimento explícito em **Mais**. O Android 14 exige permissões `FOREGROUND_SERVICE_CAMERA` e `CAMERA` e proíbe a criação do serviço de câmera a partir do plano de fundo. Com o serviço ativo, o `onPause` da Activity não para a captura; `SurfaceTexture` e `Camera` permanecem pertencendo ao serviço, com `START_NOT_STICKY` e notificação de encerramento/REC. O serviço mantém wake lock parcial e Wi-Fi lock durante a sessão.
@@ -71,3 +74,6 @@ O serviço `PhoneCameraBackgroundService` é iniciado exclusivamente enquanto a 
 **Riscos a medir:** determinados HALs OEM podem parar o preview após a tela apagar ou quando a fila SurfaceTexture sem GL não é consumida; permissões de notificação podem esconder controles. Validar em Redmi A3 e outro receptor com intervalos prolongados e medir temperatura da bateria, taxa de frames, consumo e arquivo MP4. A câmera dupla permanece dependente da Activity e não é suportada no serviço.
 
 A 1.4.27 adiciona REC remoto por POST (mesmo token privado usado para a transmissão) no modo persistente. Rotas não autenticadas respondem HTTP 403; o comando não fica exposto por CORS. Os controles aparecem em **Assistir → Mais** e são idempotentes. A transmissão não é reiniciada ao alternar REC. Em redes Wi-Fi compartilhadas, HTTP não cifra o token: usar apenas hotspot/rede local de confiança.
+
+## Visualizador e Eco remoto (1.4.29+39)
+O receptor exibe dados compactos em cabeçalho/card, sem duplicar a camada sobre o vídeo no modo normal; no PiP, conserva etiqueta compacta. O menu Mais foi renovado. O comando Eco via HTTP POST em /control/<token>/eco/enable|disable só está disponível quando o foreground service do transmissor está ativo; o token é o mesmo da URL MJPEG validada como IPv4 local. Não existe comando de ligar a câmera remotamente a partir do estado totalmente parado. A foto captura o JPEG recebido e salva no receptor sem retorno do conteúdo ao transmissor.

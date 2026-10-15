@@ -1,3 +1,19 @@
+# Minha Câmera 1.4.29 (versionCode 39)
+
+- Visualizador de câmera remota renovado, alinhado ao painel de referência.
+- Card de vídeo escuro, estado de conexão, temperatura, bateria, FPS e resolução efetivamente recebida.
+- Controles Gravar/Parar remoto, Foto local do frame recebido, Girar 180°, Expandir, PiP, Inteira, Espelho e Reconectar.
+- Eco remoto com token de acesso no modo de tela apagada; feedback de indisponibilidade para servidor legado.
+- Menu Mais com ícones, switches e detalhes técnicos opcionais.
+- Gravação e Eco remotos exigem a versão atual no transmissor e modo de captura persistente. A foto é salva no receptor.
+- Não inclui comandos não implementados (zoom, lanterna, qualidade, FPS remoto, trocar câmera).
+
+# Minha Câmera 1.4.28 (versionCode 38)
+
+- Pop-up **Mais** do transmissor renovado com ícones, subtítulos e switches para ações liga/desliga.
+- Link, Código e Gravações ficaram mais organizados e fáceis de entender.
+- Ajustes de bateria no vídeo, modo Eco e tela apagada mostram o estado visual no próprio pop-up.
+
 # Minha Câmera 1.4.27 (versionCode 37)
 
 - Modo persistente de uma câmera: **Celular → Transmitir → Mais → Manter transmitindo com tela apagada**. Inicia um serviço em primeiro plano do tipo `camera` enquanto o aplicativo está visível, permitindo bloquear a tela e manter MJPEG pela mesma porta/token local. A prévia local passa a exibir amostras do serviço, sem reabrir a câmera na Activity.

@@ -7,6 +7,16 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.os.SystemClock
+import android.os.Build
+import android.os.Environment
+import android.content.ContentValues
+import android.provider.MediaStore
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import androidx.appcompat.widget.SwitchCompat
+import java.io.File
+import java.io.FileOutputStream
+import java.util.Locale
 import android.view.View
 import android.view.WindowManager
 import android.widget.ImageView
@@ -18,6 +28,7 @@ import android.widget.Toast
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import java.io.BufferedInputStream
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -31,11 +42,26 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         val bitmap: Bitmap,
         val deliveryMs: Long?,
         val battery: PhoneBatteryReading?,
-        val remoteRecording: Boolean?
+        val remoteRecording: Boolean?,
+        val remoteEco: Boolean?,
+        val jpeg: ByteArray
     )
     private class InvalidTokenException : IOException()
 
     private lateinit var pipHost: FrameLayout
+    private lateinit var batteryPill: TextView
+    private lateinit var temperatureLabel: TextView
+    private lateinit var resolutionLabel: TextView
+    private lateinit var fpsLabel: TextView
+    private lateinit var ecoSwitch: SwitchCompat
+    private lateinit var recordLabel: TextView
+    private lateinit var recordIcon: ImageView
+    private lateinit var onlineDot: View
+    private lateinit var remoteSection: View
+    private var lastShownFps: Int? = null
+    private var remoteEco: Boolean? = null
+    private var rotation180 = false
+    @Volatile private var latestPhotoBytes: ByteArray? = null
     private lateinit var scrollContent: ScrollView
     private lateinit var normalPreviewParent: LinearLayout
     private var previewIndex = 1
@@ -71,6 +97,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     private var showBatteryLevel = true
     private var showTemperature = true
     private var showChargeSymbol = true
+    private var detailsVisible = false
     private var lastBattery: PhoneBatteryReading? = null
     private var remoteRecording: Boolean? = null
 
@@ -80,7 +107,18 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         setContentView(R.layout.activity_phone_viewer)
         title = intent.getStringExtra("name") ?: getString(R.string.phone_camera)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        // Cabeçalho da câmera obtido do cadastro ou do endereço, nunca inventa o modelo.
+        findViewById<TextView>(R.id.viewerCameraName).text = title
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        batteryPill = findViewById(R.id.viewerBatteryPill)
+        temperatureLabel = findViewById(R.id.viewerTemperature)
+        resolutionLabel = findViewById(R.id.viewerRemoteQualityValue)
+        fpsLabel = findViewById(R.id.viewerRemoteFpsValue)
+        ecoSwitch = findViewById(R.id.viewerRemoteEcoSwitch)
+        recordLabel = findViewById(R.id.viewerRecordActionLabel)
+        recordIcon = findViewById(R.id.viewerRecordActionIcon)
+        onlineDot = findViewById(R.id.viewerOnlineDot)
+        remoteSection = findViewById(R.id.viewerRemoteSection)
         image = findViewById(R.id.phoneImage)
         status = findViewById(R.id.phoneViewerStatus)
         performance = findViewById(R.id.phoneViewerPerformance)
@@ -103,16 +141,31 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         showBatteryLevel = settings.getBoolean("telemetry_battery", true)
         showTemperature = settings.getBoolean("telemetry_temperature", true)
         showChargeSymbol = settings.getBoolean("telemetry_charging", true)
+        detailsVisible = settings.getBoolean("details_visible", false)
         findViewById<View>(R.id.phoneRetry).setOnClickListener { stop(); start() }
         findViewById<View>(R.id.phoneViewerFit).setOnClickListener { toggleFitMode() }
         findViewById<View>(R.id.phoneViewerMirror).setOnClickListener { toggleMirrorMode() }
         findViewById<View>(R.id.phoneViewerFocus).setOnClickListener { toggleFocusMode() }
         previewContainer.setOnClickListener { toggleFocusMode() }
+        findViewById<View>(R.id.viewerPipAction).setOnClickListener { enterPip() }
+        findViewById<View>(R.id.viewerRotateAction).setOnClickListener {
+            rotation180 = !rotation180
+            image.rotation = if (rotation180) 180f else 0f
+        }
+        findViewById<View>(R.id.viewerSnapshotAction).setOnClickListener { saveReceivedSnapshot() }
+        findViewById<View>(R.id.viewerRecordAction).setOnClickListener { setRemoteRecording(remoteRecording != true) }
+        findViewById<View>(R.id.viewerRemoteEco).setOnClickListener {
+            if (remoteEco == null) {
+                Toast.makeText(this, R.string.viewer_eco_unavailable, Toast.LENGTH_LONG).show()
+            } else setRemoteEco(remoteEco != true)
+        }
         findViewById<View>(R.id.phoneViewerMore).setOnClickListener { openMoreDialog() }
         refreshFitModeUi()
         refreshMirrorModeUi()
         refreshFocusModeUi()
         applyTelemetry(null)
+        refreshRecordingUi()
+        updateEcoUi()
     }
 
     // onPause acontece ao entrar no PiP: manter a leitura MJPEG enquanto a janela está visível.
@@ -156,12 +209,14 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             supportActionBar?.hide()
         } else {
             pipHost.visibility = View.GONE
-            normalPreviewParent.addView(previewContainer, previewIndex)
+            normalPreviewParent.addView(previewContainer, previewIndex, LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, (290f * resources.displayMetrics.density + 0.5f).toInt()))
             scrollContent.visibility = View.VISIBLE
             supportActionBar?.show()
             refreshFocusModeUi()
         }
         telemetryDetails.visibility = if (pip) View.GONE else telemetryDetails.visibility
+        applyTelemetry(lastBattery)
     }
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
 
@@ -201,42 +256,82 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     private fun refreshFocusModeUi() {
         controls.visibility = if (focusMode) View.GONE else View.VISIBLE
         receiverInstructions.visibility = if (focusMode) View.GONE else View.VISIBLE
-        performance.visibility = if (focusMode) View.GONE else View.VISIBLE
+        remoteSection.visibility = if (focusMode) View.GONE else View.VISIBLE
+        performance.visibility = View.VISIBLE
         val lp = previewContainer.layoutParams
         lp.height = if (focusMode) (resources.displayMetrics.heightPixels * 0.66f).toInt()
-            else (240f * resources.displayMetrics.density + 0.5f).toInt()
+            else (290f * resources.displayMetrics.density + 0.5f).toInt()
         previewContainer.layoutParams = lp
         applyTelemetry(lastBattery)
     }
 
     private fun openMoreDialog() {
-        val items = arrayOf(
-            getString(R.string.pip_window),
-            getString(if (showTelemetry) R.string.phone_hide_battery_overlay else R.string.phone_show_battery_overlay),
-            getString(R.string.phone_view_telemetry_options),
-            getString(R.string.tentar_novamente),
-            getString(if (focusMode) R.string.phone_view_exit_focus else R.string.phone_view_focus),
-            getString(if (remoteRecording == true) R.string.phone_remote_record_stop else R.string.phone_remote_record_start)
-        )
-        AlertDialog.Builder(this)
-            .setTitle(R.string.ui_more)
-            .setItems(items) { _, which ->
-                when (which) {
-                    0 -> enterPip()
-                    1 -> {
-                        showTelemetry = !showTelemetry
-                        getSharedPreferences("phone_viewer", MODE_PRIVATE).edit()
-                            .putBoolean("telemetry_visible", showTelemetry).apply()
-                        applyTelemetry(lastBattery)
-                    }
-                    2 -> openTelemetryOptions()
-                    3 -> { stop(); start() }
-                    4 -> toggleFocusMode()
-                    5 -> setRemoteRecording(remoteRecording != true)
-                }
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            val pad = (20 * resources.displayMetrics.density).toInt()
+            setPadding(pad, pad, pad, pad / 2)
+        }
+        content.setBackgroundResource(R.drawable.bg_phone_more_dialog)
+        val scroll = ScrollView(this).apply { isFillViewport = true; addView(content) }
+        val dialog = AlertDialog.Builder(this).setView(scroll).create()
+        fun addRow(label: String, icon: Int, switch: Boolean? = null, action: () -> Unit) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                minimumHeight = (58 * resources.displayMetrics.density).toInt()
+                isClickable = true
+                isFocusable = true
+                background = androidx.core.content.ContextCompat.getDrawable(this@PhoneCameraViewerActivity, R.drawable.bg_ui_card)
+                val margin = (4 * resources.displayMetrics.density).toInt()
+                setPadding(margin * 2, margin, margin * 2, margin)
             }
-            .setNegativeButton(R.string.cancelar, null)
-            .show()
+            val imageView = ImageView(this).apply { setImageResource(icon) }
+            row.addView(imageView, LinearLayout.LayoutParams((25 * resources.displayMetrics.density).toInt(), (25 * resources.displayMetrics.density).toInt()))
+            val labelView = TextView(this).apply {
+                text = label
+                setTextColor(ContextCompat.getColor(this@PhoneCameraViewerActivity, R.color.app_text))
+                textSize = 15f
+            }
+            row.addView(labelView, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
+                marginStart = (12 * resources.displayMetrics.density).toInt()
+            })
+            if (switch != null) row.addView(SwitchCompat(this).apply {
+                isChecked = switch
+                isClickable = false
+                isFocusable = false
+            })
+            row.setOnClickListener { dialog.dismiss(); action() }
+            content.addView(row, LinearLayout.LayoutParams(-1,-2).apply { bottomMargin = (7*resources.displayMetrics.density).toInt() })
+        }
+        val titleView = TextView(this).apply {
+            setText(R.string.ui_more)
+            textSize = 23f
+            setTextColor(ContextCompat.getColor(this@PhoneCameraViewerActivity, R.color.app_text))
+            setTypeface(typeface, android.graphics.Typeface.BOLD)
+        }
+        content.addView(titleView, LinearLayout.LayoutParams(-1,-2).apply { bottomMargin = (12*resources.displayMetrics.density).toInt() })
+        addRow(getString(R.string.pip_window), R.drawable.ic_fullscreen) { enterPip() }
+        addRow(getString(R.string.phone_view_focus), R.drawable.ic_fit, focusMode) { toggleFocusMode() }
+        addRow(getString(R.string.phone_view_mirror), R.drawable.ic_ui_mirror, mirrorMode) { toggleMirrorMode() }
+        addRow(getString(R.string.imagem_inteira), R.drawable.ic_fit, !fillMode) { toggleFitMode() }
+        addRow(getString(R.string.phone_show_battery_overlay), R.drawable.ic_ui_battery, showTelemetry) {
+            showTelemetry = !showTelemetry
+            getSharedPreferences("phone_viewer", MODE_PRIVATE).edit().putBoolean("telemetry_visible", showTelemetry).apply()
+            applyTelemetry(lastBattery)
+        }
+        addRow(getString(R.string.phone_view_telemetry_options), R.drawable.ic_ui_battery) { openTelemetryOptions() }
+        addRow(getString(R.string.tentar_novamente), R.drawable.ic_ui_scan) { stop(); start() }
+        addRow(getString(if (remoteRecording == true) R.string.phone_remote_record_stop else R.string.phone_remote_record_start), R.drawable.ic_ui_record) {
+            setRemoteRecording(remoteRecording != true)
+        }
+        addRow(getString(R.string.viewer_technical_details), R.drawable.ic_ui_video) {
+            val show = !detailsVisible
+            detailsVisible = show
+            getSharedPreferences("phone_viewer", MODE_PRIVATE).edit().putBoolean("details_visible", show).apply()
+            applyTelemetry(lastBattery)
+        }
+        dialog.show()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
     }
 
     /** Comando HTTP POST idempotente na LAN, usando o mesmo token da URL MJPEG. */
@@ -245,6 +340,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             ?: run { Toast.makeText(this, R.string.phone_invalid_url, Toast.LENGTH_LONG).show(); return }
         Thread({
             val success = try {
+                NetUtil.bindToWifi(applicationContext)
                 val connection = URL(endpoint).openConnection() as HttpURLConnection
                 try {
                     connection.requestMethod = "POST"
@@ -264,6 +360,84 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                 }
             }
         }, "phone-record-command").apply { isDaemon = true; start() }
+    }
+
+    /** Eco controla apenas o serviço persistente. POST autenticado pelo token local. */
+    private fun setRemoteEco(enabled: Boolean) {
+        val endpoint = PhoneCameraUrls.ecoCommandUrl(intent.getStringExtra("url").orEmpty(), enabled)
+            ?: run { Toast.makeText(this, R.string.phone_invalid_url, Toast.LENGTH_LONG).show(); return }
+        Thread({
+            val success = try {
+                NetUtil.bindToWifi(applicationContext)
+                val conn = URL(endpoint).openConnection() as HttpURLConnection
+                try {
+                    conn.requestMethod = "POST"
+                    conn.connectTimeout = 3000
+                    conn.readTimeout = 3000
+                    conn.instanceFollowRedirects = false
+                    conn.setRequestProperty("Content-Length", "0")
+                    conn.responseCode == 204
+                } finally { conn.disconnect() }
+            } catch (_: Exception) { false }
+            runOnUiThread {
+                if (!isFinishing && !isDestroyed) {
+                    if (success) remoteEco = enabled
+                    updateEcoUi()
+                    Toast.makeText(this, if (success) R.string.viewer_eco_updated else R.string.viewer_eco_unavailable, Toast.LENGTH_LONG).show()
+                }
+            }
+        }, "phone-eco-command").apply { isDaemon = true; start() }
+    }
+
+    private fun updateEcoUi() {
+        ecoSwitch.isChecked = remoteEco == true
+        ecoSwitch.alpha = if (remoteEco == null) 0.4f else 1f
+    }
+
+    private fun refreshRecordingUi() {
+        val recording = remoteRecording == true
+        recordLabel.setText(if (recording) R.string.ui_stop else R.string.ui_record)
+        recordIcon.setImageResource(if (recording) R.drawable.ic_ui_stop else R.drawable.ic_ui_record)
+    }
+
+    /** Foto do quadro recebido, salva NESTE aparelho, sem solicitar nova captura na câmera. */
+    private fun saveReceivedSnapshot() {
+        val bytes = latestPhotoBytes ?: run {
+            Toast.makeText(this, R.string.viewer_photo_wait, Toast.LENGTH_SHORT).show()
+            return
+        }
+        Thread({
+            var saved = false
+            try {
+                val name = "MinhaCamera-${System.currentTimeMillis()}.jpg"
+                if (Build.VERSION.SDK_INT >= 29) {
+                    val resolver = applicationContext.contentResolver
+                    val values = ContentValues().apply {
+                        put(MediaStore.Images.Media.DISPLAY_NAME, name)
+                        put(MediaStore.Images.Media.MIME_TYPE, "image/jpeg")
+                        put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/MinhaCamera")
+                        put(MediaStore.Images.Media.IS_PENDING, 1)
+                    }
+                    val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+                    if (uri != null) {
+                        try {
+                            resolver.openOutputStream(uri)?.use { it.write(bytes); saved = true }
+                            if (saved) resolver.update(uri, ContentValues().apply {
+                                put(MediaStore.Images.Media.IS_PENDING, 0)
+                            }, null, null) else resolver.delete(uri, null, null)
+                        } catch (_: Exception) { resolver.delete(uri, null, null) }
+                    }
+                } else {
+                    val dir = File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "MinhaCamera")
+                    if (dir.exists() || dir.mkdirs()) {
+                        FileOutputStream(File(dir, name)).use { it.write(bytes) }
+                        saved = true
+                    }
+                }
+            } catch (_: Exception) { saved = false }
+            runOnUiThread { if (!isFinishing && !isDestroyed) Toast.makeText(this,
+                if (saved) R.string.viewer_photo_saved else R.string.viewer_photo_failed, Toast.LENGTH_LONG).show() }
+        }, "phone-received-photo").apply { isDaemon = true; start() }
     }
 
     private fun openTelemetryOptions() {
@@ -301,7 +475,17 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         lastDeliveryMs = null
         lastBattery = null
         remoteRecording = null
+        remoteEco = null
+        lastShownFps = null
+        lastFrameWidth = 0
+        lastFrameHeight = 0
+        latestPhotoBytes = null
         lastTelemetryText = null
+        updateEcoUi()
+        refreshRecordingUi()
+        resolutionLabel.text = getString(R.string.viewer_unknown)
+        fpsLabel.text = getString(R.string.viewer_unknown)
+        onlineDot.alpha = 0.3f
         image.setImageDrawable(null)
         performance.setText(R.string.phone_performance_waiting)
         applyTelemetry(null)
@@ -344,6 +528,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                             var batteryCharging: Boolean? = null
                             var batteryAvgMa: Int? = null
                             var remoteRecordingHeader: Boolean? = null
+                            var remoteEcoHeader: Boolean? = null
                             while (true) {
                                 val line = readAsciiLine(input) ?: throw IOException("Conexão encerrada")
                                 if (line.isEmpty()) break
@@ -365,6 +550,11 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                                 }
                                 if (line.startsWith("X-Battery-Average-Ma:", true))
                                     batteryAvgMa = line.substringAfter(':').trim().toIntOrNull()
+                                if (line.startsWith("X-Eco:", true)) remoteEcoHeader = when (line.substringAfter(':').trim()) {
+                                    "1" -> true
+                                    "0" -> false
+                                    else -> null
+                                }
                                 if (line.startsWith("X-Recording:", true))
                                     remoteRecordingHeader = when (line.substringAfter(':').trim()) {
                                         "1" -> true
@@ -394,7 +584,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                             }
                             val telemetry = if (batteryLevel != null || batteryTemp != null || batteryCharging != null || batteryAvgMa != null)
                                 PhoneBatteryReading(batteryLevel, batteryTemp, batteryCharging, batteryAvgMa) else null
-                            frameOnDeck.getAndSet(PendingFrame(bitmap, lag, telemetry, remoteRecordingHeader))?.bitmap?.recycle()
+                            frameOnDeck.getAndSet(PendingFrame(bitmap, lag, telemetry, remoteRecordingHeader, remoteEcoHeader, bytes))?.bitmap?.recycle()
                             schedulePresentation(session)
                         }
                     }
@@ -421,6 +611,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                             fps.reset(SystemClock.elapsedRealtime())
                             // A imagem anterior não pode parecer um sinal ao vivo após queda do Wi-Fi.
                             image.setImageDrawable(null)
+                            latestPhotoBytes = null
+                            onlineDot.alpha = 0.3f
                             lastBattery = null
                             lastTelemetryText = null
                             applyTelemetry(null)
@@ -442,13 +634,21 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             if (newest != null) {
                 if (active && attempts == session) {
                     image.setImageBitmap(newest.bitmap)
+                    latestPhotoBytes = newest.jpeg
+                    if (lastFrameWidth > 0 && lastFrameHeight > 0) {
+                        resolutionLabel.text = "${lastFrameWidth} × ${lastFrameHeight}"
+                    }
                     if (!displayedFirstFrame) {
                         status.setText(R.string.phone_receiving)
                         displayedFirstFrame = true
+                        onlineDot.alpha = 1f
                     }
                     if (newest.deliveryMs != null) lastDeliveryMs = newest.deliveryMs
                     lastBattery = newest.battery ?: lastBattery
                     remoteRecording = newest.remoteRecording ?: remoteRecording
+                    remoteEco = newest.remoteEco ?: remoteEco
+                    refreshRecordingUi()
+                    updateEcoUi()
                     // Evita invalidar TextViews em cada JPEG (~11 FPS); atualização só quando muda.
                     applyTelemetry(lastBattery)
                     fps.frame()
@@ -457,6 +657,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                         val lag = lastDeliveryMs?.let { getString(R.string.phone_delay_estimate, it) }
                             ?: getString(R.string.phone_delay_unavailable)
                         performance.text = getString(R.string.phone_performance_values, measured, lag)
+                        lastShownFps = measured
+                        fpsLabel.text = getString(R.string.viewer_fps_value, measured)
                     }
                 } else newest.bitmap.recycle()
             }
@@ -466,25 +668,27 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     }
 
     private fun applyTelemetry(reading: PhoneBatteryReading?) {
-        if (!showTelemetry || reading == null) {
-            telemetry.visibility = View.GONE
-            telemetryDetails.visibility = View.GONE
-            lastTelemetryText = null
-            return
-        }
-        val label = reading.compactLabel(showBatteryLevel, showTemperature, showChargeSymbol)
-        if (label.isBlank()) {
-            telemetry.visibility = View.GONE
-            telemetryDetails.visibility = View.GONE
-            return
-        }
-        if (lastTelemetryText != label) {
-            telemetry.text = label
-            telemetryDetails.text = reading.detailsLabel()
-            lastTelemetryText = label
-        }
-        telemetry.visibility = View.VISIBLE
-        telemetryDetails.visibility = if (focusMode || isPipLayout) View.GONE else View.VISIBLE
+        val pill = if (showTelemetry && showBatteryLevel) reading?.levelPercent?.let {
+            "${if (showChargeSymbol && reading.charging == true) "⚡ " else "🔋 "}$it%"
+        } else null
+        batteryPill.visibility = if (pill == null || isPipLayout) View.GONE else View.VISIBLE
+        if (pill != null) batteryPill.text = pill
+        val degrees = if (showTelemetry && showTemperature) reading?.temperatureTenthsC?.let {
+            String.format(Locale.forLanguageTag("pt-BR"), "%.1f°C", it / 10.0)
+        } else null
+        temperatureLabel.visibility = if (degrees == null || isPipLayout) View.GONE else View.VISIBLE
+        if (degrees != null) temperatureLabel.text = degrees
+
+        // Somente a pequena janela PiP mantém telemetria por cima do vídeo.
+        val pipText = if (showTelemetry && isPipLayout) reading?.compactLabel(showBatteryLevel, showTemperature, showChargeSymbol) else null
+        telemetry.visibility = if (pipText.isNullOrBlank()) View.GONE else View.VISIBLE
+        if (!pipText.isNullOrBlank()) telemetry.text = pipText
+
+        val fullDetails = if (showTelemetry) reading?.detailsLabel() else null
+        val visible = detailsVisible && !focusMode && !isPipLayout && fullDetails != null
+        telemetryDetails.visibility = if (visible) View.VISIBLE else View.GONE
+        if (visible) telemetryDetails.text = fullDetails
+        lastTelemetryText = pipText
     }
 
     private fun readAsciiLine(input: BufferedInputStream): String? {
@@ -509,5 +713,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         reader?.interrupt()
         reader = null
         image.setImageDrawable(null)
+        latestPhotoBytes = null
+        onlineDot.alpha = 0.3f
     }
 }

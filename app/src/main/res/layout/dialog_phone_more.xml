@@ -1,0 +1,202 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:fillViewport="true"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="@drawable/bg_phone_more_dialog"
+        android:paddingStart="20dp"
+        android:paddingTop="20dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/ui_more"
+            android:textColor="@color/app_text"
+            android:textStyle="bold"
+            android:textSize="24sp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/phone_more_dialog_subtitle"
+            android:textColor="@color/ui_muted"
+            android:textSize="14sp" />
+
+        <LinearLayout
+            android:id="@+id/moreLinkRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="72dp"
+            android:orientation="horizontal"
+            android:paddingVertical="10dp">
+
+            <FrameLayout
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:background="@drawable/bg_phone_more_icon">
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:layout_gravity="center"
+                    android:src="@drawable/ic_ui_link" />
+            </FrameLayout>
+
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="14dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/ui_link" android:textColor="@color/app_text" android:textStyle="bold" android:textSize="16sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/phone_more_link_subtitle" android:textColor="@color/ui_muted" android:textSize="13sp" android:layout_marginTop="2dp" />
+            </LinearLayout>
+
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/phone_more_open" android:textColor="@color/brand_primary" android:textStyle="bold" android:textSize="13sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/moreCodeRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="72dp"
+            android:orientation="horizontal"
+            android:paddingVertical="10dp">
+            <FrameLayout android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_phone_more_icon">
+                <ImageView android:layout_width="22dp" android:layout_height="22dp" android:layout_gravity="center" android:src="@drawable/ic_ui_key" />
+            </FrameLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="14dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/ui_code" android:textColor="@color/app_text" android:textStyle="bold" android:textSize="16sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/phone_more_code_subtitle" android:textColor="@color/ui_muted" android:textSize="13sp" android:layout_marginTop="2dp" />
+            </LinearLayout>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/phone_more_open" android:textColor="@color/brand_primary" android:textStyle="bold" android:textSize="13sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/moreOverlayRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="72dp"
+            android:orientation="horizontal"
+            android:paddingVertical="10dp">
+            <FrameLayout android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_phone_more_icon">
+                <ImageView android:layout_width="22dp" android:layout_height="22dp" android:layout_gravity="center" android:src="@drawable/ic_ui_battery" />
+            </FrameLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="14dp">
+                <TextView android:id="@+id/moreOverlayTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/app_text" android:textStyle="bold" android:textSize="16sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/phone_more_overlay_subtitle" android:textColor="@color/ui_muted" android:textSize="13sp" android:layout_marginTop="2dp" />
+            </LinearLayout>
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/moreOverlaySwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:focusable="false"
+                android:clickable="false"
+                app:showText="false" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/moreEcoRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="72dp"
+            android:orientation="horizontal"
+            android:paddingVertical="10dp">
+            <FrameLayout android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_phone_more_icon">
+                <ImageView android:layout_width="22dp" android:layout_height="22dp" android:layout_gravity="center" android:src="@drawable/ic_ui_leaf" />
+            </FrameLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="14dp">
+                <TextView android:id="@+id/moreEcoTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/app_text" android:textStyle="bold" android:textSize="16sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/phone_more_eco_subtitle" android:textColor="@color/ui_muted" android:textSize="13sp" android:layout_marginTop="2dp" />
+            </LinearLayout>
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/moreEcoSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:focusable="false"
+                android:clickable="false"
+                app:showText="false" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/moreBackgroundRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="72dp"
+            android:orientation="horizontal"
+            android:paddingVertical="10dp">
+            <FrameLayout android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_phone_more_icon">
+                <ImageView android:layout_width="22dp" android:layout_height="22dp" android:layout_gravity="center" android:src="@drawable/ic_ui_screen" />
+            </FrameLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="14dp">
+                <TextView android:id="@+id/moreBackgroundTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="@color/app_text" android:textStyle="bold" android:textSize="16sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/phone_more_background_subtitle" android:textColor="@color/ui_muted" android:textSize="13sp" android:layout_marginTop="2dp" />
+            </LinearLayout>
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/moreBackgroundSwitch"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:focusable="false"
+                android:clickable="false"
+                app:showText="false" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/moreStorageRow"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:minHeight="72dp"
+            android:orientation="horizontal"
+            android:paddingVertical="10dp">
+            <FrameLayout android:layout_width="40dp" android:layout_height="40dp" android:background="@drawable/bg_phone_more_icon">
+                <ImageView android:layout_width="22dp" android:layout_height="22dp" android:layout_gravity="center" android:src="@drawable/ic_ui_folder" />
+            </FrameLayout>
+            <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical" android:layout_marginStart="14dp">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/gravacoes" android:textColor="@color/app_text" android:textStyle="bold" android:textSize="16sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/phone_more_recordings_subtitle" android:textColor="@color/ui_muted" android:textSize="13sp" android:layout_marginTop="2dp" />
+            </LinearLayout>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/phone_more_open" android:textColor="@color/brand_primary" android:textStyle="bold" android:textSize="13sp" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/moreDialogClose"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="end"
+            android:layout_marginTop="6dp"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="12dp"
+            android:text="@string/cancelar"
+            android:textColor="@color/brand_primary"
+            android:textStyle="bold" />
+    </LinearLayout>
+</ScrollView>

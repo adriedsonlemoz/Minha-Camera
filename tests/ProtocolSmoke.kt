@@ -334,13 +334,21 @@ private fun checkRemoteRecordingApi() {
         "http://192.168.12.2:8765/control/$token/record/start")
     check(PhoneCameraUrls.recordingCommandUrl(privateUrl, false) ==
         "http://192.168.12.2:8765/control/$token/record/stop")
+    check(PhoneCameraUrls.ecoCommandUrl(privateUrl, true) ==
+        "http://192.168.12.2:8765/control/$token/eco/enable")
+    check(PhoneCameraUrls.ecoCommandUrl(privateUrl, false) ==
+        "http://192.168.12.2:8765/control/$token/eco/disable")
+    check(PhoneCameraUrls.ecoCommandUrl("http://8.8.8.8:8765/live/$token", true) == null)
     check(PhoneCameraUrls.recordingCommandUrl("http://8.8.8.8:8765/live/$token", true) == null)
     check(PhoneCameraUrls.recordingCommandUrl("http://192.168.12.2:8765/live/invalid", true) == null)
     val localhost = java.net.InetAddress.getByName("127.0.0.1") as java.net.Inet4Address
     var recording = false
+    var eco = false
     val server = PhoneCameraServer(localhost, token,
         changeRecording = { wanted -> recording = wanted; true },
-        recordingStatus = { recording })
+        recordingStatus = { recording },
+        changeEco = { wanted -> eco = wanted; true },
+        ecoStatus = { eco })
     server.start()
     try {
         fun command(path: String, method: String = "POST"): Int {
@@ -361,6 +369,14 @@ private fun checkRemoteRecordingApi() {
         check(!recording)
         check(command("/control/$token/record/start", "GET") == 403)
         check(!recording)
+        check(command("/control/$token/eco/enable") == 204)
+        check(eco)
+        check(command("/control/$token/eco/disable") == 204)
+        check(!eco)
+        check(command("/control/${"0".repeat(32)}/eco/enable") == 403)
+        check(!eco)
+        check(command("/control/$token/eco/enable", "GET") == 403)
+        check(!eco)
     } finally { server.stop() }
-    println("OK: controle remoto de gravação por POST autenticado; token inválido rejeitado")
+    println("OK: REC e Eco remotos autenticados por POST; tokens ou métodos inválidos rejeitados")
 }

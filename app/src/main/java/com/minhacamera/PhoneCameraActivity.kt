@@ -712,40 +712,65 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
 
     private fun openMoreDialog() {
-        val overlayOption = getString(if (showBatteryOverlay)
-            R.string.phone_hide_battery_overlay else R.string.phone_show_battery_overlay)
-        val ecoOption = getString(if (ecoEnabled)
-            R.string.phone_eco_disable else R.string.phone_eco_enable)
-        val backgroundOption = getString(if (backgroundMode) R.string.phone_background_stop else R.string.phone_background_enable)
-        AlertDialog.Builder(this).setTitle(R.string.ui_more)
-            .setItems(arrayOf(getString(R.string.ui_link), getString(R.string.ui_code),
-                overlayOption, ecoOption, backgroundOption, getString(R.string.phone_record_location))) { _, which ->
-                when (which) {
-                    0 -> openLinkDialog()
-                    1 -> findViewById<View>(R.id.phoneRevoke).performClick()
-                    2 -> {
-                        showBatteryOverlay = !showBatteryOverlay
-                        getSharedPreferences("phone_video", MODE_PRIVATE).edit()
-                            .putBoolean("show_battery_overlay", showBatteryOverlay).apply()
-                        lastTelemetryLabel = ""
-                        telemetryPreview.visibility = View.GONE
-                        Toast.makeText(this, if (showBatteryOverlay)
-                            R.string.phone_show_battery_overlay else R.string.phone_hide_battery_overlay,
-                            Toast.LENGTH_SHORT).show()
-                    }
-                    3 -> {
-                        ecoEnabled = !ecoEnabled
-                        getSharedPreferences("phone_video", MODE_PRIVATE).edit()
-                            .putBoolean("eco_enabled", ecoEnabled).apply()
-                        Toast.makeText(this, if (ecoEnabled)
-                            R.string.phone_eco_activated else R.string.phone_eco_deactivated,
-                            Toast.LENGTH_SHORT).show()
-                        // Configuração aplicada ao próximo JPEG; QR, conexão e REC continuam.
-                    }
-                    4 -> toggleBackgroundMode()
-                    else -> Toast.makeText(this, R.string.phone_record_location, Toast.LENGTH_LONG).show()
-                }
-            }.setNegativeButton(R.string.cancelar, null).show()
+        val content = LayoutInflater.from(this).inflate(R.layout.dialog_phone_more, null)
+        val dialog = AlertDialog.Builder(this).setView(content).create()
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        val overlayTitle = content.findViewById<TextView>(R.id.moreOverlayTitle)
+        val ecoTitle = content.findViewById<TextView>(R.id.moreEcoTitle)
+        val backgroundTitle = content.findViewById<TextView>(R.id.moreBackgroundTitle)
+        val overlaySwitch = content.findViewById<androidx.appcompat.widget.SwitchCompat>(R.id.moreOverlaySwitch)
+        val ecoSwitch = content.findViewById<androidx.appcompat.widget.SwitchCompat>(R.id.moreEcoSwitch)
+        val backgroundSwitch = content.findViewById<androidx.appcompat.widget.SwitchCompat>(R.id.moreBackgroundSwitch)
+
+        fun refreshStates() {
+            overlayTitle.setText(if (showBatteryOverlay) R.string.phone_hide_battery_overlay else R.string.phone_show_battery_overlay)
+            ecoTitle.setText(if (ecoEnabled) R.string.phone_eco_disable else R.string.phone_eco_enable)
+            backgroundTitle.setText(if (backgroundMode) R.string.phone_background_stop else R.string.phone_background_enable)
+            overlaySwitch.isChecked = showBatteryOverlay
+            ecoSwitch.isChecked = ecoEnabled
+            backgroundSwitch.isChecked = backgroundMode
+        }
+
+        content.findViewById<View>(R.id.moreLinkRow).setOnClickListener {
+            dialog.dismiss()
+            openLinkDialog()
+        }
+        content.findViewById<View>(R.id.moreCodeRow).setOnClickListener {
+            dialog.dismiss()
+            findViewById<View>(R.id.phoneRevoke).performClick()
+        }
+        content.findViewById<View>(R.id.moreStorageRow).setOnClickListener {
+            Toast.makeText(this, R.string.phone_record_location, Toast.LENGTH_LONG).show()
+        }
+        content.findViewById<View>(R.id.moreOverlayRow).setOnClickListener {
+            showBatteryOverlay = !showBatteryOverlay
+            getSharedPreferences("phone_video", MODE_PRIVATE).edit()
+                .putBoolean("show_battery_overlay", showBatteryOverlay).apply()
+            lastTelemetryLabel = ""
+            telemetryPreview.visibility = View.GONE
+            Toast.makeText(this, if (showBatteryOverlay)
+                R.string.phone_show_battery_overlay else R.string.phone_hide_battery_overlay,
+                Toast.LENGTH_SHORT).show()
+            refreshStates()
+        }
+        content.findViewById<View>(R.id.moreEcoRow).setOnClickListener {
+            ecoEnabled = !ecoEnabled
+            getSharedPreferences("phone_video", MODE_PRIVATE).edit()
+                .putBoolean("eco_enabled", ecoEnabled).apply()
+            Toast.makeText(this, if (ecoEnabled)
+                R.string.phone_eco_activated else R.string.phone_eco_deactivated,
+                Toast.LENGTH_SHORT).show()
+            refreshStates()
+        }
+        content.findViewById<View>(R.id.moreBackgroundRow).setOnClickListener {
+            toggleBackgroundMode()
+            refreshStates()
+        }
+        content.findViewById<View>(R.id.moreDialogClose).setOnClickListener { dialog.dismiss() }
+
+        refreshStates()
+        dialog.show()
     }
 
     private fun openQrDialog() {

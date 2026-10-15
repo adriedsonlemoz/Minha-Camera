@@ -14,7 +14,9 @@ class PhoneCameraServer(
     address: Inet4Address,
     token: String,
     private val changeRecording: ((Boolean) -> Boolean)? = null,
-    private val recordingStatus: (() -> Boolean)? = null
+    private val recordingStatus: (() -> Boolean)? = null,
+    private val changeEco: ((Boolean) -> Boolean)? = null,
+    private val ecoStatus: (() -> Boolean)? = null
 ) {
     init { require(token.matches(Regex("[0-9a-f]{32}"))) }
     private val server = ServerSocket(8765, 4, address)
@@ -79,6 +81,18 @@ class PhoneCameraServer(
                 "POST $control/record/stop HTTP/1.1" -> false
                 else -> null
             }
+            val ecoAction = when (line) {
+                "POST $control/eco/enable HTTP/1.1" -> true
+                "POST $control/eco/disable HTTP/1.1" -> false
+                else -> null
+            }
+            if (ecoAction != null) {
+                val success = try { changeEco?.invoke(ecoAction) == true } catch (_: Exception) { false }
+                val status = if (success) "204 No Content" else "409 Conflict"
+                peer.getOutputStream().write(("HTTP/1.1 $status\r\nCache-Control: no-store\r\n" +
+                    "Connection: close\r\nContent-Length: 0\r\n\r\n").toByteArray(Charsets.US_ASCII))
+                return
+            }
             if (recordAction != null) {
                 val success = try { changeRecording?.invoke(recordAction) == true } catch (_: Exception) { false }
                 val status = if (success) "204 No Content" else "409 Conflict"
@@ -111,6 +125,7 @@ class PhoneCameraServer(
                     next.battery?.charging?.let { append("X-Battery-Charging: ${if (it) 1 else 0}\r\n") }
                     next.battery?.averageCurrentMaToday?.let { append("X-Battery-Average-Ma: $it\r\n") }
                     recordingStatus?.let { append("X-Recording: ${if (it()) 1 else 0}\r\n") }
+                    ecoStatus?.let { append("X-Eco: ${if (it()) 1 else 0}\r\n") }
                 }
                 out.write(("--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${next.jpeg.size}\r\n" +
                     "X-Frame-Elapsed-Ms: ${next.atMs}\r\n$batteryHeaders\r\n").toByteArray(Charsets.US_ASCII))

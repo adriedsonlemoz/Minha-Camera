@@ -84,7 +84,7 @@ class PhoneCameraBackgroundService : Service() {
     private var wifiLock: WifiManager.WifiLock? = null
     private var lastCapture = 0L
     private var heatState = PhoneHeatState.NORMAL
-    private var ecoEnabled = false
+    @Volatile private var ecoEnabled = false
     private var closing = false
     private var foregroundStarted = false
 
@@ -171,7 +171,15 @@ class PhoneCameraBackgroundService : Service() {
                     if (recording != desired) toggleRecording()
                     true
                 }
-            }, recordingStatus = { recording })
+            }, recordingStatus = { recording },
+            changeEco = { desired ->
+                if (!running || closing) false
+                else {
+                    ecoEnabled = desired
+                    getSharedPreferences("phone_video", MODE_PRIVATE).edit().putBoolean("eco_enabled", desired).apply()
+                    true
+                }
+            }, ecoStatus = { ecoEnabled })
         try {
             val deviceId = (0 until Camera.getNumberOfCameras()).firstOrNull { id ->
                 val info = Camera.CameraInfo()
