@@ -1,3 +1,14 @@
+## 1.4.21+31 — 2026-10-15
+- Receptor em layout retrato alinhado ao Ao vivo do transmissor, sem ícone/elemento indevido no centro da imagem.
+- Telemetria ampliada do celular transmissor no receptor e na marca d'água: bateria, temperatura, status de carregamento e consumo médio do dia.
+- Fluxo MJPEG agora envia cabeçalhos leves com esses dados; o receptor exibe overlay e detalhes próprios para uso como retrovisor.
+
+## 1.4.20+30 — 2026-10-15
+- Acrescentado **Modo Eco** persistente em Mais, sem dependências novas, reduzindo FPS máximo (~11→5) e qualidade JPEG (62→50) no MJPEG. A mudança não reinicia a câmera, o QR ou a gravação.
+- Alerta térmico leve usando a temperatura da **bateria** já consultada de 15 em 15 segundos: aviso em 42°C e redução automática para ~3 FPS/JPEG 45 em 45°C, com histerese para estabilizar o aviso.
+- Limitado também o ritmo da composição dupla e a atualização de sua prévia em Modo Eco. Monitor FPS permanece ativo durante gravação (correção de ciclo de vida).
+- Sem mudanças em permissões, Secrets, keystore, arquitetura RTSP/ONVIF, QR ou assinatura. Build Android e testes em aparelhos reais pendentes.
+
 ## 1.4.19+29 — 2026-10-15
 
 - Transmissor exibe FPS efetivo, com contagem atômica e atualização a cada 2 s; receptor mede FPS efetivamente mostrado na tela.

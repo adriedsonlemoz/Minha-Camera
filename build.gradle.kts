@@ -14,7 +14,7 @@ dependencies {
 val protocolClasses = layout.buildDirectory.dir("protocol-tests/classes")
 val protocolSources = files(
     fileTree("tests") { include("**/*.kt") },
-    listOf("NetUtil", "OnvifClient", "RtspProbe", "RtspCodec", "WsDiscovery", "RecordingFiles", "VideoGeometry", "OnvifIdentity", "PhoneCameraUrls", "Nv21Frames", "PhoneCameraServer", "PhoneStreamStats").map {
+    listOf("NetUtil", "OnvifClient", "RtspProbe", "RtspCodec", "WsDiscovery", "RecordingFiles", "VideoGeometry", "OnvifIdentity", "PhoneCameraUrls", "Nv21Frames", "PhoneCameraServer", "PhoneStreamStats", "PhoneEcoPolicy").map {
         "app/src/main/java/com/minhacamera/$it.kt"
     }
 )

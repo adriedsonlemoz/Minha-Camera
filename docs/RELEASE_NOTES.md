@@ -1,3 +1,16 @@
+# Minha Câmera 1.4.21 (versionCode 31)
+
+- Receptor redesenhado em modo retrato com visual próximo ao “Ao vivo” do transmissor.
+- Telemetria estendida do transmissor no receptor e na marca d'água: bateria, temperatura, carregando/não carregando e consumo médio do dia.
+- Tela receptora sem o elemento central indesejado e mais adequada para uso como retrovisor no guidão.
+
+# Minha Câmera 1.4.20 (versionCode 30)
+
+- **Modo Eco** em Mais, para celulares de menor desempenho: reduz FPS e a qualidade dos JPEGs enviados em tempo real.
+- Alerta para aquecimento da **bateria**, com redução de envio em temperatura alta. A leitura pode não estar disponível em todos os aparelhos; não é temperatura da CPU.
+- Barra Virar/Dupla/QR/Gravar/Mais, player, modo duplo experimental, gravação e assinatura permanente preservados.
+- Sem bibliotecas ou permissões novas; compilação e teste físico ainda pendentes.
+
 # Minha Câmera 1.4.19 (versionCode 29)
 
 ## FPS real e reconexão automática, sem aumentar dependências

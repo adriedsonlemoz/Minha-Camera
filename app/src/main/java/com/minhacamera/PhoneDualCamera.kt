@@ -45,6 +45,7 @@ internal object PhoneDualFrames {
 @RequiresApi(Build.VERSION_CODES.R)
 internal class PhoneDualCamera(
     private val context: Context,
+    private val frameIntervalMs: () -> Long,
     private val onPair: (ByteArray, ByteArray, Int, Int) -> Unit,
     private val onError: (String) -> Unit
 ) {
@@ -110,7 +111,7 @@ internal class PhoneDualCamera(
                     try { image?.use {
                         if (closed.get()) return@use
                         // Evitar copiar YUV a cada quadro quando a transmissão ainda está ocupada.
-                        if (SystemClock.elapsedRealtime() - lastPublish < 95) return@use
+                        if (SystemClock.elapsedRealtime() - lastPublish < frameIntervalMs().coerceAtLeast(95L)) return@use
                         val bytes = imageToNv21(it)
                         if (id == backId) backFrame = bytes else frontFrame = bytes
                         val top = backFrame

@@ -1,6 +1,6 @@
 # Minha Câmera
 
-**Versão atual: 1.4.19 (versionCode 29)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.21 (versionCode 31)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
 
 Desde a **1.4.13**, o projeto exige assinatura Release permanente por Secrets fixos do GitHub Actions e impede publicação com outro certificado. A chave privada fica fora do repositório. Consulte [assinatura permanente](docs/ASSINATURA_PERMANENTE.md) antes de instalar: a assinatura nova não é compatível com APKs antigos assinados por chave diferente.
 
@@ -53,17 +53,25 @@ A transmissão MJPEG usa até ~11 FPS em lugar de 4 FPS, dependendo de CPU/Wi-Fi
 
 A tela principal possui duas abas inferiores: **Câmeras** (câmeras RTSP/ONVIF persistidas, Buscar e Adicionar manualmente) e **Celular** (cartões **Transmitir** e **Assistir**, conexões de celulares já salvas). No transmissor, a prévia local fica em destaque; desde 1.4.17 os botões são **Virar, Dupla, QR, Gravar/Parar, Mais**. O QR é gerado apenas ao abrir o pop-up centralizado e não interrompe a câmera ao fechar. **Link** reúne Copiar e Enviar endereço; **Código** revoga o token após confirmação. Em Assistir, a captura QR é incorporada a um pop-up vertical na própria Activity, com opção manual. A URL privada não fica exposta na tela principal. O servidor MJPEG, cadastro RTSP e assinaturas permanecem os mesmos. Teste físico pendente.
 
+## Modo Eco e controle de temperatura (1.4.20)
+
+No transmissor, **Mais → Ativar Eco** reduz o teto de envio MJPEG de ~11 para ~5 FPS e a qualidade JPEG de 62 para 50. Essa alteração é imediata, não refaz QR, não reinicia o servidor e não interrompe a gravação. Eco é uma preferência local persistida e **não** desliga fisicamente nenhuma câmera nem impede seu funcionamento em aparelhos fracos; a câmera dupla permanece experimental.
+
+A leitura de temperatura **da bateria** já existia: agora, quando ela atinge 42°C, aparece um alerta discreto. Em 45°C ou mais, o app reduz o teto para ~3 FPS e o JPEG para 45, mesmo sem Eco. Histerese reduz a oscilação: sai do nível alto abaixo de 42°C e encerra o alerta abaixo de 40°C. O app não mede temperatura da CPU nem garante prevenção de superaquecimento; o usuário deve observar aquecimento real, sistema Android e ventilação. Se faltar leitura, não inventa temperatura. A gravação em MP4 pode ter FPS reduzido; o contêiner/codec permanecem H.264 quando disponível.
+
+Nenhuma biblioteca ou permissão nova; transmissão continua MJPEG local. Build e medições físicas pendentes.
+
 ## GitHub Actions
 
 O workflow `.github/workflows/build-apk.yml` roda em push nas branches `main`/`master` ou manualmente, prepara Android SDK 36 e executa `gradle testProtocol testReleaseUnitTest assembleRelease` uma única vez, com cache. Publica cada APK individualmente, sem ZIP, em **Actions > Artifacts**:
 
-- `MinhaCamera-1.4.19-universal.apk`: todas as quatro ABIs, para distribuição geral.
-- `MinhaCamera-1.4.19-armeabi-v7a.apk`: Android ARM de 32 bits.
-- `MinhaCamera-1.4.19-arm64-v8a.apk`: Android ARM de 64 bits.
-- `MinhaCamera-1.4.19-x86_64.apk`: Android Intel de 64 bits/emuladores.
-- `MinhaCamera-1.4.19-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
+- `MinhaCamera-1.4.20-universal.apk`: todas as quatro ABIs, para distribuição geral.
+- `MinhaCamera-1.4.20-armeabi-v7a.apk`: Android ARM de 32 bits.
+- `MinhaCamera-1.4.20-arm64-v8a.apk`: Android ARM de 64 bits.
+- `MinhaCamera-1.4.20-x86_64.apk`: Android Intel de 64 bits/emuladores.
+- `MinhaCamera-1.4.20-x86.apk`: Android Intel de 32 bits/emuladores legados; mantido para preservar suporte anterior.
 
-No workflow assinado, todos têm `com.minhacamera`, versão 1.4.18, código 28 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
+No workflow assinado, todos têm `com.minhacamera`, versão 1.4.20, código 30 e a mesma assinatura dentro do build. A validação local sem chave gera somente APKs não assinados, descritos em PLAYER_FIT_VALIDATION.md. Escolha pela ABI do **sistema Android**, não só pela CPU. O relatório `apk-report.md` e `SHA256SUMS` acompanham os artefatos. O verificador compara também os bytes das bibliotecas com o Universal, sem recompilar o app por ABI.
 
 A 1.4.16 corrige o bloqueio do Build APK 18 causado por KEYSTORE_BASE64 inválido. O workflow prefere o novo Secret KEYSTORE_HEX, composto apenas de dígitos e letras a–f, mantendo Base64 como alternativa legada. É obrigatório importar KEYSTORE_HEX e conferir os outros três Secrets antes do novo build. O certificado original é mantido; nenhuma chave foi regenerada.
 

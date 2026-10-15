@@ -155,6 +155,7 @@ private fun checkRtspSdpProbe() {
 }
 
 fun main() {
+    checkPhoneEcoPolicy()
     checkStreamStats()
     checkPhoneCamera()
     checkVideoGeometry()

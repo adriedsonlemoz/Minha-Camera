@@ -20,6 +20,7 @@ class PhoneCameraServer(address: Inet4Address, token: String) {
     private var sequence = 0L
     private var latest: ByteArray? = null
     private var latestAtMs = 0L
+    private var latestBattery: PhoneBatteryReading? = null
     @Volatile private var running = true
 
     fun start() {
@@ -32,7 +33,6 @@ class PhoneCameraServer(address: Inet4Address, token: String) {
                     try { peer.close() } catch (_: Exception) { }
                     continue
                 }
-                // Evita que um visualizador lento acumule segundos de JPEG no buffer TCP.
                 peer.tcpNoDelay = true
                 peer.sendBufferSize = 32 * 1024
                 peers.add(peer)
@@ -41,15 +41,18 @@ class PhoneCameraServer(address: Inet4Address, token: String) {
         }, "mjpeg-accept").apply { isDaemon = true; start() }
     }
 
-    fun publish(jpeg: ByteArray) {
+    fun publish(jpeg: ByteArray, battery: PhoneBatteryReading? = null) {
         if (!running || jpeg.isEmpty() || jpeg.size > 1_048_576) return
         synchronized(frameLock) {
             latest = jpeg
             latestAtMs = SystemClock.elapsedRealtime()
+            latestBattery = battery
             sequence++
             frameLock.notifyAll()
         }
     }
+
+    private data class Packet(val jpeg: ByteArray, val atMs: Long, val battery: PhoneBatteryReading?)
 
     private fun serve(peer: Socket) {
         try {
@@ -78,11 +81,20 @@ class PhoneCameraServer(address: Inet4Address, token: String) {
             while (running && !peer.isClosed) {
                 val next = synchronized(frameLock) {
                     if (running && last == sequence) frameLock.wait(1500)
-                    if (sequence == last) null else { last = sequence; latest?.let { it to latestAtMs } }
+                    if (sequence == last) null else {
+                        last = sequence
+                        latest?.let { Packet(it, latestAtMs, latestBattery) }
+                    }
                 } ?: continue
-                out.write(("--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${next.first.size}\r\n" +
-                    "X-Frame-Elapsed-Ms: ${next.second}\r\n\r\n").toByteArray(Charsets.US_ASCII))
-                out.write(next.first)
+                val batteryHeaders = buildString {
+                    next.battery?.levelPercent?.let { append("X-Battery-Level: $it\r\n") }
+                    next.battery?.temperatureTenthsC?.let { append("X-Battery-Temp-Tenths: $it\r\n") }
+                    next.battery?.charging?.let { append("X-Battery-Charging: ${if (it) 1 else 0}\r\n") }
+                    next.battery?.averageCurrentMaToday?.let { append("X-Battery-Average-Ma: $it\r\n") }
+                }
+                out.write(("--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${next.jpeg.size}\r\n" +
+                    "X-Frame-Elapsed-Ms: ${next.atMs}\r\n$batteryHeaders\r\n").toByteArray(Charsets.US_ASCII))
+                out.write(next.jpeg)
                 out.write("\r\n".toByteArray(Charsets.US_ASCII))
                 out.flush()
             }
@@ -110,7 +122,7 @@ class PhoneCameraServer(address: Inet4Address, token: String) {
     fun stop() {
         running = false
         try { server.close() } catch (_: Exception) { }
-        synchronized(frameLock) { latest = null; frameLock.notifyAll() }
+        synchronized(frameLock) { latest = null; latestBattery = null; frameLock.notifyAll() }
         peers.forEach { try { it.close() } catch (_: Exception) { } }
         peers.clear()
     }

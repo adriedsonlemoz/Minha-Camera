@@ -21,6 +21,8 @@ kotlinc \
   "$ROOT/app/src/main/java/com/minhacamera/Nv21Frames.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/PhoneCameraServer.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/PhoneStreamStats.kt" \
+  "$ROOT/app/src/main/java/com/minhacamera/PhoneEcoPolicy.kt" \
   "$ROOT/tests/ProtocolSmoke.kt" \
+  "$ROOT/tests/PhoneEcoPolicySmoke.kt" \
   -include-runtime -d "$BUILD/tests.jar"
 java -jar "$BUILD/tests.jar"

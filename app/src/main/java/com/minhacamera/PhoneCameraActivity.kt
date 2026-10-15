@@ -38,6 +38,7 @@ import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.Locale
 
 @Suppress("DEPRECATION")
 class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListener {
@@ -51,12 +52,19 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private lateinit var dualBottom: ImageView
     private lateinit var telemetryPreview: TextView
     private lateinit var txPerformance: TextView
+    private lateinit var thermalWarning: TextView
+    @Volatile private var ecoEnabled = false
+    @Volatile private var heatState = PhoneHeatState.NORMAL
+    private var lastHeatText = ""
     private val streamStats = PhoneStreamStats()
     private val performanceTick = object : Runnable {
         override fun run() {
             if (!visible) return
             val fps = streamStats.sample(SystemClock.elapsedRealtime())
-            if (fps != null && server != null) txPerformance.text = getString(R.string.phone_tx_fps, fps)
+            if (fps != null && server != null) {
+                txPerformance.text = getString(R.string.phone_tx_fps, fps) +
+                    if (ecoEnabled) getString(R.string.phone_eco_indicator) else ""
+            }
             uiHandler.postDelayed(this, 2000)
         }
     }
@@ -64,6 +72,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private val batteryOverlay = PhoneBatteryOverlay()
     @Volatile private var showBatteryOverlay = true
     private var lastTelemetryLabel = ""
+    private var cachedTelemetryLabel = ""
+    private var previousBatteryReading: PhoneBatteryReading? = null
     private lateinit var recordLabel: TextView
     private lateinit var recordIcon: ImageView
     private lateinit var recordButton: View
@@ -100,7 +110,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private val recordWorker = Executors.newSingleThreadExecutor()
     private val encoding = AtomicBoolean(false)
     private val recordingFrameBusy = AtomicBoolean(false)
-    private var lastCapture = 0L
+    @Volatile private var lastCapture = 0L
     private var visible = false
     private var permissionRequested = false
 
@@ -116,6 +126,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         placeholder = findViewById(R.id.previewPlaceholder)
         telemetryPreview = findViewById(R.id.phoneTelemetryPreview)
         txPerformance = findViewById(R.id.phoneTxPerformance)
+        thermalWarning = findViewById(R.id.phoneThermalWarning)
+        ecoEnabled = getSharedPreferences("phone_video", MODE_PRIVATE).getBoolean("eco_enabled", false)
         showBatteryOverlay = getSharedPreferences("phone_video", MODE_PRIVATE)
             .getBoolean("show_battery_overlay", true)
         singlePreviewContainer = findViewById(R.id.phoneSinglePreview)
@@ -279,9 +291,16 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                 ?: throw IllegalStateException("Superfície da prévia indisponível"))
             val session = PhoneCameraServer(ip, PhoneCameraAccess.token(this))
             lastTelemetryLabel = ""
+            cachedTelemetryLabel = ""
+            previousBatteryReading = null
+            lastHeatText = ""
+            heatState = PhoneHeatState.NORMAL
+            thermalWarning.visibility = View.GONE
+            lastCapture = 0L
             server = session
             streamStats.reset(SystemClock.elapsedRealtime())
             txPerformance.setText(R.string.phone_performance_waiting)
+            restartPerformanceTicker()
             worker = if (worker.isShutdown) Executors.newSingleThreadExecutor() else worker
             encoding.set(false)
             val byteCount = size.width * size.height * 3 / 2
@@ -290,7 +309,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                     receivedCameraFrames = true
                 }
                 if (data != null && visible && server === session && data.size >= byteCount &&
-                    !encoding.get() && SystemClock.elapsedRealtime() - lastCapture >= 90 &&
+                    !encoding.get() && SystemClock.elapsedRealtime() - lastCapture >=
+                        PhoneEcoPolicy.intervalMs(ecoEnabled, heatState) &&
                     encoding.compareAndSet(false, true)) {
                     lastCapture = SystemClock.elapsedRealtime()
                     val snapshot = data.copyOf(byteCount)
@@ -351,9 +371,12 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
         val session = try { PhoneCameraServer(ip, PhoneCameraAccess.token(this)) }
             catch (_: Exception) { return false }
-        val controller = PhoneDualCamera(this, { a, b, w, h ->
+        val controller = PhoneDualCamera(this, { PhoneEcoPolicy.intervalMs(ecoEnabled, heatState) }, { a, b, w, h ->
+            val now = SystemClock.elapsedRealtime()
             if (visible && server === session && !encoding.get() &&
+                now - lastCapture >= PhoneEcoPolicy.intervalMs(ecoEnabled, heatState) &&
                 encoding.compareAndSet(false, true)) {
+                lastCapture = now
                 try {
                     worker.execute {
                         try {
@@ -380,9 +403,16 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         if (!controller.start()) { controller.close(); session.stop(); return false }
         dualController = controller
         lastTelemetryLabel = ""
+        cachedTelemetryLabel = ""
+        previousBatteryReading = null
+        lastHeatText = ""
+        heatState = PhoneHeatState.NORMAL
+        thermalWarning.visibility = View.GONE
+        lastCapture = 0L
         server = session
         streamStats.reset(SystemClock.elapsedRealtime())
         txPerformance.setText(R.string.phone_performance_waiting)
+        restartPerformanceTicker()
         worker = if (worker.isShutdown) Executors.newSingleThreadExecutor() else worker
         session.start()
         address.text = session.url
@@ -394,8 +424,33 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
 
     private fun publishFrame(session: PhoneCameraServer, frame: ByteArray, w: Int, h: Int, dual: Boolean) {
+        // A cada quadro recupera apenas o objeto em cache, sem formatar texto por frame.
+        // Novo objeto só é entregue a cada leitura real (~15 s) da bateria.
+        val battery = batteryTelemetry.read()
+        if (battery !== previousBatteryReading) {
+            previousBatteryReading = battery
+            cachedTelemetryLabel = battery.overlayLabel()
+            val newHeat = PhoneEcoPolicy.heatState(battery.temperatureTenthsC, heatState)
+            heatState = newHeat
+            val heatText = if (newHeat == PhoneHeatState.NORMAL) "" else {
+                val temp = battery.temperatureTenthsC?.let {
+                    String.format(Locale.forLanguageTag("pt-BR"), "%.1f", it / 10.0)
+                } ?: "--"
+                if (newHeat == PhoneHeatState.HOT) getString(R.string.phone_thermal_hot, temp)
+                else getString(R.string.phone_thermal_warm, temp)
+            }
+            if (heatText != lastHeatText) {
+                lastHeatText = heatText
+                runOnUiThread {
+                    if (visible && server === session) {
+                        thermalWarning.text = heatText
+                        thermalWarning.visibility = if (heatText.isBlank()) View.GONE else View.VISIBLE
+                    }
+                }
+            }
+        }
         if (showBatteryOverlay) {
-            val label = batteryTelemetry.read().display()
+            val label = cachedTelemetryLabel
             batteryOverlay.burnInto(frame, w, h, label)
             if (lastTelemetryLabel != label) {
                 lastTelemetryLabel = label
@@ -409,16 +464,17 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         }
         val jpeg = ByteArrayOutputStream()
         if (!YuvImage(frame, ImageFormat.NV21, w, h, null)
-                .compressToJpeg(Rect(0, 0, w, h), 62, jpeg)) return
+                .compressToJpeg(Rect(0, 0, w, h), PhoneEcoPolicy.jpegQuality(ecoEnabled, heatState), jpeg)) return
         if (!visible || server !== session) return
         val encoded = jpeg.toByteArray()
-        session.publish(encoded)
+        session.publish(encoded, battery)
         streamStats.frame()
         if (!publishedStreamFrame) {
             publishedStreamFrame = true
             runOnUiThread { if (visible && server === session && !recordingRequested) status.setText(R.string.phone_online) }
         }
-        if (dual && SystemClock.elapsedRealtime() - lastDualPreviewTime >= 160) {
+        if (dual && SystemClock.elapsedRealtime() - lastDualPreviewTime >=
+            PhoneEcoPolicy.dualPreviewIntervalMs(ecoEnabled, heatState)) {
             lastDualPreviewTime = SystemClock.elapsedRealtime()
             try {
                 val full = BitmapFactory.decodeByteArray(encoded, 0, encoded.size)
@@ -490,7 +546,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         recordIcon.setImageResource(if (active) R.drawable.ic_ui_stop else R.drawable.ic_ui_record)
         recordIcon.setColorFilter(if (active) 0xFFB22323.toInt() else 0xFF111827.toInt())
         uiHandler.removeCallbacks(recordTick)
-        uiHandler.removeCallbacks(performanceTick)
+        // A amostragem de FPS deve continuar mesmo durante gravação.
         if (active && recordingStartedAt > 0L) uiHandler.post(recordTick)
         if (!active) {
             recordingStartedAt = 0L
@@ -516,9 +572,11 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private fun openMoreDialog() {
         val overlayOption = getString(if (showBatteryOverlay)
             R.string.phone_hide_battery_overlay else R.string.phone_show_battery_overlay)
+        val ecoOption = getString(if (ecoEnabled)
+            R.string.phone_eco_disable else R.string.phone_eco_enable)
         AlertDialog.Builder(this).setTitle(R.string.ui_more)
             .setItems(arrayOf(getString(R.string.ui_link), getString(R.string.ui_code),
-                overlayOption, getString(R.string.phone_record_location))) { _, which ->
+                overlayOption, ecoOption, getString(R.string.phone_record_location))) { _, which ->
                 when (which) {
                     0 -> openLinkDialog()
                     1 -> findViewById<View>(R.id.phoneRevoke).performClick()
@@ -531,6 +589,15 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                         Toast.makeText(this, if (showBatteryOverlay)
                             R.string.phone_show_battery_overlay else R.string.phone_hide_battery_overlay,
                             Toast.LENGTH_SHORT).show()
+                    }
+                    3 -> {
+                        ecoEnabled = !ecoEnabled
+                        getSharedPreferences("phone_video", MODE_PRIVATE).edit()
+                            .putBoolean("eco_enabled", ecoEnabled).apply()
+                        Toast.makeText(this, if (ecoEnabled)
+                            R.string.phone_eco_activated else R.string.phone_eco_deactivated,
+                            Toast.LENGTH_SHORT).show()
+                        // Configuração aplicada ao próximo JPEG; QR, conexão e REC continuam.
                     }
                     else -> Toast.makeText(this, R.string.phone_record_location, Toast.LENGTH_LONG).show()
                 }
@@ -620,6 +687,11 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         preview.setTransform(matrix)
     }
 
+    private fun restartPerformanceTicker() {
+        uiHandler.removeCallbacks(performanceTick)
+        if (visible) uiHandler.postDelayed(performanceTick, 2000)
+    }
+
     private fun stopStreaming() {
         recordingRequested = false
         uiHandler.removeCallbacks(recordTick)
@@ -631,6 +703,11 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         dualTop.setImageDrawable(null)
         dualBottom.setImageDrawable(null)
         lastTelemetryLabel = ""
+        cachedTelemetryLabel = ""
+        previousBatteryReading = null
+        lastHeatText = ""
+        heatState = PhoneHeatState.NORMAL
+        thermalWarning.visibility = View.GONE
         telemetryPreview.visibility = View.GONE
         qrDialog?.dismiss()
         qrDialog = null
