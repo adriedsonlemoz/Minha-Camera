@@ -1,9 +1,10 @@
-## 1.4.38+48 — 2026-10-15
+## 1.4.39+49 — 2026-10-15
 
-- Reformulação visual da tela inicial, da Central Multimídia e dos cartões de dispositivos.
-- Configurações, aparência, sobre, apoio e novidades migrados para telas dedicadas sem pop-ups.
-- Nova tela de boas-vindas mais bonita e topo do transmissor com ícone de rede ao lado do diagnóstico.
+- Segunda passada de design na tela inicial, com herói premium e ações principais em destaque.
+- Biblioteca do outro celular reformulada, com cartões de arquivos e ações diretas para abrir e baixar.
+- Tela de transmissão refinada com painel de status mais moderno e acabamento visual melhor.
 - Alteração focada em interface; build APK e testes em aparelho continuam pendentes.
+
 ## 1.4.36+46 — 2026-10-15
 
 - Protocolo MCRP v1 versionado e retrocompatível com HTTP/QR existentes.

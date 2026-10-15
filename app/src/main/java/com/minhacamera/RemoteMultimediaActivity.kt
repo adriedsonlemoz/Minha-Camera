@@ -32,25 +32,89 @@ class RemoteMultimediaActivity : AppCompatActivity() {
     private fun dp(v: Int) = (resources.displayMetrics.density * v + .5f).toInt()
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        if (getSharedPreferences(CameraTheme.PREFS, MODE_PRIVATE).getString(CameraTheme.KEY, CameraTheme.SYSTEM) == CameraTheme.AMOLED)
+            setTheme(R.style.Theme_MinhaCamera_Amoled)
         super.onCreate(savedInstanceState)
         title = "Arquivos do outro celular"
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(16), dp(16), dp(16)) }
+
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(18), dp(18), dp(28))
+            setBackgroundColor(getColor(R.color.app_background))
+        }
+        val scroll = ScrollView(this).apply { addView(content) }
+        setContentView(scroll)
+
+        content.addView(TextView(this).apply {
+            text = "Consulte, reproduza e baixe fotos e vídeos do transmissor pela mesma rede Wi‑Fi."
+            textSize = 14f
+            setTextColor(getColor(R.color.ui_muted))
+            setPadding(0, 0, 0, dp(14))
+        })
+
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+            setBackgroundResource(R.drawable.bg_ui_card)
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) }
+        }
         address = EditText(this).apply {
-            setSingleLine(true); hint = "http://192.168.1.2:8765/live/…"; textSize = 12f
+            setSingleLine(true)
+            hint = "http://192.168.1.2:8765/live/..."
+            textSize = 13f
             setText(intent.getStringExtra("url") ?: getSharedPreferences("phone_viewer", MODE_PRIVATE).getString("last_url", ""))
         }
-        root.addView(address)
-        root.addView(Button(this).apply { text = "Consultar gravações e fotos"; setOnClickListener { refresh() } })
-        info = TextView(this).apply { text = "O transmissor precisa estar ativo na mesma rede Wi-Fi."; setPadding(0, dp(10), 0, dp(10)) }
-        root.addView(info)
+        header.addView(TextView(this).apply { text = "Endereço do transmissor"; textSize = 17f; setTextColor(getColor(R.color.app_text)) })
+        header.addView(TextView(this).apply { text = "Use o QR/URL do outro celular para abrir a biblioteca remota."; textSize = 12.5f; setTextColor(getColor(R.color.ui_muted)); setPadding(0, dp(4), 0, dp(10)) })
+        header.addView(address)
+        header.addView(Button(this).apply {
+            text = "Atualizar biblioteca"
+            isAllCaps = false
+            setOnClickListener { refresh() }
+        }.also { (it.layoutParams as? ViewGroup.MarginLayoutParams)?.topMargin = dp(10) })
+        content.addView(header)
+
+        info = TextView(this).apply {
+            text = "O transmissor precisa estar ativo e autenticado na mesma rede Wi‑Fi."
+            setTextColor(getColor(R.color.ui_muted))
+            textSize = 13f
+            setPadding(dp(4), 0, 0, dp(10))
+        }
+        content.addView(info)
+
         list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        val scroll = ScrollView(this).apply { addView(list) }
-        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        setContentView(root)
+        content.addView(list)
+
         if (PhoneCameraUrls.normalize(address.text.toString()) != null) refresh()
     }
+
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
+
+    private fun makeCard(title: String, subtitle: String, openAction: () -> Unit, downloadAction: () -> Unit): LinearLayout {
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            setBackgroundResource(R.drawable.bg_ui_card)
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) }
+            addView(TextView(context).apply { text = title; textSize = 17f; setTextColor(getColor(R.color.app_text)) })
+            addView(TextView(context).apply { text = subtitle; textSize = 12.5f; setTextColor(getColor(R.color.ui_muted)); setPadding(0, dp(5), 0, dp(12)) })
+            addView(LinearLayout(context).apply {
+                orientation = LinearLayout.HORIZONTAL
+                addView(Button(context).apply {
+                    text = "Abrir"
+                    isAllCaps = false
+                    setOnClickListener { openAction() }
+                }, LinearLayout.LayoutParams(0, -2, 1f))
+                addView(Button(context).apply {
+                    text = "Baixar"
+                    isAllCaps = false
+                    setOnClickListener { downloadAction() }
+                }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(8) })
+            })
+        }
+    }
+
     private fun refresh() {
         val live = PhoneCameraUrls.normalize(address.text.toString())
         val url = live?.let { PhoneCameraUrls.mcrpMediaUrl(it) }
@@ -84,34 +148,46 @@ class RemoteMultimediaActivity : AppCompatActivity() {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 list.removeAllViews()
                 result.onSuccess { items ->
-                    info.text = "${items.length()} arquivo(s) remoto(s). Reprodução e download exigem autorização de pareamento."
+                    info.text = "${items.length()} arquivo(s) remoto(s). Abra para visualizar ou baixe uma cópia neste celular."
                     for (i in 0 until items.length()) {
                         val item = items.getJSONObject(i)
-                        val id = item.optString("id"); val mime = item.optString("mime")
+                        val id = item.optString("id")
+                        val mime = item.optString("mime")
                         val name = item.optString("name").take(150)
                         val size = item.optLong("size")
                         val fileUrl = PhoneCameraUrls.mcrpMediaFileUrl(live, id) ?: continue
-                        list.addView(Button(this).apply {
-                            text = "${if (mime.startsWith("image/")) "▧" else "▶"} $name  ·  ${size / 1024} KB"
-                            isAllCaps = false
-                            setOnClickListener { showItem(fileUrl, name, mime, size) }
-                            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(7) }
+                        val typeLabel = when {
+                            mime.startsWith("image/") -> "Foto"
+                            mime.startsWith("video/") -> "Vídeo"
+                            else -> "Arquivo"
+                        }
+                        list.addView(makeCard(
+                            name,
+                            "$typeLabel • ${size / 1024} KB",
+                            { openItem(fileUrl, mime, size) },
+                            { download(fileUrl, name, mime) }
+                        ))
+                    }
+                    if (items.length() == 0) {
+                        list.addView(TextView(this).apply {
+                            text = "Nenhum arquivo disponível no transmissor agora."
+                            setTextColor(getColor(R.color.ui_muted))
+                            setPadding(dp(6), dp(8), 0, 0)
                         })
                     }
-                }.onFailure { info.text = "Não foi possível consultar o outro celular: ${it.message}" }
+                }.onFailure {
+                    info.text = "Não foi possível consultar o outro celular: ${it.message}"
+                }
             }
         }, "mcrp-media-list").start()
     }
 
-    private fun showItem(url: String, name: String, mime: String, size: Long) {
-        AlertDialog.Builder(this).setTitle(name).setItems(arrayOf("Reproduzir / visualizar", "Baixar para este celular")) { _, index ->
-            if (index == 0) {
-                if (mime.startsWith("video/")) playVideo(url)
-                else if (mime.startsWith("image/")) viewPhoto(url, size)
-                else Toast.makeText(this, "Formato sem visualização", Toast.LENGTH_SHORT).show()
-            } else download(url, name, mime)
-        }.show()
+    private fun openItem(url: String, mime: String, size: Long) {
+        if (mime.startsWith("video/")) playVideo(url)
+        else if (mime.startsWith("image/")) viewPhoto(url, size)
+        else Toast.makeText(this, "Formato sem visualização", Toast.LENGTH_SHORT).show()
     }
+
     private fun playVideo(url: String) {
         val video = VideoView(this).apply {
             layoutParams = LinearLayout.LayoutParams(-1, dp(260))
@@ -125,13 +201,15 @@ class RemoteMultimediaActivity : AppCompatActivity() {
         video.setOnErrorListener { _, _, _ -> Toast.makeText(this, "Falha na reprodução. Tente baixar o arquivo.", Toast.LENGTH_LONG).show(); true }
         video.requestFocus()
     }
+
     private fun viewPhoto(url: String, size: Long) {
         if (size > 12_000_000L) { Toast.makeText(this, "Imagem grande: use Baixar.", Toast.LENGTH_LONG).show(); return }
         Thread({
             val bmp = runCatching {
                 NetUtil.bindToWifi(applicationContext)
                 val conn = URL(url).openConnection() as HttpURLConnection
-                try { conn.connectTimeout = 4000; conn.readTimeout = 6000
+                try {
+                    conn.connectTimeout = 4000; conn.readTimeout = 6000
                     require(conn.responseCode == 200)
                     conn.inputStream.use { android.graphics.BitmapFactory.decodeStream(it) }
                 } finally { conn.disconnect() }
@@ -144,6 +222,7 @@ class RemoteMultimediaActivity : AppCompatActivity() {
             }
         }, "mcrp-photo").start()
     }
+
     private fun download(url: String, name: String, mime: String) {
         Toast.makeText(this, "Baixando para este celular…", Toast.LENGTH_SHORT).show()
         Thread({
@@ -170,20 +249,22 @@ class RemoteMultimediaActivity : AppCompatActivity() {
                 try {
                     val conn = URL(url).openConnection() as HttpURLConnection
                     try {
-                        conn.connectTimeout = 4500; conn.readTimeout = 30_000; conn.instanceFollowRedirects = false
+                        conn.connectTimeout = 5000; conn.readTimeout = 12000
                         require(conn.responseCode == 200) { "HTTP ${conn.responseCode}" }
-                        val output = if (Build.VERSION.SDK_INT >= 29) contentResolver.openOutputStream(uri)!!
-                            else legacyFile!!.outputStream()
-                        output.use { out -> conn.inputStream.use { it.copyTo(out) } }
+                        contentResolver.openOutputStream(uri, "w")!!.use { out -> conn.inputStream.use { it.copyTo(out) } }
                     } finally { conn.disconnect() }
-                    if (Build.VERSION.SDK_INT >= 29) contentResolver.update(uri, ContentValues().apply {
-                        put(MediaStore.MediaColumns.IS_PENDING, 0)
-                    }, null, null)
-                    uri
-                } catch (error: Exception) { if (Build.VERSION.SDK_INT >= 29) contentResolver.delete(uri, null, null) else legacyFile?.delete(); throw error }
+                    if (Build.VERSION.SDK_INT >= 29) {
+                        contentResolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
+                    }
+                    legacyFile?.absolutePath ?: uri.toString()
+                } catch (e: Exception) {
+                    if (Build.VERSION.SDK_INT >= 29) runCatching { contentResolver.delete(uri, null, null) }
+                    throw e
+                }
             }
             runOnUiThread {
-                if (!isFinishing) Toast.makeText(this, if (saved.isSuccess) "Download concluído" else "Erro: ${saved.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+                saved.onSuccess { Toast.makeText(this, "Salvo: $it", Toast.LENGTH_LONG).show() }
+                    .onFailure { Toast.makeText(this, "Falha ao baixar: ${it.message}", Toast.LENGTH_LONG).show() }
             }
         }, "mcrp-download").start()
     }

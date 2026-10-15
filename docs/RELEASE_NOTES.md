@@ -1,8 +1,8 @@
-# Minha Câmera 1.4.38 (versionCode 48)
+# Minha Câmera 1.4.39 (versionCode 49)
 
-- Reformulação visual da tela inicial, dos cartões de dispositivos e da Central Multimídia.
-- Configurações, aparência, sobre, apoio e novidades agora possuem telas dedicadas, sem pop-ups para os fluxos principais.
-- Nova tela de boas-vindas após atualização e topo do transmissor simplificado com ícone de rede ao lado do diagnóstico.
+- Segunda passada de design na tela inicial, com visual mais premium e ações principais em destaque.
+- Biblioteca do outro celular reformulada com cartões mais claros e ações diretas de abrir e baixar.
+- Tela de transmissão refinada com painel de status mais moderno, relógio/telemetria em destaque e acabamento visual melhor.
 - Alteração focada em interface. Build Android e testes em aparelho continuam pendentes.
 
 # Minha Câmera 1.4.36 (versionCode 46)

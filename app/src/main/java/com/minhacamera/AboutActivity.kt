@@ -40,15 +40,15 @@ class AboutActivity : AppCompatActivity() {
         content.addView(TextView(this).apply { text = "Minha Câmera $version"; textSize = 25f; setTextColor(getColor(R.color.app_text)); setPadding(0, 0, 0, dp(4)) })
         content.addView(TextView(this).apply { text = "Transmissão e visualização de câmera por rede local, sem nuvem obrigatória."; textSize = 14f; setTextColor(getColor(R.color.ui_muted)); setPadding(0, 0, 0, dp(16)) })
         addBlock(content, "O que é o app", "Projeto auxiliar do Vigia IA voltado para transmissão local entre celulares, MJPEG/H.264 experimental, modo de tela apagada, gravação opcional e acesso remoto à multimídia.")
-        addBlock(content, "Últimas versões", """1.4.38+48
+        addBlock(content, "Últimas versões", """1.4.39+49
+• Segunda passada de design: home mais premium, biblioteca remota renovada e acabamento da transmissão.
+
+1.4.38+48
 • Visual renovado: telas dedicadas para novidades, sobre, temas e apoio.
 • Lista de dispositivos com ações mais fortes e Central Multimídia reorganizada.
 
 1.4.37+47
-• Correção do Build APK 37 por falta de import Intent no visualizador.
-
-1.4.36+46
-• Protocolo MCRP para integração com Vigia IA e biblioteca remota do outro celular.""".trimIndent())
+• Correção do Build APK 37 por falta de import Intent no visualizador.""".trimIndent())
         addBlock(content, "Privacidade e rede", "O foco permanece em rede local. O app não depende de envio obrigatório à nuvem para transmitir, assistir ou consultar a biblioteca do outro celular.")
         content.addView(MaterialButton(this).apply {
             text = getString(R.string.novidades)
