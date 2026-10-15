@@ -1,50 +1,49 @@
-"""Teste de leitura/formatacao isolada no JVM e integracao estatica da marca d'agua."""
+"""Smoke JVM e invariantes para a telemetria da bateria e do MJPEG/MP4."""
 from pathlib import Path
 import subprocess
 import tempfile
-import re
 import xml.etree.ElementTree as ET
 
 root = Path(__file__).resolve().parents[1]
-src = (root / 'app/src/main/java/com/minhacamera/PhoneBatteryOverlay.kt').read_text()
-start = src.index('internal data class PhoneBatteryReading(')
-end = src.index('/** Uma leitura do broadcast sticky')
-reading = src[start:end]
-# Extrai funcoes puras de normalizacao sem referencias ao Android.
-body_start = src.index('        fun fromValues(')
-body_end = src.index('        fun fromIntent(', body_start)
-normalizer = src[body_start:body_end]
-content = '''import java.util.Locale\n''' + reading + '''\ninternal object TestNormalizer {\n''' + normalizer + '''}\n''' + '''\nfun main() {
-    check(TestNormalizer.fromValues(31, 50, 347) == PhoneBatteryReading(62, 347))
-    check(TestNormalizer.fromValues(0, 100, 0).levelPercent == 0)
-    check(TestNormalizer.fromValues(100, 100, 900).levelPercent == 100)
-    check(TestNormalizer.fromValues(-1, 100, null).levelPercent == null)
-    check(TestNormalizer.fromValues(101, 100, null).levelPercent == null)
-    check(TestNormalizer.fromValues(99, 0, null).levelPercent == null)
-    check(TestNormalizer.fromValues(100, 100, -201).temperatureTenthsC == null)
-    check(TestNormalizer.fromValues(100, 100, 901).temperatureTenthsC == null)
-    check(PhoneBatteryReading(61, 347).display() == "Bateria 61%  |  Bat. 34,7°C")
-    check(PhoneBatteryReading(null, null).display() == "Bateria --%  |  Bat. --°C")
-    println("OK: 10 testes JVM de bateria e temperatura")
+model = (root / 'app/src/main/java/com/minhacamera/PhoneBatteryReading.kt').read_text()
+overlay = (root / 'app/src/main/java/com/minhacamera/PhoneBatteryOverlay.kt').read_text()
+activity = (root / 'app/src/main/java/com/minhacamera/PhoneCameraActivity.kt').read_text()
+layout = (root / 'app/src/main/res/layout/activity_phone_camera.xml').read_text()
+
+start = overlay.index('        fun fromValues(')
+end = overlay.index('        fun fromIntent(', start)
+normalizer = overlay[start:end]
+source_code = model + '''\ninternal object TestNormalizer {\n''' + normalizer + '''}\nfun main() {
+    check(TestNormalizer.fromValues(31, 50, 347, false, -220) == PhoneBatteryReading(62, 347, false, -220))
+    check(TestNormalizer.fromValues(0, 100, 0, true, 150).levelPercent == 0)
+    check(TestNormalizer.fromValues(100, 100, 900, true, null).levelPercent == 100)
+    check(TestNormalizer.fromValues(-1, 100, null, null, null).levelPercent == null)
+    check(TestNormalizer.fromValues(101, 100, null, null, null).levelPercent == null)
+    check(TestNormalizer.fromValues(99, 0, null, null, null).levelPercent == null)
+    check(TestNormalizer.fromValues(100, 100, -201, false, null).temperatureTenthsC == null)
+    check(TestNormalizer.fromValues(100, 100, 901, false, null).temperatureTenthsC == null)
+    check(PhoneBatteryReading(61, 347, true, 160).overlayLabel().contains("61%"))
+    check(PhoneBatteryReading(61, 347, true, 160).detailsLabel().contains("carregando"))
+    check(PhoneBatteryReading(null, null, null, null).overlayLabel().contains("--%"))
+    println("OK: 11 testes JVM de bateria e telemetria")
 }
 '''
 with tempfile.TemporaryDirectory() as tmp:
-    source = Path(tmp) / 'ReadingSmoke.kt'
+    src = Path(tmp) / 'ReadingSmoke.kt'
     jar = Path(tmp) / 'battery.jar'
-    source.write_text(content)
-    subprocess.run(['kotlinc', str(source), '-include-runtime', '-d', str(jar)], check=True, timeout=40)
+    src.write_text(source_code)
+    subprocess.run(['kotlinc', str(src), '-include-runtime', '-d', str(jar)], check=True, timeout=45)
     subprocess.run(['java', '-jar', str(jar)], check=True, timeout=12)
-activity = (root / 'app/src/main/java/com/minhacamera/PhoneCameraActivity.kt').read_text()
-layout = (root / 'app/src/main/res/layout/activity_phone_camera.xml').read_text()
+
 assert 'batteryOverlay.burnInto(frame, w, h, label)' in activity
 assert activity.index('batteryOverlay.burnInto(frame, w, h, label)') < activity.index('compressToJpeg(', activity.index('private fun publishFrame('))
 assert activity.index('batteryOverlay.burnInto(frame, w, h, label)') < activity.index('recorder?.append(snapshot, timestamp)')
 assert 'phoneTelemetryPreview' in layout
 assert 'show_battery_overlay' in activity and 'phone_hide_battery_overlay' in activity
-assert 'registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))' in src
-assert '15_000L' in src
-assert 'EXTRA_TEMPERATURE' in src
-assert 'nv21[uv + channel]' in src
+assert 'registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))' in overlay
+assert '15_000L' in overlay
+assert 'EXTRA_TEMPERATURE' in overlay
+assert 'nv21[uv + channel]' in overlay
 assert 'ByteArrayOutputStream' in activity
 ET.fromstring(layout)
-print('OK: 10 invariantes de overlay MJPEG/MP4/UI e recursos')
+print('OK: invariantes de overlay MJPEG/MP4/UI e recursos')

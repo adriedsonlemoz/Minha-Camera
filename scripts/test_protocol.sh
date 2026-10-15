@@ -19,6 +19,7 @@ kotlinc \
   "$ROOT/app/src/main/java/com/minhacamera/OnvifIdentity.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/PhoneCameraUrls.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/Nv21Frames.kt" \
+  "$ROOT/app/src/main/java/com/minhacamera/PhoneBatteryReading.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/PhoneCameraServer.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/PhoneStreamStats.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/PhoneEcoPolicy.kt" \

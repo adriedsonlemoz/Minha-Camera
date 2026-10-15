@@ -41,7 +41,7 @@ class PhoneCameraServer(address: Inet4Address, token: String) {
         }, "mjpeg-accept").apply { isDaemon = true; start() }
     }
 
-    fun publish(jpeg: ByteArray, battery: PhoneBatteryReading? = null) {
+    internal fun publish(jpeg: ByteArray, battery: PhoneBatteryReading? = null) {
         if (!running || jpeg.isEmpty() || jpeg.size > 1_048_576) return
         synchronized(frameLock) {
             latest = jpeg

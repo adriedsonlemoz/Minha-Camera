@@ -1,3 +1,10 @@
+# Minha Câmera 1.4.22 (versionCode 32)
+
+- Corrigida a compilação dos testes de protocolos após integrar a telemetria do receptor na 1.4.21.
+- Dados de bateria agora usam modelo Kotlin independente das APIs Android, compilável também no teste JVM.
+- Adicionados testes para os cabeçalhos de bateria, temperatura, status de carregamento e corrente no fluxo MJPEG.
+- Mantidos os recursos de retrovisor, leitura por QR, modo Eco e assinatura estável.
+
 # Minha Câmera 1.4.21 (versionCode 31)
 
 - Receptor redesenhado em modo retrato com visual próximo ao “Ao vivo” do transmissor.

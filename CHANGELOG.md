@@ -1,3 +1,9 @@
+## 1.4.22+32 — 2026-10-15
+- Corrigido Build APK 23: `:compileProtocolTests` não encontrava `PhoneBatteryReading` após a telemetria do receptor.
+- Modelo de telemetria extraído para `PhoneBatteryReading.kt` independente de Android; adicionado aos dois caminhos de compilação de protocolos (Gradle e script local).
+- Regressão MJPEG ampliada para conferir cabeçalhos de bateria, temperatura, carregamento e média de corrente.
+- Preservada a assinatura permanente e todas as telas e recursos da versão 1.4.21.
+
 ## 1.4.21+31 — 2026-10-15
 - Receptor em layout retrato alinhado ao Ao vivo do transmissor, sem ícone/elemento indevido no centro da imagem.
 - Telemetria ampliada do celular transmissor no receptor e na marca d'água: bateria, temperatura, status de carregamento e consumo médio do dia.

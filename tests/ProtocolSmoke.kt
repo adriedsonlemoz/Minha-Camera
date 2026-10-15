@@ -267,7 +267,10 @@ private fun checkPhoneCamera() {
     server.start()
     try {
         val fake = ByteArray(16) { 0x42.toByte() }
-        server.publish(fake)
+        val battery = PhoneBatteryReading(73, 326, false, -225)
+        check(battery.overlayLabel().contains("73%"))
+        check(battery.detailsLabel().contains("-225 mA"))
+        server.publish(fake, battery)
         val url = java.net.URL(server.url)
         val good = url.openConnection() as java.net.HttpURLConnection
         good.readTimeout = 3000
@@ -282,6 +285,10 @@ private fun checkPhoneCamera() {
             header.append(c.toChar())
         }
         check(header.contains("Content-Length: ${fake.size}"))
+        check(header.contains("X-Battery-Level: 73\r\n"))
+        check(header.contains("X-Battery-Temp-Tenths: 326\r\n"))
+        check(header.contains("X-Battery-Charging: 0\r\n"))
+        check(header.contains("X-Battery-Average-Ma: -225\r\n"))
         check(Regex("X-Frame-Elapsed-Ms: [0-9]+").containsMatchIn(header))
         val read = ByteArray(fake.size)
         var count = 0
