@@ -1,6 +1,9 @@
 package com.minhacamera
 
 import android.graphics.BitmapFactory
+import android.graphics.Bitmap
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import android.os.Bundle
 import android.widget.ImageView
 import android.widget.TextView
@@ -19,6 +22,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     @Volatile private var connection: HttpURLConnection? = null
     private var reader: Thread? = null
     private var attempts = 0
+    private val frameOnDeck = AtomicReference<Bitmap?>(null)
+    private val uiScheduled = AtomicBoolean(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,14 +84,13 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                             if (n <= 0) throw IllegalStateException("Quadro incompleto")
                             offset += n
                         }
-                        val bitmap = BitmapFactory.decodeByteArray(data, 0, data.size)
+                        // Receber e substituir o quadro pendente sem enfileirar dezenas de Runnables.
+                        val bitmap = BitmapFactory.decodeByteArray(data, 0, data.size,
+                            BitmapFactory.Options().apply { inPreferredConfig = Bitmap.Config.RGB_565 })
                             ?: throw IllegalStateException("Imagem não reconhecida")
-                        runOnUiThread {
-                            if (active && attempts == currentAttempt) {
-                                image.setImageBitmap(bitmap)
-                                status.setText(R.string.phone_receiving)
-                            } else bitmap.recycle()
-                        }
+                        val old = frameOnDeck.getAndSet(bitmap)
+                        old?.recycle()
+                        schedulePresentation(currentAttempt)
                     }
                 }
                 if (active && attempts == currentAttempt) throw IllegalStateException("Transmissão encerrada")
@@ -99,6 +103,21 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                 ownConnection?.disconnect()
             }
         }, "mjpeg-viewer").apply { isDaemon = true; start() }
+    }
+
+    private fun schedulePresentation(currentAttempt: Int) {
+        if (!uiScheduled.compareAndSet(false, true)) return
+        image.post {
+            val newest = frameOnDeck.getAndSet(null)
+            if (newest != null) {
+                if (active && attempts == currentAttempt) {
+                    image.setImageBitmap(newest)
+                    status.setText(R.string.phone_receiving)
+                } else newest.recycle()
+            }
+            uiScheduled.set(false)
+            if (frameOnDeck.get() != null && active && attempts == currentAttempt) schedulePresentation(currentAttempt)
+        }
     }
 
     private fun readAsciiLine(input: BufferedInputStream): String? {
@@ -120,6 +139,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         connection = null
         reader?.interrupt()
         reader = null
+        frameOnDeck.getAndSet(null)?.recycle()
         image.setImageDrawable(null)
     }
 }

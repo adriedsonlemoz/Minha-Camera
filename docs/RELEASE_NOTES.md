@@ -1,3 +1,15 @@
+# Minha Câmera 1.4.17 (versionCode 27)
+
+**Nova tela Ao vivo:** barra Virar · Dupla · QR · Gravar/Parar · Mais conforme design solicitado. O QR permanece em pop-up e o menu Mais contém Link e Código.
+
+**Transmissão:** limite MJPEG reduzido de 250 ms para 90 ms por captura (máximo teórico ~11 FPS). Receptor mostra os quadros mais recentes, evitando a fila de renders atrasados. O desempenho e a latência reais dependem do celular/Wi-Fi.
+
+**Câmera dupla experimental:** tenta câmera traseira acima e frontal abaixo usando Camera2, somente se o Android 11+ anunciar concorrência frontal/traseira. Falha e incompatibilidade retornam à câmera única.
+
+**Gravação do transmissor:** MP4 H.264 sem áudio em `Downloads/MinhaCamera`, pelo MediaStore em Android 10+; Android 7–9 requer autorização de armazenamento. O codificador roda em um executor próprio, gravação termina ao sair da tela; em falha de codec/armazenamento o usuário é informado. Sem garantia de gravação em segundo plano nem recuperação de vídeo não finalizado.
+
+**Validação:** XML, metadados, assinatura sem alterações, verificações Kotlin offline e testes específicos de quadros. Ainda faltam `assembleRelease` no GitHub Actions e ensaios em dois aparelhos, incluindo o modo Dupla e saída MP4. Não trocar a chave privada.
+
 # Minha Câmera 1.4.16 (versionCode 26)
 
 **Correção do Build APK 18:** novamente o GitHub Actions recebeu `KEYSTORE_BASE64` contendo caracteres inválidos e interrompeu o job antes do Gradle. O conteúdo real do Secret não é visível no log. O backup privado original da keystore e dos importadores é válido.

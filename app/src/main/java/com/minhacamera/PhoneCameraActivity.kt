@@ -3,6 +3,8 @@ package com.minhacamera
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.ImageFormat
+import android.graphics.BitmapFactory
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.view.LayoutInflater
@@ -12,6 +14,9 @@ import android.graphics.Rect
 import android.graphics.YuvImage
 import android.hardware.Camera
 import android.os.Bundle
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import android.content.res.Configuration
 import android.content.Intent
 import android.os.SystemClock
@@ -19,6 +24,7 @@ import android.view.TextureView
 import android.view.WindowManager
 import android.view.View
 import android.widget.ImageView
+import android.widget.LinearLayout
 import com.google.zxing.BarcodeFormat
 import com.journeyapps.barcodescanner.BarcodeEncoder
 import android.widget.Button
@@ -31,6 +37,7 @@ import androidx.core.content.ContextCompat
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 
 @Suppress("DEPRECATION")
 class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListener {
@@ -38,6 +45,29 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private lateinit var status: TextView
     private lateinit var address: TextView
     private lateinit var placeholder: TextView
+    private lateinit var singlePreviewContainer: View
+    private lateinit var dualPreviewContainer: View
+    private lateinit var dualTop: ImageView
+    private lateinit var dualBottom: ImageView
+    private lateinit var recordLabel: TextView
+    private lateinit var recordIcon: ImageView
+    private lateinit var recordButton: View
+    private val uiHandler = Handler(Looper.getMainLooper())
+    private var dualMode = false
+    private var dualController: PhoneDualCamera? = null
+    @Volatile private var recordingRequested = false
+    private var recorder: PhoneMp4Recorder? = null // worker exclusivo
+    @Volatile private var recordingStartedAt = 0L
+    private var lastDualPreviewTime = 0L
+    private val recordTick = object : Runnable {
+        override fun run() {
+            if (recordingRequested && recordingStartedAt > 0L) {
+                val seconds = (SystemClock.elapsedRealtime() - recordingStartedAt) / 1000
+                status.text = "REC %02d:%02d".format(seconds / 60, seconds % 60)
+                uiHandler.postDelayed(this, 1000)
+            }
+        }
+    }
     private var qrDialog: AlertDialog? = null
     private var surfaceReady = false
     private var previewWidth = 0
@@ -52,7 +82,9 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private var selectedId: Int? = null
     @Volatile private var frameRotation = 0
     private var worker = Executors.newSingleThreadExecutor()
+    private val recordWorker = Executors.newSingleThreadExecutor()
     private val encoding = AtomicBoolean(false)
+    private val recordingFrameBusy = AtomicBoolean(false)
     private var lastCapture = 0L
     private var visible = false
     private var permissionRequested = false
@@ -67,17 +99,36 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         status = findViewById(R.id.phoneStatus)
         address = findViewById(R.id.phoneAddress)
         placeholder = findViewById(R.id.previewPlaceholder)
+        singlePreviewContainer = findViewById(R.id.phoneSinglePreview)
+        dualPreviewContainer = findViewById(R.id.phoneDualPreview)
+        dualTop = findViewById(R.id.phoneDualTop)
+        dualBottom = findViewById(R.id.phoneDualBottom)
+        recordButton = findViewById(R.id.phoneRecord)
+        recordLabel = findViewById(R.id.phoneRecordLabel)
+        recordIcon = findViewById(R.id.phoneRecordIcon)
+        findViewById<View>(R.id.phoneDual).setOnClickListener { toggleDual() }
+        recordButton.setOnClickListener { toggleRecording() }
+        findViewById<View>(R.id.phoneMore).setOnClickListener { openMoreDialog() }
         preview.surfaceTextureListener = this
         // SurfaceTexture desenha como uma View normal, mesmo dentro de ScrollView.
         surfaceReady = preview.isAvailable
         findViewById<View>(R.id.phoneSwitch).setOnClickListener {
+            if (dualMode) {
+                Toast.makeText(this, R.string.phone_dual_has_both, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            if (recordingRequested) {
+                Toast.makeText(this, R.string.phone_stop_record_first, Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
             selectedFacing = if (selectedFacing == Camera.CameraInfo.CAMERA_FACING_BACK)
                 Camera.CameraInfo.CAMERA_FACING_FRONT else Camera.CameraInfo.CAMERA_FACING_BACK
             stopStreaming()
             tryStart()
         }
         findViewById<View>(R.id.phoneQr).setOnClickListener { openQrDialog() }
-        findViewById<View>(R.id.phoneLink).setOnClickListener { openLinkDialog() }
+
+        // Código de acesso acessível em "Mais", preservando as quatro ações anteriores.
         findViewById<View>(R.id.phoneRevoke).setOnClickListener {
             androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(R.string.phone_revoke)
@@ -103,11 +154,15 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     override fun onPause() { visible = false; stopStreaming(); super.onPause() }
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        try { updateOrientation() } catch (_: Exception) { stopStreaming(); tryStart() }
+        if (dualMode) { stopStreaming(); tryStart() }
+        else try { updateOrientation() } catch (_: Exception) { stopStreaming(); tryStart() }
     }
     override fun onDestroy() {
         preview.surfaceTextureListener = null
-        worker.shutdownNow()
+        uiHandler.removeCallbacks(recordTick)
+        // Terminar gravações pendentes antes de encerrar o worker.
+        worker.shutdown()
+        recordWorker.shutdown()
         super.onDestroy()
     }
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
@@ -120,7 +175,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
     override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
         surfaceReady = false
-        stopStreaming()
+        if (!dualMode) stopStreaming()
         return true // Android libera a textura após a câmera deixar de utilizá-la.
     }
     override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
@@ -130,6 +185,10 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 511) {
+            if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) toggleRecording()
+            else Toast.makeText(this, R.string.phone_storage_denied, Toast.LENGTH_LONG).show()
+        }
         if (requestCode == 510) {
             if (grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED) tryStart()
             else status.setText(R.string.phone_permission_denied)
@@ -137,7 +196,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
 
     private fun tryStart() {
-        if (!visible || !surfaceReady || !preview.isAvailable || camera != null) return
+        if (!visible || (!dualMode && (!surfaceReady || !preview.isAvailable)) || camera != null || dualController != null) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             if (!permissionRequested) {
                 permissionRequested = true
@@ -152,6 +211,14 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             return
         }
         try {
+            if (dualMode) {
+                if (startDual(ip)) return
+                dualMode = false
+                dualPreviewContainer.visibility = View.GONE
+                singlePreviewContainer.visibility = View.VISIBLE
+                Toast.makeText(this, R.string.phone_dual_unavailable, Toast.LENGTH_LONG).show()
+                if (!surfaceReady || !preview.isAvailable) return
+            }
             val deviceId = (0 until Camera.getNumberOfCameras()).firstOrNull { id ->
                 val info = Camera.CameraInfo()
                 Camera.getCameraInfo(id, info)
@@ -193,7 +260,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                     receivedCameraFrames = true
                 }
                 if (data != null && visible && server === session && data.size >= byteCount &&
-                    !encoding.get() && SystemClock.elapsedRealtime() - lastCapture >= 250 &&
+                    !encoding.get() && SystemClock.elapsedRealtime() - lastCapture >= 90 &&
                     encoding.compareAndSet(false, true)) {
                     lastCapture = SystemClock.elapsedRealtime()
                     val snapshot = data.copyOf(byteCount)
@@ -204,19 +271,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                                 val frame = Nv21Frames.rotated(snapshot, size.width, size.height, streamRotation)
                                 val w = if (streamRotation % 180 == 0) size.width else size.height
                                 val h = if (streamRotation % 180 == 0) size.height else size.width
-                                val jpeg = ByteArrayOutputStream()
-                                if (YuvImage(frame, ImageFormat.NV21, w, h, null)
-                                        .compressToJpeg(Rect(0, 0, w, h), 65, jpeg)) {
-                                    if (visible && server === session) {
-                                        session.publish(jpeg.toByteArray())
-                                        if (!publishedStreamFrame) {
-                                            publishedStreamFrame = true
-                                            runOnUiThread {
-                                                if (visible && server === session) status.setText(R.string.phone_online)
-                                            }
-                                        }
-                                    }
-                                }
+                                publishFrame(session, frame, w, h, false)
                             } catch (_: Exception) { } finally { encoding.set(false) }
                         }
                     } catch (_: Exception) { encoding.set(false) }
@@ -244,6 +299,181 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             status.setText(R.string.phone_start_failed)
             address.setText(R.string.phone_no_address)
         }
+    }
+
+    private fun toggleDual() {
+        if (recordingRequested) {
+            Toast.makeText(this, R.string.phone_stop_record_first, Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (!dualMode && !PhoneDualCamera.supported(this)) {
+            Toast.makeText(this, R.string.phone_dual_unavailable, Toast.LENGTH_LONG).show()
+            return
+        }
+        dualMode = !dualMode
+        stopStreaming()
+        singlePreviewContainer.visibility = if (dualMode) View.GONE else View.VISIBLE
+        dualPreviewContainer.visibility = if (dualMode) View.VISIBLE else View.GONE
+        tryStart()
+    }
+
+    private fun startDual(ip: java.net.Inet4Address): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return false
+        val session = try { PhoneCameraServer(ip, PhoneCameraAccess.token(this)) }
+            catch (_: Exception) { return false }
+        val controller = PhoneDualCamera(this, { a, b, w, h ->
+            if (visible && server === session && !encoding.get() &&
+                encoding.compareAndSet(false, true)) {
+                try {
+                    worker.execute {
+                        try {
+                            if (visible && server === session) {
+                                val frame = PhoneDualFrames.stack(a, b, w, h)
+                                publishFrame(session, frame, w, h * 2, true)
+                            }
+                        } catch (_: Exception) { } finally { encoding.set(false) }
+                    }
+                } catch (_: Exception) { encoding.set(false) }
+            }
+        }, { message ->
+            runOnUiThread {
+                if (server === session && visible) {
+                    stopStreaming()
+                    dualMode = false
+                    dualPreviewContainer.visibility = View.GONE
+                    singlePreviewContainer.visibility = View.VISIBLE
+                    status.text = message
+                    tryStart()
+                }
+            }
+        })
+        if (!controller.start()) { controller.close(); session.stop(); return false }
+        dualController = controller
+        server = session
+        worker = if (worker.isShutdown) Executors.newSingleThreadExecutor() else worker
+        session.start()
+        address.text = session.url
+        status.setText(R.string.phone_waiting_frames)
+        uiHandler.postDelayed({
+            if (visible && server === session && !publishedStreamFrame) status.setText(R.string.phone_no_frames)
+        }, 5000)
+        return true
+    }
+
+    private fun publishFrame(session: PhoneCameraServer, frame: ByteArray, w: Int, h: Int, dual: Boolean) {
+        val jpeg = ByteArrayOutputStream()
+        if (!YuvImage(frame, ImageFormat.NV21, w, h, null)
+                .compressToJpeg(Rect(0, 0, w, h), 62, jpeg)) return
+        if (!visible || server !== session) return
+        val encoded = jpeg.toByteArray()
+        session.publish(encoded)
+        if (!publishedStreamFrame) {
+            publishedStreamFrame = true
+            runOnUiThread { if (visible && server === session && !recordingRequested) status.setText(R.string.phone_online) }
+        }
+        if (dual && SystemClock.elapsedRealtime() - lastDualPreviewTime >= 160) {
+            lastDualPreviewTime = SystemClock.elapsedRealtime()
+            try {
+                val full = BitmapFactory.decodeByteArray(encoded, 0, encoded.size)
+                if (full != null) {
+                    val half = full.height / 2
+                    val top = Bitmap.createBitmap(full, 0, 0, full.width, half)
+                    val bottom = Bitmap.createBitmap(full, 0, half, full.width, half)
+                    full.recycle()
+                    runOnUiThread {
+                        if (dualMode && visible && server === session) {
+                            dualTop.setImageBitmap(top)
+                            dualBottom.setImageBitmap(bottom)
+                        } else { top.recycle(); bottom.recycle() }
+                    }
+                }
+            } catch (_: Exception) { }
+        }
+        if (recordingRequested && recordingFrameBusy.compareAndSet(false, true)) {
+            val snapshot = frame.copyOf()
+            val timestamp = System.nanoTime()
+            try {
+                recordWorker.execute {
+                    try {
+                        if (recordingRequested) {
+                            if (recorder == null) {
+                                recorder = PhoneMp4Recorder(applicationContext, w, h)
+                                recordingStartedAt = SystemClock.elapsedRealtime()
+                                runOnUiThread { showRecordState(true) }
+                            }
+                            recorder?.append(snapshot, timestamp)
+                        }
+                    } catch (_: Exception) {
+                        recordingRequested = false
+                        recorder?.cancel()
+                        recorder = null
+                        runOnUiThread {
+                            showRecordState(false)
+                            Toast.makeText(this, R.string.phone_record_failed, Toast.LENGTH_LONG).show()
+                        }
+                    } finally { recordingFrameBusy.set(false) }
+                }
+            } catch (_: Exception) { recordingFrameBusy.set(false) }
+        }
+    }
+
+    private fun toggleRecording() {
+        if (recordingRequested) {
+            recordingRequested = false
+            showRecordState(false)
+            recordWorker.execute { finishRecording() }
+        } else {
+            if (server == null || !publishedStreamFrame) {
+                Toast.makeText(this, R.string.phone_not_ready, Toast.LENGTH_SHORT).show()
+                return
+            }
+            if (Build.VERSION.SDK_INT < 29 &&
+                ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE), 511)
+                return
+            }
+            recordingRequested = true
+            status.setText(R.string.phone_record_preparing)
+            showRecordState(true)
+        }
+    }
+
+    private fun showRecordState(active: Boolean) {
+        recordLabel.setText(if (active) R.string.ui_stop else R.string.ui_record)
+        recordIcon.setImageResource(if (active) R.drawable.ic_ui_stop else R.drawable.ic_ui_record)
+        recordIcon.setColorFilter(if (active) 0xFFB22323.toInt() else 0xFF111827.toInt())
+        uiHandler.removeCallbacks(recordTick)
+        if (active && recordingStartedAt > 0L) uiHandler.post(recordTick)
+        if (!active) {
+            recordingStartedAt = 0L
+            if (server != null) status.setText(R.string.phone_online)
+        }
+    }
+
+    /** Executar exclusivamente no worker de gravação após os quadros já enfileirados. */
+    private fun finishRecording() {
+        val previous = recorder ?: return
+        recorder = null
+        try {
+            val saved = previous.finish()
+            runOnUiThread {
+                Toast.makeText(this, if (saved != null) R.string.phone_record_saved else R.string.phone_record_empty,
+                    Toast.LENGTH_LONG).show()
+            }
+        } catch (_: Exception) {
+            runOnUiThread { Toast.makeText(this, R.string.phone_record_failed, Toast.LENGTH_LONG).show() }
+        }
+    }
+
+    private fun openMoreDialog() {
+        AlertDialog.Builder(this).setTitle(R.string.ui_more)
+            .setItems(arrayOf(getString(R.string.ui_link), getString(R.string.ui_code), getString(R.string.phone_record_location))) { _, which ->
+                when (which) {
+                    0 -> openLinkDialog()
+                    1 -> findViewById<View>(R.id.phoneRevoke).performClick()
+                    else -> Toast.makeText(this, R.string.phone_record_location, Toast.LENGTH_LONG).show()
+                }
+            }.setNegativeButton(R.string.cancelar, null).show()
     }
 
     private fun openQrDialog() {
@@ -330,6 +560,14 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
 
     private fun stopStreaming() {
+        recordingRequested = false
+        uiHandler.removeCallbacks(recordTick)
+        showRecordState(false)
+        try { recordWorker.execute { finishRecording() } } catch (_: Exception) { }
+        dualController?.close()
+        dualController = null
+        dualTop.setImageDrawable(null)
+        dualBottom.setImageDrawable(null)
         qrDialog?.dismiss()
         qrDialog = null
         val previous = server

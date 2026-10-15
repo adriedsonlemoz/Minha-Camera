@@ -8,7 +8,7 @@
 - **No receptor:** escolha **Visualizar**, permita acesso à câmera ao leitor ZXing, enquadre o QR do transmissor; um QR válido é cadastrado, se ainda não constar da lista, e o MJPEG abre automaticamente. QR inválido é rejeitado, com opção de nova leitura. Não se abre qualquer link arbitrário que venha de QR.
 - **Alternativa manual:** menu «Adicionar outro celular», colar o endereço e salvar. O novo cartão abre um visualizador MJPEG nativo; «Tentar novamente» reconecta.
 - Não usa ONVIF, RTSP, Media3 nem LibVLC no caminho MJPEG. As câmeras RTSP/ONVIF existentes continuam em fluxo separado.
-- Sem captura de áudio, IA, análise de imagem, gravação de MJPEG, nuvem, conta ou servidor remoto. A gravação RTSP original não foi alterada.
+- Sem captura de áudio, IA, análise de imagem, nuvem, conta ou servidor remoto. Desde 1.4.17 há gravação MP4 no transmissor apenas, sem áudio, em Downloads; a gravação RTSP original não foi alterada.
 
 ## Modelo técnico
 
@@ -27,7 +27,7 @@
 - A transmissão para ao sair da tela ou bloquear o celular transmissor. Não há serviço de câmera em segundo plano. O aparelho mantém tela ligada enquanto a Activity está ativa; pode haver consumo sensível de bateria, CPU e Wi-Fi. Ao compartilhar o endereço com outro app, a câmera pausa e volta a transmitir quando o usuário retorna à tela. Não há compressão H.264, áudio ou acesso remoto via internet.
 - O estado «Transmitindo» só aparece depois de publicar o primeiro JPEG. Se nenhum quadro chegar ou a prévia local não renderizar em 5 s, a tela apresenta diagnóstico específico. A mudança para TextureView **não foi validada em aparelho físico** e não é uma garantia de compatibilidade com todos os fabricantes.
 - A API Camera1 é obsoleta, embora compatível com API 24+. Fabricantes que restringem Camera1 podem exigir implementação Camera2/CameraX. A prévia poderá falhar se a câmera estiver ocupada.
-- O receptor MJPEG não tem gravação. O cartão salvo preserva somente o endereço, que deixa de funcionar quando a sessão é encerrada.
+- O receptor MJPEG ainda não tem gravação, embora o transmissor tenha MP4 desde 1.4.17. O cartão salvo preserva somente o endereço, que deixa de funcionar quando a sessão é encerrada.
 - O leitor QR depende da resolução das bibliotecas ZXing pelo Gradle durante a compilação Android. **Não foram executados testes físicos nem build Android completo neste ambiente**. A validação funcional depende de dois celulares na mesma rede.
 
 ## Testes recomendados em aparelhos reais
@@ -49,3 +49,11 @@ P3: atualizar Media3 e target SDK com testes de regressão. Essas melhorias **n�
 ## Integração com Vigia IA
 
 `PhoneCameraServer`, `PhoneCameraUrls`, `Nv21Frames` e o visualizador MJPEG podem ser referências técnicas, mas não devem ser copiados sem adaptar lifecycle, política de energia, segurança e protocolos. A função câmera deve permanecer opcional/inativa fora de uso. O projeto Vigia IA não foi alterado.
+
+## Atualização 1.4.17
+
+- Barras e ações: Virar, Dupla, QR, Gravar/Parar, Mais; QR mantém janela modal.
+- MJPEG: captura limitada a no mínimo 90 ms de intervalo em vez de 250 ms, compressão JPEG 62%; receptor usa fila UI de um único quadro, substituindo frames atrasados. Não há garantia fixa de FPS ou delay.
+- Dupla experimental: Camera2 concorrente Android 11+, frontal e traseira empilhadas, com fallback para câmera única quando não suportado. Compatibilidade em hardware pendente.
+- MP4: MediaCodec AVC ByteBuffer + MediaMuxer em worker exclusivo da gravação; exportação após finalizar, Android 10+ via MediaStore Downloads, Android 7–9 com permissão de armazenamento. Sem áudio ou execução em segundo plano. Vídeo intermediário de sessão é apagado após exportação; encerramento abrupto não oferece recuperação.
+- Testes físicos de gravação, codec, economia de energia, duas lentes e latência pendentes.

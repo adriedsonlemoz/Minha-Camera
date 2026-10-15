@@ -1,5 +1,14 @@
 # Histórico de versões
 
+## 1.4.17+27 — transmissão mais fluida, gravação MP4 e câmera dupla experimental
+
+- O modo Transmitir passa do limite de 4 FPS (250 ms) para uma tentativa de até ~11 FPS (90 ms), conforme a capacidade de CPU e rede. MJPEG não garante esse FPS nem latência fixa.
+- O visual da tela Ao vivo segue os cinco controles do desenho aprovado: Virar · Dupla · QR · Gravar/Parar · Mais. O menu Mais preserva Link, renovação do Código e destino de vídeo.
+- O receptor usa uma fila de apresentação de **um quadro recente**, descartando os pendentes antigos; servidor ajusta TCP_NODELAY e buffer de envio. O QR continua sob demanda em pop-up.
+- Adicionada captura simultânea Camera2 **experimental** para pares frontal/traseiro explicitamente anunciados como concorrentes no Android 11+; duas imagens empilhadas. Quando o par não existe ou falha, utiliza câmera única.
+- Implementado MP4 H.264 sem áudio no transmissor, com codificação em executor separado do MJPEG e transferência somente após finalização para `Downloads/MinhaCamera` via MediaStore (Android 10+) ou permissão legado (Android 7–9). Gravação termina ao sair da tela.
+- Nenhuma alteração da assinatura release, packageName, biblioteca RTSP/ONVIF ou segredos. Performance real, gravação MP4 e compatibilidade Camera2 requerem testes físicos; o build completo Android não foi executado localmente.
+
 ## 1.4.16+26 — Build APK 18: assinatura por hexadecimal sem caracteres especiais
 
 - Log Build APK 18: o `KEYSTORE_BASE64` do GitHub contém caracteres inválidos; o erro ocorreu **antes** do Gradle, embora as verificações de configuração e versionamento passassem.

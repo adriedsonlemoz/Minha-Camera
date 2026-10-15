@@ -30,6 +30,9 @@ class PhoneCameraServer(address: Inet4Address, token: String) {
                     try { peer.close() } catch (_: Exception) { }
                     continue
                 }
+                // Evita que um visualizador lento acumule segundos de JPEG no buffer TCP.
+                peer.tcpNoDelay = true
+                peer.sendBufferSize = 32 * 1024
                 peers.add(peer)
                 Thread({ serve(peer) }, "mjpeg-peer").apply { isDaemon = true; start() }
             }

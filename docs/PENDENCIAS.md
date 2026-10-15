@@ -14,6 +14,12 @@
 
 ## P2: câmera entre celulares
 
+- Validar em hardware a nova 1.4.17: FPS real (durante gravação e com duas câmeras), latência medida ponta-a-ponta, consumo, temperatura, encoder H.264 e MP4 de Downloads.
+- Verificar Camera2 concorrente em Android 11+ com `getConcurrentCameraIds()`, múltiplas orientações e tamanhos de quadros. Nem todo par anunciado aceita sessão simultânea com as opções requisitadas.
+- Avaliar reconexão automática e troca futura para H.264 de rede, de forma a reduzir banda MJPEG.
+- Gravação no celular visualizador, recuperação de MP4 interrompido e gravação contínua em segundo plano não estão implementadas.
+
+
 - Validar correção de prévia preta com TextureView no aparelho que apresentou a falha, alternando câmeras, girando a tela, rolando e retornando do segundo plano.
 - Testar transmissão e pareamento QR no mínimo em dois aparelhos distintos, incluindo Wi-Fi sem internet e hotspot.
 - Revisar disponibilidade da API Camera1, desempenho, largura de banda, reconexão e consumo energético.
