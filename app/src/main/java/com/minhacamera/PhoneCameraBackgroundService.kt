@@ -44,6 +44,22 @@ class PhoneCameraBackgroundService : Service() {
         const val ACTION_START = "com.minhacamera.BACKGROUND_START"
         const val ACTION_STOP = "com.minhacamera.BACKGROUND_STOP"
         const val ACTION_RECORD = "com.minhacamera.BACKGROUND_RECORD"
+        const val ACTION_CODEC = "com.minhacamera.BACKGROUND_CODEC"
+        const val ACTION_QUALITY = "com.minhacamera.BACKGROUND_QUALITY"
+        const val ACTION_FPS = "com.minhacamera.BACKGROUND_FPS"
+        const val EXTRA_CODEC = "codec"
+        fun changeSettingsLocal(context: Context, action: String, value: Int) {
+            context.startService(Intent(context, PhoneCameraBackgroundService::class.java).apply {
+                this.action = action
+                putExtra("value", value)
+            })
+        }
+        fun changeCodecLocal(context: Context, desired: String) {
+            context.startService(Intent(context, PhoneCameraBackgroundService::class.java).apply {
+                action = ACTION_CODEC
+                putExtra(EXTRA_CODEC, desired)
+            })
+        }
         const val EXTRA_FACING = "facing"
 
         @Volatile var running = false
@@ -55,6 +71,8 @@ class PhoneCameraBackgroundService : Service() {
         @Volatile var latestJpeg: ByteArray? = null
             private set
         @Volatile internal var latestBattery: PhoneBatteryReading? = null
+            private set
+        @Volatile var transmissionStartedMs: Long = 0L
             private set
         @Volatile var lastError: String? = null
             private set
@@ -84,6 +102,12 @@ class PhoneCameraBackgroundService : Service() {
     @Volatile private var takingPhoto = false
     @Volatile private var recordingStartMs = 0L
     @Volatile private var server: PhoneCameraServer? = null
+    private var liveEncoder: PhoneH264LiveEncoder? = null // somente encodeWorker
+    @Volatile private var liveCodec = "mjpeg"
+    @Volatile private var codecPending = false
+    private var lastJpegPreviewAt = 0L
+    @Volatile private var lastCaptureAtMs = 0L
+    @Volatile private var frameCount = 0L
     private var recorder: PhoneMp4Recorder? = null // acessado só pelo recordWorker
     private var wakeLock: PowerManager.WakeLock? = null
     private var wifiLock: WifiManager.WifiLock? = null
@@ -94,6 +118,7 @@ class PhoneCameraBackgroundService : Service() {
         override fun run() {
             if (!running || closing) return
             val age = SystemClock.elapsedRealtime() - lastPublishedAtMs
+            if (age > 4_000) PhoneStreamDiagnostics.add("Sem quadros publicados por ${age}ms; codec=$liveCodec; captura=${SystemClock.elapsedRealtime()-lastCaptureAtMs}ms; ${headlessPreview?.health()}")
             if (age > 12_000 && !switching && !takingPhoto && !recording) {
                 if (watchdogRestarts >= 3) {
                     lastError = "A câmera parou de enviar quadros após tentativas de recuperação"
@@ -101,6 +126,7 @@ class PhoneCameraBackgroundService : Service() {
                     return
                 }
                 watchdogRestarts++
+                PhoneStreamDiagnostics.add("Watchdog reiniciando câmera: tentativa $watchdogRestarts")
                 server?.let { reconfigure(it, selectedFacing, requestedQuality) }
             }
             mainHandler.postDelayed(this, 6000)
@@ -128,6 +154,25 @@ class PhoneCameraBackgroundService : Service() {
         when (intent?.action) {
             ACTION_STOP -> stopCaptureAndFinish()
             ACTION_RECORD -> if (running && !closing) toggleRecording()
+            ACTION_QUALITY -> if (running && !closing && !recording && !switching && !takingPhoto) {
+                val profile = intent.getIntExtra("value", -1)
+                if (profile in listOf(360, 480, 720, 768, 1080)) {
+                    server?.let { reconfigure(it, selectedFacing, profile) }
+                }
+            }
+            ACTION_FPS -> if (running && !closing) {
+                val target = intent.getIntExtra("value", -1)
+                if (target in listOf(5, 10, 15, 24, 30)) {
+                    fpsLimit = target
+                    getSharedPreferences("phone_video", MODE_PRIVATE).edit().putInt("remote_fps", target).apply()
+                    try { encodeWorker.execute { liveEncoder?.close(); liveEncoder = null } } catch (_: Exception) { }
+                    applyCameraFpsRange()
+                }
+            }
+            ACTION_CODEC -> if (running && !closing) {
+                val desired = intent.getStringExtra(EXTRA_CODEC).orEmpty()
+                if (!changeStreamCodec(desired)) PhoneStreamDiagnostics.add("Troca de codec rejeitada durante outra operação")
+            }
             ACTION_START -> {
                 if (running || closing) return START_NOT_STICKY
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
@@ -143,6 +188,9 @@ class PhoneCameraBackgroundService : Service() {
                     ecoEnabled = getSharedPreferences("phone_video", MODE_PRIVATE).getBoolean("eco_enabled", false)
                     requestedQuality = getSharedPreferences("phone_video", MODE_PRIVATE).getInt("remote_quality", 480)
                     fpsLimit = getSharedPreferences("phone_video", MODE_PRIVATE).getInt("remote_fps", 10)
+                    liveCodec = getSharedPreferences("phone_video", MODE_PRIVATE).getString("stream_codec", "mjpeg")
+                        ?.takeIf { it == "h264" } ?: "mjpeg"
+                    PhoneStreamDiagnostics.add("Solicitada captura em segundo plano: $liveCodec")
                     val facing = intent.getIntExtra(EXTRA_FACING, Camera.CameraInfo.CAMERA_FACING_BACK)
                     startCapture(facing)
                 } catch (e: Exception) {
@@ -198,6 +246,12 @@ class PhoneCameraBackgroundService : Service() {
                     if (!closing && recording != desired) toggleRecording()
                 }; true }
             }, recordingStatus = { recording },
+            changeCodec = { desired -> changeStreamCodec(desired) },
+            codecStatus = { liveCodec },
+            transmissionSeconds = { if (running && transmissionStartedMs > 0L)
+                (SystemClock.elapsedRealtime() - transmissionStartedMs).coerceAtLeast(0) / 1000 else 0L },
+            requestKeyframe = { encodeWorker.execute { liveEncoder?.requestKeyframe() } },
+            diagnostics = { diagnosis() },
             recordingSeconds = { if (recording) ((SystemClock.elapsedRealtime() - recordingStartMs) / 1000).coerceAtLeast(0) else 0 },
             changeEco = { desired ->
                 if (!running || closing) false else {
@@ -207,12 +261,13 @@ class PhoneCameraBackgroundService : Service() {
                 }
             }, ecoStatus = { ecoEnabled },
             changeQuality = { quality ->
-                if (!running || closing || switching || recording || takingPhoto || quality !in listOf(360, 480, 720)) false
+                if (!running || closing || switching || recording || takingPhoto || quality !in listOf(360, 480, 720, 768, 1080)) false
                 else { mainHandler.post { server?.let { active -> reconfigure(active, selectedFacing, quality) } }; true }
             }, qualityStatus = { requestedQuality },
             changeFps = { desired ->
-                if (!running || closing || desired !in listOf(5, 10, 15)) false else {
+                if (!running || closing || desired !in listOf(5, 10, 15, 24, 30)) false else {
                     fpsLimit = desired
+                    try { encodeWorker.execute { liveEncoder?.close(); liveEncoder = null } } catch (_: Exception) { }
                     mainHandler.post { applyCameraFpsRange() }
                     getSharedPreferences("phone_video", MODE_PRIVATE).edit().putInt("remote_fps", desired).apply()
                     true
@@ -235,6 +290,8 @@ class PhoneCameraBackgroundService : Service() {
             streamUrl = session.url
             lastError = null
             running = true
+            transmissionStartedMs = SystemClock.elapsedRealtime()
+            PhoneStreamDiagnostics.add("Transmissão iniciada: perfil=$requestedQuality, fps=$fpsLimit, codec=$liveCodec")
             lastPublishedAtMs = SystemClock.elapsedRealtime()
             mainHandler.postDelayed(frameWatchdog, 6000)
             acquireLocks()
@@ -259,6 +316,8 @@ class PhoneCameraBackgroundService : Service() {
         try { old?.setPreviewCallbackWithBuffer(null) } catch (_: Exception) { }
         try { old?.stopPreview() } catch (_: Exception) { }
         try { old?.release() } catch (_: Exception) { }
+        // Enfileira a liberação no mesmo worker de codificação, preservando a ordem.
+        try { encodeWorker.execute { liveEncoder?.close(); liveEncoder = null } } catch (_: Exception) { }
         headlessPreview?.close()
         headlessPreview = null
     }
@@ -267,6 +326,7 @@ class PhoneCameraBackgroundService : Service() {
     private fun reconfigure(session: PhoneCameraServer, facing: Int, quality: Int) {
         if (server !== session || closing || switching || recording || takingPhoto) return
         switching = true
+        PhoneStreamDiagnostics.add("Reconfiguração câmera: lente=$facing, qualidade=$quality")
         val oldFacing = selectedFacing
         val oldQuality = requestedQuality
         releasePreview()
@@ -277,6 +337,7 @@ class PhoneCameraBackgroundService : Service() {
             lastError = null
         } catch (e: Exception) {
             lastError = "Câmera indisponível: ${e.javaClass.simpleName}"
+            PhoneStreamDiagnostics.add(lastError ?: "Falha na câmera")
             try { releasePreview(); openPreview(session, oldFacing, oldQuality) }
             catch (_: Exception) { stopCaptureAndFinish() }
         } finally { switching = false }
@@ -291,10 +352,10 @@ class PhoneCameraBackgroundService : Service() {
         val opened = Camera.open(deviceId)
         camera = opened
         val params = opened.parameters
-        val sizes = params.supportedPreviewSizes.orEmpty().filter { it.width > 0 && it.height > 0 && it.width * it.height <= 1280 * 720 }
+        val sizes = params.supportedPreviewSizes.orEmpty().filter { it.width > 0 && it.height > 0 && it.width * it.height <= 1920 * 1080 }
         val target = quality // altura da imagem em paisagem é o lado menor (360/480/720).
         val size = sizes.minByOrNull { kotlin.math.abs(minOf(it.width, it.height) - target) * 10 +
-            kotlin.math.abs(maxOf(it.width, it.height) - target * 16 / 9) } ?: throw IllegalStateException("Resolução indisponível")
+            kotlin.math.abs(maxOf(it.width, it.height) - target * (if (target == 768) 4 else 16) / (if (target == 768) 3 else 9)) } ?: throw IllegalStateException("Resolução indisponível")
         params.setPreviewSize(size.width, size.height)
         params.previewFormat = ImageFormat.NV21
         val photo = params.supportedPictureSizes.orEmpty().maxByOrNull { it.width.toLong() * it.height }
@@ -325,9 +386,12 @@ class PhoneCameraBackgroundService : Service() {
         lastCapture = 0L
         lastPublishedAtMs = SystemClock.elapsedRealtime()
         opened.setPreviewCallbackWithBuffer { bytes, source ->
+            if (bytes != null) { lastCaptureAtMs = SystemClock.elapsedRealtime(); frameCount++ }
             if (bytes != null && server === session && !closing && !switching &&
                 bytes.size >= byteCount &&
-                SystemClock.elapsedRealtime() - lastCapture >= maxOf(1000L / fpsLimit.coerceAtLeast(1), PhoneEcoPolicy.intervalMs(ecoEnabled, heatState)) &&
+                SystemClock.elapsedRealtime() - lastCapture >= maxOf(1000L / fpsLimit.coerceAtLeast(1),
+                    if (liveCodec == "h264" && !ecoEnabled && heatState == PhoneHeatState.NORMAL) 33L
+                    else PhoneEcoPolicy.intervalMs(ecoEnabled, heatState)) &&
                 encoding.compareAndSet(false, true)) {
                 lastCapture = SystemClock.elapsedRealtime()
                 val snapshot = bytes.copyOf(byteCount)
@@ -421,7 +485,37 @@ class PhoneCameraBackgroundService : Service() {
             battery.read().also { cachedBattery = it; lastBatteryReadAt = now }
         } else requireNotNull(cachedBattery)
         latestBattery = reading
+        session.updateBattery(reading)
         heatState = PhoneEcoPolicy.heatState(reading.temperatureTenthsC, heatState)
+        if (liveCodec == "h264") {
+            try {
+                if (liveEncoder == null) {
+                    liveEncoder = PhoneH264LiveEncoder(width, height, fpsLimit,
+                        (if (ecoEnabled) 750_000 else if (requestedQuality >= 720) 2_000_000 else 1_250_000)) { bytes, _ ->
+                        server?.publishAvc(bytes)
+                        lastPublishedAtMs = SystemClock.elapsedRealtime()
+                        watchdogRestarts = 0
+                    }
+                    PhoneStreamDiagnostics.add("Encoder AVC inicializado: ${width}x$height, $fpsLimit fps")
+                }
+                liveEncoder?.append(frame, System.nanoTime())
+                // Apenas uma miniatura JPEG ocasional para a prévia local, sem publicar MJPEG.
+                if (now - lastJpegPreviewAt >= 1500L) {
+                    lastJpegPreviewAt = now
+                    val preview = ByteArrayOutputStream()
+                    if (YuvImage(frame, ImageFormat.NV21, width, height, null)
+                            .compressToJpeg(Rect(0, 0, width, height), 42, preview)) latestJpeg = preview.toByteArray()
+                }
+            } catch (e: Exception) {
+                PhoneStreamDiagnostics.add("Encoder H264: ${e.javaClass.simpleName}")
+                lastError = "H.264 indisponível: ${e.javaClass.simpleName}"
+                liveEncoder?.close(); liveEncoder = null
+                liveCodec = "mjpeg"
+                getSharedPreferences("phone_video", MODE_PRIVATE).edit().putString("stream_codec", "mjpeg").apply()
+                session.clearAvc()
+            }
+        }
+        if (liveCodec != "mjpeg") { appendRecording(frame, width, height); return }
         val jpeg = ByteArrayOutputStream()
         if (!YuvImage(frame, ImageFormat.NV21, width, height, null)
                 .compressToJpeg(Rect(0, 0, width, height), PhoneEcoPolicy.jpegQuality(ecoEnabled, heatState), jpeg)) return
@@ -431,13 +525,22 @@ class PhoneCameraBackgroundService : Service() {
         lastPublishedAtMs = SystemClock.elapsedRealtime()
         watchdogRestarts = 0
         session.publish(encoded, reading) // Dados da bateria nos headers, nunca gravados nos pixels.
+        appendRecording(frame, width, height)
+    }
+
+    private fun appendRecording(frame: ByteArray, width: Int, height: Int) {
         if (recording && recordingBusy.compareAndSet(false, true)) {
             val snapshot = frame.copyOf()
             try {
                 recordWorker.execute {
                     try {
                         if (recording) {
-                            if (recorder == null) recorder = PhoneMp4Recorder(applicationContext, width, height)
+                            if (recorder == null) {
+                                val prefs = getSharedPreferences("phone_video", MODE_PRIVATE)
+                                recorder = PhoneMp4Recorder(applicationContext, width, height,
+                                    prefs.getInt("record_fps", 15).coerceIn(5, 30),
+                                    prefs.getInt("record_bitrate", 2_000_000).coerceIn(500_000, 8_000_000))
+                            }
                             recorder?.append(snapshot, System.nanoTime())
                         }
                     } catch (_: Exception) {
@@ -453,6 +556,7 @@ class PhoneCameraBackgroundService : Service() {
     }
 
     private fun toggleRecording() {
+        PhoneStreamDiagnostics.add(if (recording) "Gravação encerrada" else "Gravação solicitada")
         recording = !recording
         recordingStartMs = if (recording) SystemClock.elapsedRealtime() else 0L
         if (!recording) recordWorker.execute { finishRecording() }
@@ -475,6 +579,8 @@ class PhoneCameraBackgroundService : Service() {
         recording = false
         recordingStartMs = 0L
         mainHandler.removeCallbacks(frameWatchdog)
+        transmissionStartedMs = 0L
+        PhoneStreamDiagnostics.add("Transmissão encerrada")
         streamUrl = null
         latestJpeg = null
         latestBattery = null
@@ -499,6 +605,36 @@ class PhoneCameraBackgroundService : Service() {
         }
         recordWorker.shutdown()
     }
+
+    private fun changeStreamCodec(desired: String): Boolean {
+        if (desired !in listOf("mjpeg", "h264") || closing || switching || !running || recording || takingPhoto) return false
+        if (desired == liveCodec) return true
+        // Não anunciar o codec novo antes do primeiro quadro codificado quando não há encoder compatível.
+        if (codecPending) return false
+        codecPending = true
+        try {
+            encodeWorker.execute {
+                try {
+                    liveEncoder?.close(); liveEncoder = null
+                    liveCodec = desired
+                    server?.clearFrame()
+                    server?.clearAvc()
+                    PhoneStreamDiagnostics.add("Codec selecionado: $desired")
+                    getSharedPreferences("phone_video", MODE_PRIVATE).edit().putString("stream_codec", desired).apply()
+                } catch (e: Exception) {
+                    PhoneStreamDiagnostics.add("Falha ao alterar codec: ${e.javaClass.simpleName}")
+                } finally { codecPending = false }
+            }
+        } catch (_: Exception) { codecPending = false; return false }
+        return true
+    }
+
+    private fun diagnosis(): String = PhoneStreamDiagnostics.report(
+        "modo=${if (running) "ativo" else "parado"}, codec=$liveCodec, gravando=$recording, " +
+            "eco=$ecoEnabled, capturados=$frameCount, ultimoCallbackMs=${SystemClock.elapsedRealtime()-lastCaptureAtMs}, " +
+            "ultimoCodificadoMs=${SystemClock.elapsedRealtime()-lastPublishedAtMs}, tentativas=$watchdogRestarts, " +
+            (headlessPreview?.health() ?: "surface=inativa")
+    )
 
     override fun onDestroy() {
         if (!closing) stopCaptureAndFinish()

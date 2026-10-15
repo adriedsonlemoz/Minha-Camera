@@ -1,3 +1,11 @@
+## 1.4.32+42 — 2026-10-15
+- H.264/AVC **experimental** adicionado para transmissão pela rede local, com codificação MediaCodec e playback LibVLC da rota autenticada `/h264/TOKEN`. MJPEG permanece padrão e como fallback.
+- Seletores MJPEG/H.264 no topo do transmissor e receptor, escolha remota autenticada, recuperação ao mudar de codec.
+- Perfis locais e remotos 360p, 480p, 720p, 1024×768 e 1080p conforme câmera; FPS-alvo 5, 10, 15, 24 ou 30. Gravação MP4 configura FPS e bitrate, sem prometer FPS real ou resolução independente do preview.
+- Cronômetro AO VIVO independente de REC nos dois aparelhos, incluindo tela apagada.
+- Botões de diagnóstico locais e remoto. Logs limitados e privados de travamentos, perdas de quadros, EGL, codificação e reinícios do watchdog; exportação e cópia.
+- Limitações: H.264 bruto HTTP/Annex-B e codec YUV420 requerem teste real, não há APK/compilação Gradle local. Redmi A3 pode limitar encoder, resolução, FPS e duração no background.
+
 ## 1.4.31+41 — 2026-10-15
 - Corrigidos os quatro erros Kotlin do workflow Build APK 31 (`:app:compileReleaseKotlin`).
 - Callbacks de qualidade e troca remota passam a resolver o servidor ativo após sua inicialização, sem capturar `session` no próprio construtor.

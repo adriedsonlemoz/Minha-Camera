@@ -77,8 +77,8 @@ class BackgroundCameraTests(unittest.TestCase):
         self.assertIn('connection.requestMethod = "POST"',self.viewer)
 
     def test_manifest_resource_and_version(self):
-        self.assertIn('versionCode = 41', (ROOT/'app/build.gradle.kts').read_text())
-        self.assertIn('versionName = "1.4.31"', (ROOT/'app/build.gradle.kts').read_text())
+        self.assertIn('versionCode = 42', (ROOT/'app/build.gradle.kts').read_text())
+        self.assertIn('versionName = "1.4.32"', (ROOT/'app/build.gradle.kts').read_text())
         strs=ET.parse(ROOT/'app/src/main/res/values/strings.xml').getroot()
         names={n.attrib['name'] for n in strs.findall('string')}
         for name in ('phone_background_enable','phone_background_stop','phone_view_telemetry_options'):

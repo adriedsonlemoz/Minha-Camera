@@ -19,15 +19,24 @@ object PhoneCameraUrls {
 
     /** Parâmetros de controle são enumerações fechadas para impedir requisições arbitrárias. */
     fun qualityCommandUrl(input: String, quality: Int): String? =
-        if (quality in listOf(360, 480, 720)) controlUrl(input, "quality/$quality") else null
+        if (quality in listOf(360, 480, 720, 768, 1080)) controlUrl(input, "quality/$quality") else null
 
     fun fpsCommandUrl(input: String, fps: Int): String? =
-        if (fps in listOf(5, 10, 15)) controlUrl(input, "fps/$fps") else null
+        if (fps in listOf(5, 10, 15, 24, 30)) controlUrl(input, "fps/$fps") else null
 
     fun facingCommandUrl(input: String, front: Boolean): String? =
         controlUrl(input, if (front) "camera/front" else "camera/back")
 
     fun photoCommandUrl(input: String): String? = controlUrl(input, "photo")
+
+    fun codecCommandUrl(input: String, codec: String): String? =
+        if (codec == "h264" || codec == "mjpeg") controlUrl(input, "codec/$codec") else null
+
+    fun statusUrl(input: String): String? = controlUrl(input, "status")
+
+    fun diagnosticUrl(input: String): String? = controlUrl(input, "diagnostic")
+
+    fun h264Url(input: String): String? = normalize(input)?.replace("/live/", "/h264/")
 
     private fun controlUrl(input: String, suffix: String): String? =
         normalize(input)?.replace("/live/", "/control/")?.plus("/$suffix")

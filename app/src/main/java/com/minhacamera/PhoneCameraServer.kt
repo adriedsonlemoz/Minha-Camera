@@ -24,7 +24,12 @@ class PhoneCameraServer(
     private val changeFacing: ((Int) -> Boolean)? = null,
     private val facingStatus: (() -> Int)? = null,
     private val takePhoto: (() -> Boolean)? = null,
-    private val recordingSeconds: (() -> Long)? = null
+    private val recordingSeconds: (() -> Long)? = null,
+    private val changeCodec: ((String) -> Boolean)? = null,
+    private val codecStatus: (() -> String)? = null,
+    private val transmissionSeconds: (() -> Long)? = null,
+    private val requestKeyframe: (() -> Unit)? = null,
+    private val diagnostics: (() -> String)? = null
 ) {
     init { require(token.matches(Regex("[0-9a-f]{32}"))) }
     private val server = ServerSocket(8765, 4, address)
@@ -34,6 +39,9 @@ class PhoneCameraServer(
     private val frameLock = java.lang.Object()
     private var sequence = 0L
     private var latest: ByteArray? = null
+    private var latestAvc: ByteArray? = null
+    private var avcSequence = 0L
+    private val codecLock = java.lang.Object()
     private var latestAtMs = 0L
     private var latestBattery: PhoneBatteryReading? = null
     @Volatile private var running = true
@@ -57,7 +65,7 @@ class PhoneCameraServer(
     }
 
     internal fun publish(jpeg: ByteArray, battery: PhoneBatteryReading? = null) {
-        if (!running || jpeg.isEmpty() || jpeg.size > 1_048_576) return
+        if (!running || jpeg.isEmpty() || jpeg.size > 2_500_000) return
         synchronized(frameLock) {
             latest = jpeg
             latestAtMs = SystemClock.elapsedRealtime()
@@ -65,6 +73,23 @@ class PhoneCameraServer(
             sequence++
             frameLock.notifyAll()
         }
+    }
+
+    internal fun updateBattery(reading: PhoneBatteryReading) {
+        synchronized(frameLock) { latestBattery = reading }
+    }
+
+    internal fun publishAvc(accessUnit: ByteArray) {
+        if (!running || accessUnit.isEmpty() || accessUnit.size > 2_097_152) return
+        synchronized(codecLock) {
+            latestAvc = accessUnit
+            avcSequence++
+            codecLock.notifyAll()
+        }
+    }
+
+    fun clearAvc() {
+        synchronized(codecLock) { latestAvc = null; avcSequence++; codecLock.notifyAll() }
     }
 
     /** Invalida o último quadro quando a câmera muda de lente ou resolução. */
@@ -105,10 +130,10 @@ class PhoneCameraServer(
                 "POST $control/eco/disable HTTP/1.1" -> false
                 else -> null
             }
-            val qualityAction = listOf(360, 480, 720).firstOrNull {
+            val qualityAction = listOf(360, 480, 720, 768, 1080).firstOrNull {
                 line == "POST $control/quality/$it HTTP/1.1"
             }
-            val fpsAction = listOf(5, 10, 15).firstOrNull {
+            val fpsAction = listOf(5, 10, 15, 24, 30).firstOrNull {
                 line == "POST $control/fps/$it HTTP/1.1"
             }
             val cameraAction = when (line) {
@@ -117,6 +142,54 @@ class PhoneCameraServer(
                 else -> null
             }
             val photoAction = line == "POST $control/photo HTTP/1.1"
+            val codecAction = when (line) {
+                "POST $control/codec/mjpeg HTTP/1.1" -> "mjpeg"
+                "POST $control/codec/h264 HTTP/1.1" -> "h264"
+                else -> null
+            }
+            if (codecAction != null) {
+                val success = try { changeCodec?.invoke(codecAction) == true } catch (_: Exception) { false }
+                peer.getOutputStream().write(("HTTP/1.1 ${if (success) "204 No Content" else "409 Conflict"}\r\n" +
+                    "Connection: close\r\nContent-Length: 0\r\n\r\n").toByteArray(Charsets.US_ASCII))
+                return
+            }
+            if (line == "GET $control/status HTTP/1.1" || line == "GET $control/status HTTP/1.0") {
+                val status = buildString {
+                    append("HTTP/1.1 200 OK\r\nCache-Control: no-store\r\n")
+                    append("X-Stream-Codec: ${codecStatus?.invoke() ?: "mjpeg"}\r\n")
+                    synchronized(frameLock) {
+                        latestBattery?.levelPercent?.let { append("X-Battery-Level: $it\r\n") }
+                        latestBattery?.temperatureTenthsC?.let { append("X-Battery-Temp-Tenths: $it\r\n") }
+                        latestBattery?.charging?.let { append("X-Battery-Charging: ${if (it) 1 else 0}\r\n") }
+                    }
+                    append("X-Transmission-Seconds: ${transmissionSeconds?.invoke() ?: 0}\r\n")
+                    recordingSeconds?.let { append("X-Recording-Seconds: ${it()}\r\n") }
+                    recordingStatus?.let { append("X-Recording: ${if (it()) 1 else 0}\r\n") }
+                    ecoStatus?.let { append("X-Eco: ${if (it()) 1 else 0}\r\n") }
+                    qualityStatus?.let { append("X-Quality-Profile: ${it()}\r\n") }
+                    fpsStatus?.let { append("X-FPS-Target: ${it()}\r\n") }
+                    facingStatus?.let { append("X-Camera-Facing: ${it()}\r\n") }
+                    append("Content-Length: 0\r\nConnection: close\r\n\r\n")
+                }
+                peer.getOutputStream().write(status.toByteArray(Charsets.US_ASCII))
+                return
+            }
+            if (line == "GET $control/diagnostic HTTP/1.1") {
+                val report = (diagnostics?.invoke() ?: "Diagnóstico indisponível").toByteArray(Charsets.UTF_8)
+                peer.getOutputStream().write(("HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\n" +
+                    "Cache-Control: no-store\r\nContent-Length: ${report.size}\r\nConnection: close\r\n\r\n").toByteArray(Charsets.US_ASCII))
+                peer.getOutputStream().write(report)
+                return
+            }
+            val h264 = wanted.replaceFirst("/live/", "/h264/")
+            if (line == "GET $h264 HTTP/1.1" || line == "GET $h264 HTTP/1.0") {
+                if (codecStatus?.invoke() != "h264") {
+                    peer.getOutputStream().write("HTTP/1.1 409 Conflict\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray(Charsets.US_ASCII))
+                    return
+                }
+                serveAvc(peer)
+                return
+            }
             if (qualityAction != null || fpsAction != null || cameraAction != null || photoAction) {
                 val success = try {
                     when {
@@ -149,6 +222,10 @@ class PhoneCameraServer(
                 peer.getOutputStream().write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n".toByteArray(Charsets.US_ASCII))
                 return
             }
+            if (codecStatus?.invoke() == "h264") {
+                peer.getOutputStream().write("HTTP/1.1 409 Conflict\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".toByteArray(Charsets.US_ASCII))
+                return
+            }
             val out = peer.getOutputStream()
             out.write(("HTTP/1.1 200 OK\r\n" +
                 "Content-Type: multipart/x-mixed-replace; boundary=frame\r\n" +
@@ -175,6 +252,8 @@ class PhoneCameraServer(
                     fpsStatus?.let { append("X-FPS-Target: ${it()}\r\n") }
                     facingStatus?.let { append("X-Camera-Facing: ${it()}\r\n") }
                     recordingSeconds?.let { append("X-Recording-Seconds: ${it()}\r\n") }
+                    transmissionSeconds?.let { append("X-Transmission-Seconds: ${it()}\r\n") }
+                    codecStatus?.let { append("X-Stream-Codec: ${it()}\r\n") }
                 }
                 out.write(("--frame\r\nContent-Type: image/jpeg\r\nContent-Length: ${next.jpeg.size}\r\n" +
                     "X-Frame-Elapsed-Ms: ${next.atMs}\r\n$batteryHeaders\r\n").toByteArray(Charsets.US_ASCII))
@@ -188,6 +267,26 @@ class PhoneCameraServer(
             peers.remove(peer)
             peerCount.decrementAndGet()
             try { peer.close() } catch (_: Exception) { }
+        }
+    }
+
+    private fun serveAvc(peer: Socket) {
+        // Fluxo H.264 Annex-B contínuo; LibVLC usa demux=h264 no cliente.
+        peer.getOutputStream().write(("HTTP/1.1 200 OK\r\nContent-Type: video/h264\r\n" +
+            "Cache-Control: no-store\r\nConnection: close\r\n\r\n").toByteArray(Charsets.US_ASCII))
+        requestKeyframe?.invoke()
+        var last = 0L
+        val out = peer.getOutputStream()
+        while (running && !peer.isClosed && codecStatus?.invoke() == "h264") {
+            val packet = synchronized(codecLock) {
+                if (running && last == avcSequence) codecLock.wait(1200)
+                if (last == avcSequence) null else {
+                    last = avcSequence
+                    latestAvc
+                }
+            } ?: continue
+            out.write(packet)
+            out.flush()
         }
     }
 
@@ -207,6 +306,7 @@ class PhoneCameraServer(
         running = false
         try { server.close() } catch (_: Exception) { }
         synchronized(frameLock) { latest = null; latestBattery = null; frameLock.notifyAll() }
+        synchronized(codecLock) { latestAvc = null; codecLock.notifyAll() }
         peers.forEach { try { it.close() } catch (_: Exception) { } }
         peers.clear()
     }

@@ -1,3 +1,12 @@
+# Minha Câmera 1.4.32 (versionCode 42)
+
+- Transmissão H.264 experimental com MediaCodec/LibVLC via HTTP local autenticado; MJPEG mantido como compatibilidade e fallback.
+- Seletor de codec visível nos dois aparelhos, incluindo comando remoto autenticado.
+- Configuração de resolução/FPS da transmissão e FPS/bitrate do MP4; qualidade JPEG normal aumentada conservadoramente.
+- Cronômetro de transmissão AO VIVO independente de gravação MP4.
+- Diagnóstico de câmera com tela apagada: callbacks NV21, buffers EGL, tempo sem quadros, erros de codec e reinicializações; registros locais limitados e consultáveis remotamente com o token.
+- Compilação Android, reprodução H.264 e estabilidade real no Redmi A3 pendentes de testes físicos.
+
 # Minha Câmera 1.4.31 (versionCode 41)
 
 - Correção dos quatro erros de compilação Kotlin confirmados pelo workflow Build APK 31.

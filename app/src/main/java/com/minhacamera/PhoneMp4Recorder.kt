@@ -44,7 +44,8 @@ internal object PhoneYuv420 {
 
 /** Grava MP4/H.264 sem áudio. Todos os métodos são invocados sequencialmente no worker de quadros. */
 @Suppress("DEPRECATION")
-internal class PhoneMp4Recorder(private val context: Context, val width: Int, val height: Int) {
+internal class PhoneMp4Recorder(private val context: Context, val width: Int, val height: Int,
+    private val fps: Int = 12, private val bitrate: Int = 1_500_000) {
     private val temp = File.createTempFile("phone-camera-", ".mp4", context.cacheDir)
     private var codec: MediaCodec? = null
     private var muxer: MediaMuxer? = null
@@ -72,8 +73,8 @@ internal class PhoneMp4Recorder(private val context: Context, val width: Int, va
             planar = color == MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar
             val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
                 setInteger(MediaFormat.KEY_COLOR_FORMAT, color)
-                setInteger(MediaFormat.KEY_BIT_RATE, 1_500_000)
-                setInteger(MediaFormat.KEY_FRAME_RATE, 12)
+                setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
+                setInteger(MediaFormat.KEY_FRAME_RATE, fps)
                 setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 2)
             }
             encoder.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)

@@ -26,7 +26,7 @@ internal object PhoneEcoPolicy {
     fun jpegQuality(ecoEnabled: Boolean, state: PhoneHeatState): Int = when {
         state == PhoneHeatState.HOT -> 45
         ecoEnabled -> 50
-        else -> 62
+        else -> 72
     }
 
     /** Prévia dupla local: evitar JPEG decode e Bitmaps demais em aparelho fraco. */

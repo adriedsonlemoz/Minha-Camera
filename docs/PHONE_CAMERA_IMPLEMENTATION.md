@@ -80,3 +80,8 @@ O receptor exibe dados compactos em cabeçalho/card, sem duplicar a camada sobre
 
 ## Serviço de captura em tela apagada e controle remoto (1.4.30+40)
 A prévia local não inicia MJPEG até o usuário tocar Iniciar transmissão. O serviço `PhoneHeadlessPreview` cria EGL pbuffer com SurfaceTexture e chama updateTexImage em cada frame no HandlerThread para esvaziar BufferQueue sem desenhar. O HTTP privado ganhou foto JPEG nativa, qualidade/fps e troca de câmera. A foto é salva no próprio transmissor e interrompe brevemente preview; durante REC os comandos destrutivos retornam conflito. O receptor mostra o FPS real e dimensões JPEG, não infere 720p. Testar no aparelho após build.
+
+## H.264 experimental e diagnóstico do modo apagado (1.4.32+42)
+No transmissor, MJPEG é o formato de compatibilidade em `/live/TOKEN`; o modo H.264 usa MediaCodec AVC ByteBuffer com quadros NV21 convertidos para YUV420 e entrega NALs Annex-B via HTTP `/h264/TOKEN`. A recepção usa LibVLC com `demux=h264`. Alternar é autenticado via POST e o receptor consulta `GET /control/TOKEN/status`; os dois devem estar atualizados. Encoders incompatíveis ou sem suporte acelerado recuam para MJPEG, mas é obrigatório testar MediaCodec+LibVLC no Redmi A3.
+
+A prévia de segundo plano possui contadores de callbacks `SurfaceTexture`, `updateTexImage()`, erro EGL, última captura NV21 e última publicação, persistindo eventos importantes em `private_stream_diagnostics`. A tela exibe relógio de transmissão independente do REC. Requer testes em aparelho: rede Wi-Fi, bloqueio real, PiP, 720p/30 FPS, gravação e temperatura.

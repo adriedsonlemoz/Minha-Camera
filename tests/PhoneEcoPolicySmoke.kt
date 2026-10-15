@@ -7,7 +7,7 @@ internal fun checkPhoneEcoPolicy() {
     check(p.intervalMs(true, PhoneHeatState.NORMAL) == 200L)
     check(p.intervalMs(false, PhoneHeatState.HOT) == 300L)
     check(p.intervalMs(true, PhoneHeatState.HOT) == 300L)
-    check(p.jpegQuality(false, PhoneHeatState.NORMAL) == 62)
+    check(p.jpegQuality(false, PhoneHeatState.NORMAL) == 72)
     check(p.jpegQuality(true, PhoneHeatState.NORMAL) == 50)
     check(p.jpegQuality(false, PhoneHeatState.HOT) == 45)
     check(p.dualPreviewIntervalMs(false, PhoneHeatState.NORMAL) == 160L)

@@ -155,6 +155,7 @@ private fun checkRtspSdpProbe() {
 }
 
 fun main() {
+    checkAvcAnnexB()
     checkPhoneEcoPolicy()
     checkStreamStats()
     checkPhoneCamera()
@@ -345,11 +346,18 @@ private fun checkRemoteRecordingApi() {
         "http://192.168.12.2:8765/control/$token/quality/720")
     check(PhoneCameraUrls.fpsCommandUrl(privateUrl, 15) ==
         "http://192.168.12.2:8765/control/$token/fps/15")
+    check(PhoneCameraUrls.codecCommandUrl(privateUrl, "h264") ==
+        "http://192.168.12.2:8765/control/$token/codec/h264")
+    check(PhoneCameraUrls.h264Url(privateUrl) ==
+        "http://192.168.12.2:8765/h264/$token")
+    check(PhoneCameraUrls.statusUrl(privateUrl) ==
+        "http://192.168.12.2:8765/control/$token/status")
+    check(PhoneCameraUrls.codecCommandUrl(privateUrl, "hevc") == null)
     check(PhoneCameraUrls.facingCommandUrl(privateUrl, true) ==
         "http://192.168.12.2:8765/control/$token/camera/front")
     check(PhoneCameraUrls.photoCommandUrl(privateUrl) ==
         "http://192.168.12.2:8765/control/$token/photo")
-    check(PhoneCameraUrls.qualityCommandUrl(privateUrl, 1080) == null)
+    check(PhoneCameraUrls.qualityCommandUrl(privateUrl, 1080) != null)
     check(PhoneCameraUrls.fpsCommandUrl(privateUrl, 100) == null)
     check(PhoneCameraUrls.photoCommandUrl("http://8.8.8.8:8765/live/$token") == null)
     val localhost = java.net.InetAddress.getByName("127.0.0.1") as java.net.Inet4Address
@@ -359,6 +367,7 @@ private fun checkRemoteRecordingApi() {
     var fps = 10
     var facing = 0
     var photos = 0
+    var codec = "mjpeg"
     val server = PhoneCameraServer(localhost, token,
         changeRecording = { wanted -> recording = wanted; true },
         recordingStatus = { recording },
@@ -367,7 +376,9 @@ private fun checkRemoteRecordingApi() {
         changeQuality = { quality = it; true }, qualityStatus = { quality },
         changeFps = { fps = it; true }, fpsStatus = { fps },
         changeFacing = { facing = it; true }, facingStatus = { facing },
-        takePhoto = { photos++; true }, recordingSeconds = { 3L })
+        takePhoto = { photos++; true }, recordingSeconds = { 3L },
+        changeCodec = { codec = it; true }, codecStatus = { codec },
+        transmissionSeconds = { 42L }, diagnostics = { "Apenas teste local" })
     server.start()
     try {
         fun command(path: String, method: String = "POST"): Int {
@@ -402,7 +413,28 @@ private fun checkRemoteRecordingApi() {
         check(command("/control/$token/photo") == 204 && photos == 1)
         check(command("/control/${"0".repeat(32)}/photo") == 403 && photos == 1)
         check(command("/control/$token/photo", "GET") == 403 && photos == 1)
-        check(command("/control/$token/quality/1080") == 403 && quality == 720)
+        check(command("/control/$token/quality/1080") == 204 && quality == 1080)
+        check(command("/control/$token/codec/h264") == 204 && codec == "h264")
+        check(command("/control/${"0".repeat(32)}/codec/mjpeg") == 403 && codec == "h264")
+        check(command("/control/$token/codec/mjpeg", "GET") == 403 && codec == "h264")
+        val h264 = java.net.URL(server.url.replace("/live/", "/h264/"))
+            .openConnection() as java.net.HttpURLConnection
+        try {
+            h264.connectTimeout = 2000
+            h264.readTimeout = 3000
+            check(h264.responseCode == 200)
+            check(h264.contentType == "video/h264")
+        } finally { h264.disconnect() }
+        check(command("/control/$token/codec/mjpeg") == 204 && codec == "mjpeg")
+        val status = java.net.URL(server.url.replace("/live/", "/control/") + "/status")
+            .openConnection() as java.net.HttpURLConnection
+        try {
+            check(status.responseCode == 200)
+            check(status.getHeaderField("X-Stream-Codec") == "mjpeg")
+            check(status.getHeaderField("X-Transmission-Seconds") == "42")
+        } finally { status.disconnect() }
+        check(command("/control/$token/diagnostic", "GET") == 200)
+        check(command("/control/${"0".repeat(32)}/diagnostic", "GET") == 403)
     } finally { server.stop() }
     println("OK: REC, Eco, foto, qualidade, FPS e câmera remotos autenticados; token/método inválidos rejeitados")
 }

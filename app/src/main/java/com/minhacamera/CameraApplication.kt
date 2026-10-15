@@ -11,6 +11,7 @@ import java.util.Locale
 class CameraApplication : Application() {
     override fun onCreate() {
         super.onCreate()
+        try { PhoneStreamDiagnostics.initialize(this) } catch (_: Exception) { }
         val previous = Thread.getDefaultUncaughtExceptionHandler()
         Thread.setDefaultUncaughtExceptionHandler { thread, error ->
             try {

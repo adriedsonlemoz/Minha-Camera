@@ -36,7 +36,7 @@ def test_remote_commands_authorized_and_quality_enum():
         assert route in server
     for endpoint in ('qualityCommandUrl', 'fpsCommandUrl', 'facingCommandUrl', 'photoCommandUrl'):
         assert endpoint in urls
-    assert 'quality !in listOf(360, 480, 720)' in read('PhoneCameraBackgroundService.kt')
+    assert 'quality !in listOf(360, 480, 720, 768, 1080)' in read('PhoneCameraBackgroundService.kt')
     assert 'recording || takingPhoto' in read('PhoneCameraBackgroundService.kt')
     assert 'MAX' not in urls
 

@@ -8,7 +8,9 @@ import android.opengl.EGLDisplay
 import android.opengl.EGLSurface
 import android.opengl.GLES11Ext
 import android.opengl.GLES20
+import android.os.SystemClock
 import android.os.Handler
+import android.os.SystemClock
 import android.os.HandlerThread
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -28,11 +30,31 @@ internal class PhoneHeadlessPreview private constructor(
     private val textureId: Int
 ) {
     @Volatile private var closed = false
+    @Volatile var receivedFrames = 0L
+        private set
+    @Volatile var drainedFrames = 0L
+        private set
+    @Volatile var eglErrors = 0L
+        private set
+    @Volatile var lastDrainMs = 0L
+        private set
+
+    fun health(): String = "surfaceRecebidos=$receivedFrames, consumidos=$drainedFrames, " +
+        "errosEGL=$eglErrors, ultimoConsumoMs=${SystemClock.elapsedRealtime()-lastDrainMs}"
 
     init {
         surfaceTexture.setOnFrameAvailableListener({ frame ->
             if (!closed) {
-                try { frame.updateTexImage() } catch (_: RuntimeException) { }
+                receivedFrames++
+                try {
+                    frame.updateTexImage()
+                    drainedFrames++
+                    lastDrainMs = SystemClock.elapsedRealtime()
+                } catch (error: RuntimeException) {
+                    eglErrors++
+                    if (eglErrors <= 2 || eglErrors % 30L == 0L)
+                        PhoneStreamDiagnostics.add("SurfaceTexture updateTexImage: ${error.javaClass.simpleName}; falha #$eglErrors")
+                }
             }
         }, handler)
     }

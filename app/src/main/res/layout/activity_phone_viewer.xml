@@ -11,6 +11,17 @@
             <TextView android:id="@+id/phoneViewerStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:ellipsize="end" android:maxLines="2" android:text="@string/phone_connecting" android:textColor="@color/ui_muted" android:textSize="12sp"/>
         </LinearLayout>
     </LinearLayout>
+    <TextView android:id="@+id/viewerCodecTop"
+        android:layout_width="wrap_content" android:layout_height="40dp" android:layout_marginEnd="5dp"
+        android:minWidth="64dp" android:gravity="center" android:paddingHorizontal="8dp"
+        android:background="@drawable/bg_ui_card" android:text="MJPEG" android:textColor="@color/brand_primary"
+        android:textStyle="bold" android:textSize="11sp" android:clickable="true" android:focusable="true"
+        android:contentDescription="@string/phone_codec_title" />
+    <ImageView android:id="@+id/viewerDiagnosticTop"
+        android:layout_width="40dp" android:layout_height="40dp" android:padding="10dp"
+        android:src="@drawable/ic_ui_bug" android:background="?attr/selectableItemBackgroundBorderless"
+        android:clickable="true" android:focusable="true"
+        android:contentDescription="@string/phone_diagnostic_title" />
     <TextView android:id="@+id/viewerBatteryPill" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:background="@drawable/bg_viewer_battery" android:paddingHorizontal="12dp" android:paddingVertical="8dp" android:textColor="@color/app_text" android:textStyle="bold" android:textSize="14sp" android:visibility="gone"/>
 </LinearLayout>
 <!-- Dark monitoring panel -->
@@ -20,6 +31,10 @@
         <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:text="@string/ui_live" android:textColor="#E6EDF5" android:textSize="14sp" android:textStyle="bold"/>
         <TextView android:id="@+id/viewerTemperature" android:layout_width="wrap_content" android:layout_height="wrap_content" android:textColor="#E6EDF5" android:textSize="13sp" android:visibility="gone"/>
     </LinearLayout>
+    <TextView android:id="@+id/viewerTransmissionClock"
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:text="@string/phone_clock_idle" android:textColor="#C2E7DB"
+        android:textStyle="bold" android:textSize="13sp" android:paddingBottom="8dp"/>
     <LinearLayout android:id="@+id/phoneViewerVideoParent" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
         <FrameLayout android:id="@+id/phoneViewerPreviewContainer" android:layout_width="match_parent" android:layout_height="290dp" android:background="@drawable/bg_ui_preview" android:clipToOutline="true">
             <ImageView android:id="@+id/phoneImage" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#050A10" android:contentDescription="@string/phone_camera" android:scaleType="fitCenter"/>

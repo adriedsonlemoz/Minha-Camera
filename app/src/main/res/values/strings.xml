@@ -140,7 +140,7 @@ Experimente habilitar H.264 ou outro perfil na câmera e refazer a busca.</strin
     <string name="phone_delay_unavailable">atraso --</string>
     <string name="phone_reconnecting">Sinal perdido. Reconectando…</string>
     <string name="phone_access_denied">Acesso negado. Escaneie o novo QR.</string>
-    <string name="novidades_text">Versão 1.4.31 (código 41)\n• Corrigidos quatro erros de compilação Kotlin do Build APK 31.\n• Mantidos transmissão manual, REC, PiP, foto e comandos de câmera remotos.\n\nVersão 1.4.30 (código 40)\n• Início manual da transmissão, separado de prévia e REC.\n• Correção de possível travamento no modo com tela apagada: consumo EGL da SurfaceTexture.\n• Comandos autenticados para foto JPEG nativa, resolução, FPS e troca de câmera.\n• Cronômetro REC recebido do transmissor e modo expandido com botões discretos.\n• Novidades apresentadas uma vez a cada atualização.\n\nVersão 1.4.29 (código 39)\n• Visualizador remodelado com painel claro, card de vídeo escuro e telemetria compacta.\n• Atalhos Gravar, Foto local do quadro recebido, Girar, Expandir, PiP, Espelho, Inteira e Refazer.\n• Eco remoto autenticado no modo persistente; FPS e resolução reais exibidos sem inventar valores.\n• Mais opções renovado e indicadores completos apenas quando solicitados.\n\nVersão 1.4.28 (código 38)
+    <string name="novidades_text">Versão 1.4.32 (código 42)\n• Novo formato H.264 experimental via Wi-Fi, mantendo MJPEG para compatibilidade.\n• Troque MJPEG ou H.264 no topo do transmissor ou remotamente no receptor.\n• Cronômetro AO VIVO nos dois aparelhos, independente da gravação REC.\n• Painel de diagnóstico: falhas na câmera, EGL, codificação, Wi-Fi e congelamentos.\n• Resolução, FPS e perfis de bitrate ajustáveis conforme hardware.\n\nVersão 1.4.31 (código 41)\n• Corrigidos quatro erros de compilação Kotlin do Build APK 31.\n• Mantidos transmissão manual, REC, PiP, foto e comandos de câmera remotos.\n\nVersão 1.4.30 (código 40)\n• Início manual da transmissão, separado de prévia e REC.\n• Correção de possível travamento no modo com tela apagada: consumo EGL da SurfaceTexture.\n• Comandos autenticados para foto JPEG nativa, resolução, FPS e troca de câmera.\n• Cronômetro REC recebido do transmissor e modo expandido com botões discretos.\n• Novidades apresentadas uma vez a cada atualização.\n\nVersão 1.4.29 (código 39)\n• Visualizador remodelado com painel claro, card de vídeo escuro e telemetria compacta.\n• Atalhos Gravar, Foto local do quadro recebido, Girar, Expandir, PiP, Espelho, Inteira e Refazer.\n• Eco remoto autenticado no modo persistente; FPS e resolução reais exibidos sem inventar valores.\n• Mais opções renovado e indicadores completos apenas quando solicitados.\n\nVersão 1.4.28 (código 38)
 • Pop-up Mais do transmissor renovado com layout moderno, ícones e switches para opções liga/desliga.
 • Link, Código e Gravações ficaram mais claros com descrições curtas e ações melhor organizadas.
 • Bateria no vídeo, modo Eco e tela apagada agora mostram estado visual imediato no próprio menu.
@@ -338,8 +338,24 @@ Abra uma câmera e toque em Gravar.</string>
     <string name="viewer_remote_facing_requested">Troca de câmera solicitada. A imagem pode pausar brevemente.</string>
     <string name="viewer_fullscreen_hint">Controles compactos na parte inferior. Toque no vídeo para ocultar ou mostrar.</string>
     <string name="welcome_latest_title">Bem-vindo à nova versão!</string>
-    <string name="welcome_latest_summary">Minha Câmera 1.4.31: correção da compilação Kotlin do Build APK 31 e manutenção das funções anteriores; na 1.4.30 houve transmissão iniciada manualmente, correção de travamentos com a tela apagada, foto remota na resolução máxima anunciada, ajustes de qualidade, FPS e câmera remota, gravação com cronômetro, tela cheia com controles compactos e ícones atualizados.
+    <string name="welcome_latest_summary">Novidades 1.4.32: H.264 experimental e MJPEG preservado, seleção local/remota, cronômetro ao vivo, ajustes de qualidade e diagnóstico de congelamentos de tela apagada.\n\nMinha Câmera 1.4.31: correção da compilação Kotlin do Build APK 31 e manutenção das funções anteriores; na 1.4.30 houve transmissão iniciada manualmente, correção de travamentos com a tela apagada, foto remota na resolução máxima anunciada, ajustes de qualidade, FPS e câmera remota, gravação com cronômetro, tela cheia com controles compactos e ícones atualizados.
 
 Abra Mais → Novidades para consultar o histórico. Os comandos avançados exigem que os dois celulares estejam atualizados e que o modo persistente esteja ativo no transmissor.</string>
     <string name="welcome_latest_continue">Começar</string>
+    <string name="phone_codec_title">Formato da transmissão</string>
+    <string name="phone_codec_changed">Formato solicitado. Reconectando…</string>
+    <string name="phone_clock_idle">Transmissão parada · 00:00:00</string>
+    <string name="phone_h264_playback_failed">Não foi possível reproduzir H.264. Selecione MJPEG.</string>
+    <string name="phone_diagnostic_title">Diagnóstico da transmissão</string>
+    <string name="phone_diagnostic_copy">Copiar diagnóstico</string>
+    <string name="phone_diagnostic_copied">Diagnóstico copiado</string>
+    <string name="phone_diagnostic_share">Compartilhar relatório</string>
+    <string name="phone_diagnostic_unavailable">Diagnóstico remoto indisponível. Confirme a transmissão e tente novamente.</string>
+    <string name="phone_record_profile_title">Qualidade da gravação MP4</string>
+    <string name="phone_record_profile_hint">Escolher FPS e bitrate da gravação; a resolução acompanha a câmera ativa.</string>
+    <string name="phone_record_profile_saved">Perfil salvo para a próxima gravação.</string>
+    <string name="phone_local_quality">Resolução da transmissão</string>
+    <string name="phone_local_quality_hint">360p, 480p, 720p, 1024×768 ou 1080p</string>
+    <string name="phone_local_fps">FPS da transmissão</string>
+    <string name="phone_local_fps_hint">Limite de quadros por segundo, conforme hardware</string>
 </resources>

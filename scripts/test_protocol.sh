@@ -23,6 +23,8 @@ kotlinc \
   "$ROOT/app/src/main/java/com/minhacamera/PhoneCameraServer.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/PhoneStreamStats.kt" \
   "$ROOT/app/src/main/java/com/minhacamera/PhoneEcoPolicy.kt" \
+  "$ROOT/app/src/main/java/com/minhacamera/PhoneAvcAnnexB.kt" \
+  "$ROOT/tests/PhoneAvcAnnexBSmoke.kt" \
   "$ROOT/tests/ProtocolSmoke.kt" \
   "$ROOT/tests/PhoneEcoPolicySmoke.kt" \
   -include-runtime -d "$BUILD/tests.jar"

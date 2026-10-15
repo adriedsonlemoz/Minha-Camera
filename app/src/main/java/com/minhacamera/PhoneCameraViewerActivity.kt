@@ -33,6 +33,13 @@ import java.io.BufferedInputStream
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
+import android.net.Uri
+import android.os.Handler
+import android.os.Looper
+import org.videolan.libvlc.LibVLC
+import org.videolan.libvlc.Media
+import org.videolan.libvlc.MediaPlayer as VlcMediaPlayer
+import org.videolan.libvlc.util.VLCVideoLayout
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
@@ -53,6 +60,36 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     private class InvalidTokenException : IOException()
 
     private lateinit var pipHost: FrameLayout
+    private lateinit var codecButton: TextView
+    private lateinit var remoteClock: TextView
+    private var viewerCodec = "mjpeg"
+    private var vlcCore: LibVLC? = null
+    private var vlcPlayer: VlcMediaPlayer? = null
+    private var vlcVideo: VLCVideoLayout? = null
+    private val statusHandler = Handler(Looper.getMainLooper())
+    private var statusPollPending = false
+    private var h264StartedAt = 0L
+    private val codecStatusTick = object : Runnable {
+        override fun run() {
+            if (!active || viewerCodec != "h264") return
+            if (!statusPollPending) {
+                statusPollPending = true
+                Thread({
+                    val snapshot = probeStatus()
+                    runOnUiThread {
+                        statusPollPending = false
+                        if (!active || viewerCodec != "h264") return@runOnUiThread
+                        if (snapshot.codec == "mjpeg") { stop(); start(); return@runOnUiThread }
+                        applyRemoteStatus(snapshot)
+                    }
+                }, "h264-telemetry").apply { isDaemon = true; start() }
+            }
+            statusHandler.postDelayed(this, 1500)
+        }
+    }
+    private data class RemoteStatus(val codec: String?, val transmissionSeconds: Long?,
+        val recordSeconds: Long?, val recording: Boolean?, val battery: Int?, val temp: Int?,
+        val charging: Boolean?, val eco: Boolean?, val quality: Int?, val fps: Int?, val facing: Int?)
     private lateinit var batteryPill: TextView
     private lateinit var temperatureLabel: TextView
     private lateinit var resolutionLabel: TextView
@@ -121,6 +158,10 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         // Cabeçalho da câmera obtido do cadastro ou do endereço, nunca inventa o modelo.
         findViewById<TextView>(R.id.viewerCameraName).text = title
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        codecButton = findViewById(R.id.viewerCodecTop)
+        remoteClock = findViewById(R.id.viewerTransmissionClock)
+        codecButton.setOnClickListener { chooseRemoteCodec() }
+        findViewById<View>(R.id.viewerDiagnosticTop).setOnClickListener { showRemoteDiagnostic() }
         batteryPill = findViewById(R.id.viewerBatteryPill)
         temperatureLabel = findViewById(R.id.viewerTemperature)
         resolutionLabel = findViewById(R.id.viewerRemoteQualityValue)
@@ -410,15 +451,153 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         }, "camera-remote-command").apply { isDaemon = true; start() }
     }
 
+    private fun chooseRemoteCodec() {
+        val options = arrayOf("MJPEG • compatibilidade", "H.264 • experimental")
+        AlertDialog.Builder(this).setTitle(R.string.phone_codec_title)
+            .setSingleChoiceItems(options, if (viewerCodec == "h264") 1 else 0) { dialog, index ->
+                dialog.dismiss()
+                val next = if (index == 1) "h264" else "mjpeg"
+                if (next == viewerCodec) return@setSingleChoiceItems
+                postRemote(PhoneCameraUrls.codecCommandUrl(intent.getStringExtra("url").orEmpty(), next),
+                    R.string.phone_codec_changed) { stop(); start() }
+            }.setNegativeButton(R.string.cancelar, null).show()
+    }
+
+    private fun showRemoteDiagnostic() {
+        val url = PhoneCameraUrls.diagnosticUrl(intent.getStringExtra("url").orEmpty())
+        if (url == null) return
+        Thread({
+            val report = try {
+                NetUtil.bindToWifi(applicationContext)
+                val conn = URL(url).openConnection() as HttpURLConnection
+                try {
+                    conn.connectTimeout = 2500; conn.readTimeout = 2500
+                    if (conn.responseCode != 200) getString(R.string.phone_diagnostic_unavailable)
+                    else conn.inputStream.bufferedReader().use { it.readText().take(16000) }
+                } finally { conn.disconnect() }
+            } catch (_: Exception) { getString(R.string.phone_diagnostic_unavailable) }
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                AlertDialog.Builder(this).setTitle(R.string.phone_diagnostic_title).setMessage(report)
+                    .setPositiveButton(R.string.phone_diagnostic_copy) { _, _ ->
+                        val manager = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        manager.setPrimaryClip(android.content.ClipData.newPlainText("Diagnóstico remoto", report))
+                    }.setNegativeButton(R.string.ui_close, null).show()
+            }
+        }, "remote-diagnostic").apply { isDaemon = true; start() }
+    }
+
+    private fun probeStatus(): RemoteStatus {
+        val url = PhoneCameraUrls.statusUrl(intent.getStringExtra("url").orEmpty()) ?: return RemoteStatus(null,null,null,null,null,null,null,null,null,null,null)
+        return try {
+            NetUtil.bindToWifi(applicationContext)
+            val conn = URL(url).openConnection() as HttpURLConnection
+            try {
+                conn.connectTimeout = 1800; conn.readTimeout = 1800; conn.useCaches = false
+                if (conn.responseCode != 200) return RemoteStatus(null,null,null,null,null,null,null,null,null,null,null)
+                fun int(name: String) = conn.getHeaderField(name)?.toIntOrNull()
+                fun bool(name: String) = when (conn.getHeaderField(name)) { "1" -> true; "0" -> false; else -> null }
+                RemoteStatus(conn.getHeaderField("X-Stream-Codec"),
+                    conn.getHeaderField("X-Transmission-Seconds")?.toLongOrNull(),
+                    conn.getHeaderField("X-Recording-Seconds")?.toLongOrNull(), bool("X-Recording"),
+                    int("X-Battery-Level"),int("X-Battery-Temp-Tenths"),bool("X-Battery-Charging"),
+                    bool("X-Eco"),int("X-Quality-Profile"),int("X-FPS-Target"),int("X-Camera-Facing"))
+            } finally { conn.disconnect() }
+        } catch (_: Exception) { RemoteStatus(null,null,null,null,null,null,null,null,null,null,null) }
+    }
+
+    private fun applyRemoteStatus(state: RemoteStatus) {
+        state.transmissionSeconds?.let { seconds ->
+            remoteClock.text = String.format(Locale.US, "AO VIVO %02d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60)
+        }
+        remoteRecording = state.recording ?: remoteRecording
+        remoteEco = state.eco ?: remoteEco
+        remoteQuality = state.quality ?: remoteQuality
+        remoteFps = state.fps ?: remoteFps
+        remoteFacing = state.facing ?: remoteFacing
+        state.recordSeconds?.let { seconds ->
+            if (remoteRecording == true) recordingClock.text = String.format(Locale.US, "● REC %02d:%02d:%02d",
+                seconds / 3600, seconds / 60 % 60, seconds % 60)
+        }
+        if (state.battery != null || state.temp != null || state.charging != null)
+            lastBattery = PhoneBatteryReading(state.battery, state.temp, state.charging, null)
+        applyTelemetry(lastBattery)
+        refreshRecordingUi()
+        updateEcoUi()
+        if (remoteQuality != null) resolutionLabel.text = "${remoteQuality}p (perfil)"
+        if (remoteFps != null) fpsLabel.text = "$remoteFps FPS (alvo)"
+        if (remoteFacing != null) facingLabel.setText(if (remoteFacing == 1) R.string.phone_front_camera else R.string.phone_back_camera)
+    }
+
+    private fun startH264(session: Int) {
+        val url = PhoneCameraUrls.h264Url(intent.getStringExtra("url").orEmpty()) ?: return
+        try {
+            val parent = previewContainer as FrameLayout
+            val view = VLCVideoLayout(this)
+            parent.addView(view, 1, FrameLayout.LayoutParams(-1, -1))
+            vlcVideo = view
+            image.visibility = View.GONE
+            val core = LibVLC(this, arrayListOf("--network-caching=140", "--no-audio", "--stats"))
+            vlcCore = core
+            val player = VlcMediaPlayer(core)
+            vlcPlayer = player
+            player.attachViews(view, null, false, false)
+            player.setEventListener { event ->
+                runOnUiThread {
+                    if (!active || attempts != session || vlcPlayer !== player) return@runOnUiThread
+                    when (event.type) {
+                        VlcMediaPlayer.Event.Vout -> {
+                            onlineDot.alpha = 1f
+                            status.setText(R.string.phone_receiving)
+                            displayedFirstFrame = true
+                        }
+                        VlcMediaPlayer.Event.EncounteredError, VlcMediaPlayer.Event.EndReached -> {
+                            status.setText(R.string.phone_h264_playback_failed)
+                            onlineDot.alpha = 0.3f
+                        }
+                    }
+                }
+            }
+            val media = Media(core, Uri.parse(url))
+            media.addOption(":demux=h264")
+            media.addOption(":network-caching=140")
+            media.addOption(":live-caching=140")
+            media.addOption(":no-audio")
+            player.setMedia(media)
+            media.release()
+            player.play()
+            viewerCodec = "h264"
+            codecButton.text = "H.264"
+            remoteClock.visibility = View.VISIBLE
+            statusHandler.post(codecStatusTick)
+        } catch (e: Exception) {
+            PhoneStreamDiagnostics.add("Visualizador AVC indisponível: ${e.javaClass.simpleName}")
+            status.setText(R.string.phone_h264_playback_failed)
+            releaseVlc()
+        }
+    }
+
+    private fun releaseVlc() {
+        try { vlcPlayer?.stop() } catch (_: Exception) { }
+        try { vlcPlayer?.detachViews() } catch (_: Exception) { }
+        try { vlcPlayer?.release() } catch (_: Exception) { }
+        vlcPlayer = null
+        vlcVideo?.let { (it.parent as? FrameLayout)?.removeView(it) }
+        vlcVideo = null
+        try { vlcCore?.release() } catch (_: Exception) { }
+        vlcCore = null
+        image.visibility = View.VISIBLE
+    }
+
     private fun requestRemotePhoto() {
         val url = PhoneCameraUrls.photoCommandUrl(intent.getStringExtra("url").orEmpty())
         postRemote(url, R.string.viewer_remote_photo_requested)
     }
 
     private fun chooseRemoteQuality() {
-        val options = intArrayOf(360, 480, 720)
+        val options = intArrayOf(360, 480, 720, 768, 1080)
         AlertDialog.Builder(this).setTitle(R.string.viewer_remote_quality_title)
-            .setSingleChoiceItems(arrayOf("360p · economia", "480p · normal", "720p · qualidade"),
+            .setSingleChoiceItems(arrayOf("360p · economia", "480p · normal", "720p · HD", "1024×768 · 4:3", "1080p · quando suportado"),
                 options.indexOf(remoteQuality ?: -1)) { dialog, index ->
                 dialog.dismiss()
                 postRemote(PhoneCameraUrls.qualityCommandUrl(intent.getStringExtra("url").orEmpty(), options[index]),
@@ -427,9 +606,9 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     }
 
     private fun chooseRemoteFps() {
-        val options = intArrayOf(5, 10, 15)
+        val options = intArrayOf(5, 10, 15, 24, 30)
         AlertDialog.Builder(this).setTitle(R.string.viewer_remote_fps_title)
-            .setSingleChoiceItems(arrayOf("5 FPS", "10 FPS", "15 FPS"), options.indexOf(remoteFps ?: -1)) { dialog, index ->
+            .setSingleChoiceItems(arrayOf("5 FPS", "10 FPS", "15 FPS", "24 FPS", "30 FPS"), options.indexOf(remoteFps ?: -1)) { dialog, index ->
                 dialog.dismiss()
                 postRemote(PhoneCameraUrls.fpsCommandUrl(intent.getStringExtra("url").orEmpty(), options[index]),
                     R.string.viewer_remote_fps_updated) { remoteFps = options[index] }
@@ -583,6 +762,9 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         if (uri == null) { status.setText(R.string.phone_invalid_url); return }
         NetUtil.bindToWifi(this)
         active = true
+        viewerCodec = "mjpeg"
+        codecButton.text = "MJPEG"
+        remoteClock.text = getString(R.string.phone_clock_idle)
         val session = ++attempts
         fps.reset(SystemClock.elapsedRealtime())
         displayedFirstFrame = false
@@ -612,6 +794,12 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         reader = Thread({
             var failures = 0
             while (active && attempts == session && !Thread.currentThread().isInterrupted) {
+                val state = probeStatus()
+                if (state.codec == "h264") {
+                    runOnUiThread { if (active && attempts == session) { applyRemoteStatus(state); startH264(session) } }
+                    return@Thread
+                }
+                if (state.codec == "mjpeg") runOnUiThread { if (active && attempts == session) applyRemoteStatus(state) }
                 var ownConnection: HttpURLConnection? = null
                 try {
                     NetUtil.bindToWifi(applicationContext)
@@ -652,6 +840,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                             var remoteFacingHeader: Int? = null
                             var remoteQualityHeader: Int? = null
                             var remoteFpsHeader: Int? = null
+                            var streamSecondsHeader: Long? = null
                             while (true) {
                                 val line = readAsciiLine(input) ?: throw IOException("Conexão encerrada")
                                 if (line.isEmpty()) break
@@ -679,6 +868,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                                     line.substringAfter(':').trim().toIntOrNull()
                                 if (line.startsWith("X-Quality-Profile:", true)) remoteQualityHeader =
                                     line.substringAfter(':').trim().toIntOrNull()
+                                if (line.startsWith("X-Transmission-Seconds:", true)) streamSecondsHeader =
+                                    line.substringAfter(':').trim().toLongOrNull()
                                 if (line.startsWith("X-FPS-Target:", true)) remoteFpsHeader =
                                     line.substringAfter(':').trim().toIntOrNull()
                                 if (line.startsWith("X-Eco:", true)) remoteEcoHeader = when (line.substringAfter(':').trim()) {
@@ -693,13 +884,18 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                                         else -> null
                                     }
                             }
-                            if (!jpeg || length !in 1..1_048_576) throw IOException("Quadro JPEG inválido")
+                            if (!jpeg || length !in 1..2_500_000) throw IOException("Quadro JPEG inválido")
                             val bytes = ByteArray(length)
                             var pos = 0
                             while (pos < length) {
                                 val n = input.read(bytes, pos, length - pos)
                                 if (n <= 0) throw IOException("Quadro incompleto")
                                 pos += n
+                            }
+                            if (streamSecondsHeader != null) {
+                                val seconds = streamSecondsHeader
+                                runOnUiThread { if (active && attempts == session) remoteClock.text =
+                                    String.format(Locale.US, "AO VIVO %02d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60) }
                             }
                             val lag = PhoneDeliveryDelay.estimateMs(SystemClock.elapsedRealtime(), frameAtMs, offset)
                             val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size,
@@ -846,6 +1042,9 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     }
 
     private fun stop() {
+        statusHandler.removeCallbacks(codecStatusTick)
+        statusPollPending = false
+        releaseVlc()
         active = false
         attempts++
         frameOnDeck.getAndSet(null)?.bitmap?.recycle()

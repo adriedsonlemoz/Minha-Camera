@@ -116,6 +116,22 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     // Abrir a tela inicia somente a prévia, sem servidor HTTP nem arquivo MP4.
     private var transmissionEnabled = false
     private lateinit var transmissionButton: TextView
+    private lateinit var transmissionClock: TextView
+    private lateinit var codecButton: TextView
+    private var sessionStartMs = 0L
+    @Volatile private var fpsTarget = 10
+    private val clockTick = object : Runnable {
+        override fun run() {
+            if (!visible) return
+            val start = if (backgroundMode) PhoneCameraBackgroundService.transmissionStartedMs else sessionStartMs
+            val live = if (backgroundMode) PhoneCameraBackgroundService.running else server != null
+            transmissionClock.text = if (live && start > 0L) {
+                val seconds = ((SystemClock.elapsedRealtime() - start) / 1000).coerceAtLeast(0)
+                String.format(Locale.US, "AO VIVO %02d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60)
+            } else getString(R.string.phone_clock_idle)
+            uiHandler.postDelayed(this, 1000L)
+        }
+    }
     private var backgroundRequestedAt = 0L
     private lateinit var backgroundPreview: ImageView
     private val backgroundTick = object : Runnable {
@@ -146,6 +162,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                 telemetryPreview.text = battery.compactLabel()
                 telemetryPreview.visibility = if (showBatteryOverlay) View.VISIBLE else View.GONE
             }
+            codecButton.text = selectedStreamCodec().uppercase(Locale.US)
             if (service.recording != recordingRequested) {
                 recordingRequested = service.recording
                 showRecordState(recordingRequested)
@@ -171,10 +188,16 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         ecoEnabled = getSharedPreferences("phone_video", MODE_PRIVATE).getBoolean("eco_enabled", false)
         showBatteryOverlay = getSharedPreferences("phone_video", MODE_PRIVATE)
             .getBoolean("show_battery_overlay", true)
+        fpsTarget = getSharedPreferences("phone_video", MODE_PRIVATE).getInt("remote_fps",10)
         singlePreviewContainer = findViewById(R.id.phoneSinglePreview)
         dualPreviewContainer = findViewById(R.id.phoneDualPreview)
         dualTop = findViewById(R.id.phoneDualTop)
         dualBottom = findViewById(R.id.phoneDualBottom)
+        transmissionClock = findViewById(R.id.phoneTransmissionClock)
+        codecButton = findViewById(R.id.phoneCodecTop)
+        codecButton.setOnClickListener { chooseLocalCodec() }
+        codecButton.setOnLongClickListener { chooseRecordingProfile(); true }
+        findViewById<View>(R.id.phoneDiagnosticTop).setOnClickListener { showDiagnostic() }
         transmissionButton = findViewById(R.id.phoneTransmissionToggle)
         transmissionButton.setOnClickListener { toggleTransmission() }
         recordButton = findViewById(R.id.phoneRecord)
@@ -251,12 +274,16 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             surfaceReady = preview.isAvailable
             tryStart()
         }
+        codecButton.text = selectedStreamCodec().uppercase(Locale.US)
         refreshTransmissionButton()
+        uiHandler.removeCallbacks(clockTick)
+        uiHandler.post(clockTick)
     }
     override fun onPause() {
         visible = false
         uiHandler.removeCallbacks(performanceTick)
         uiHandler.removeCallbacks(backgroundTick)
+        uiHandler.removeCallbacks(clockTick)
         if (!backgroundMode) {
             transmissionEnabled = false
             stopStreaming()
@@ -272,6 +299,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     override fun onDestroy() {
         preview.surfaceTextureListener = null
         uiHandler.removeCallbacks(recordTick)
+        uiHandler.removeCallbacks(clockTick)
         uiHandler.removeCallbacks(performanceTick)
         uiHandler.removeCallbacks(backgroundTick)
         backgroundPreview.setImageDrawable(null)
@@ -318,7 +346,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
 
     private fun toggleTransmission() {
         if (backgroundMode) {
-            toggleBackgroundMode() // O botão de transmissão também encerra o modo persistente.
+            transmissionEnabled = false
+            toggleBackgroundMode() // Encerra sem reiniciar automaticamente o MJPEG.
             return
         }
         if (transmissionEnabled) {
@@ -329,6 +358,11 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             uiHandler.postDelayed({ if (visible) tryStart() }, 120)
         } else {
             transmissionEnabled = true
+            if (selectedStreamCodec() == "h264") {
+                toggleBackgroundMode() // H.264 usa o serviço com câmera independente da Activity.
+                refreshTransmissionButton()
+                return
+            }
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             stopStreaming()
             refreshTransmissionButton()
@@ -371,10 +405,12 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             camera = c
             selectedId = deviceId
             val params = c.parameters
-            val sizes = params.supportedPreviewSizes.orEmpty()
+            val sizes = params.supportedPreviewSizes.orEmpty().filter { it.width > 0 && it.height > 0 && it.width.toLong()*it.height <= 1920L*1080 }
+            val target = getSharedPreferences("phone_video", MODE_PRIVATE).getInt("remote_quality", 480)
+            val expectedWide = target * (if (target == 768) 4 else 16) / (if (target == 768) 3 else 9)
             val size = sizes.minByOrNull {
-                kotlin.math.abs(it.width - 640) + kotlin.math.abs(it.height - 480) +
-                    if (it.width * it.height > 1280 * 720) 10000 else 0
+                kotlin.math.abs(minOf(it.width,it.height) - target) * 10 +
+                    kotlin.math.abs(maxOf(it.width,it.height) - expectedWide)
             } ?: throw IllegalStateException("Preview indisponível")
             params.setPreviewSize(size.width, size.height)
             params.previewFormat = ImageFormat.NV21
@@ -403,7 +439,44 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             updateOrientation()
             c.setPreviewTexture(preview.surfaceTexture
                 ?: throw IllegalStateException("Superfície da prévia indisponível"))
-            val session = PhoneCameraServer(ip, PhoneCameraAccess.token(this))
+            val session = PhoneCameraServer(ip, PhoneCameraAccess.token(this),
+                changeCodec = { desired ->
+                    if (desired != "h264" || !visible || recordingRequested || dualMode) false
+                    else {
+                        runOnUiThread {
+                            if (visible && !recordingRequested) {
+                                getSharedPreferences("phone_video", MODE_PRIVATE).edit().putString("stream_codec", "h264").apply()
+                                stopStreaming()
+                                toggleBackgroundMode()
+                                codecButton.text = "H264"
+                            }
+                        }
+                        true
+                    }
+                }, codecStatus = { "mjpeg" },
+                transmissionSeconds = { if (sessionStartMs > 0L)
+                    (SystemClock.elapsedRealtime() - sessionStartMs).coerceAtLeast(0)/1000 else 0L },
+                recordingStatus = { recordingRequested },
+                recordingSeconds = { if (recordingRequested && recordingStartedAt > 0)
+                    (SystemClock.elapsedRealtime()-recordingStartedAt).coerceAtLeast(0)/1000 else 0L },
+                changeQuality = { quality ->
+                    if (!visible || recordingRequested || quality !in listOf(360,480,720,768,1080)) false else {
+                        runOnUiThread {
+                            if (visible && !recordingRequested) {
+                                getSharedPreferences("phone_video", MODE_PRIVATE).edit().putInt("remote_quality",quality).apply()
+                                stopStreaming(); if (visible) tryStart()
+                            }
+                        }; true
+                    }
+                }, qualityStatus = { getSharedPreferences("phone_video",MODE_PRIVATE).getInt("remote_quality",480) },
+                changeFps = { targetFps ->
+                    if (!visible || targetFps !in listOf(5,10,15,24,30)) false else {
+                        fpsTarget = targetFps
+                        getSharedPreferences("phone_video",MODE_PRIVATE).edit().putInt("remote_fps",targetFps).apply()
+                        true
+                    }
+                }, fpsStatus = { fpsTarget },
+                diagnostics = { PhoneStreamDiagnostics.report("Transmissão em primeiro plano; quadros=$receivedCameraFrames; modo=MJPEG") })
             lastTelemetryLabel = ""
             cachedTelemetryLabel = ""
             previousBatteryReading = null
@@ -424,7 +497,9 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                 }
                 if (data != null && visible && server === session && data.size >= byteCount &&
                     !encoding.get() && SystemClock.elapsedRealtime() - lastCapture >=
-                        PhoneEcoPolicy.intervalMs(ecoEnabled, heatState) &&
+                        maxOf(1000L / fpsTarget.coerceAtLeast(1),
+                            if (!ecoEnabled && heatState == PhoneHeatState.NORMAL && fpsTarget > 10) 33L
+                            else PhoneEcoPolicy.intervalMs(ecoEnabled, heatState)) &&
                     encoding.compareAndSet(false, true)) {
                     lastCapture = SystemClock.elapsedRealtime()
                     val snapshot = data.copyOf(byteCount)
@@ -445,6 +520,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             repeat(3) { c.addCallbackBuffer(ByteArray(byteCount)) }
             c.startPreview()
             session.start()
+            sessionStartMs = SystemClock.elapsedRealtime()
+            PhoneStreamDiagnostics.add("Transmissão MJPEG iniciada na Activity")
             address.text = session.url
             status.setText(R.string.phone_waiting_frames)
             // O QR só é criado ao tocar no botão QR, nunca automaticamente.
@@ -617,7 +694,9 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                     try {
                         if (recordingRequested) {
                             if (recorder == null) {
-                                recorder = PhoneMp4Recorder(applicationContext, w, h)
+                                val prefs = getSharedPreferences("phone_video", MODE_PRIVATE)
+                                recorder = PhoneMp4Recorder(applicationContext, w, h,
+                                    prefs.getInt("record_fps",15),prefs.getInt("record_bitrate",2_000_000))
                                 recordingStartedAt = SystemClock.elapsedRealtime()
                                 runOnUiThread { showRecordState(true) }
                             }
@@ -746,12 +825,15 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         transmissionEnabled = false
         stopStreaming()
         backgroundMode = true
+        if (visible) { uiHandler.removeCallbacks(clockTick); uiHandler.post(clockTick) }
         refreshTransmissionButton()
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         backgroundRequestedAt = SystemClock.elapsedRealtime()
         status.setText(R.string.phone_background_starting)
         try {
             PhoneCameraBackgroundService.command(this, PhoneCameraBackgroundService.ACTION_START, selectedFacing)
+            uiHandler.removeCallbacks(clockTick)
+            if (visible) uiHandler.post(clockTick)
             uiHandler.removeCallbacks(backgroundTick)
             uiHandler.postDelayed(backgroundTick, 800)
         } catch (e: Exception) {
@@ -791,8 +873,18 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             dialog.dismiss()
             findViewById<View>(R.id.phoneRevoke).performClick()
         }
+        content.findViewById<View>(R.id.moreQualityRow).setOnClickListener {
+            dialog.dismiss(); chooseLocalQuality()
+        }
+        content.findViewById<View>(R.id.moreFpsRow).setOnClickListener {
+            dialog.dismiss(); chooseLocalFps()
+        }
+        content.findViewById<View>(R.id.moreStorageRow).setOnLongClickListener {
+            chooseRecordingProfile(); true
+        }
         content.findViewById<View>(R.id.moreStorageRow).setOnClickListener {
-            Toast.makeText(this, R.string.phone_record_location, Toast.LENGTH_LONG).show()
+            dialog.dismiss()
+            chooseRecordingProfile()
         }
         content.findViewById<View>(R.id.moreOverlayRow).setOnClickListener {
             showBatteryOverlay = !showBatteryOverlay
@@ -822,6 +914,102 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
 
         refreshStates()
         dialog.show()
+    }
+
+    private fun chooseLocalQuality() {
+        val options = intArrayOf(360,480,720,768,1080)
+        val labels = arrayOf("360p • economia", "480p • compatibilidade", "720p • HD",
+            "1024×768 • 4:3", "1080p • quando suportado")
+        val prefs = getSharedPreferences("phone_video", MODE_PRIVATE)
+        androidx.appcompat.app.AlertDialog.Builder(this).setTitle(R.string.viewer_remote_quality_title)
+            .setSingleChoiceItems(labels, options.indexOf(prefs.getInt("remote_quality",480))) { dialog, index ->
+                dialog.dismiss()
+                if (recordingRequested) { Toast.makeText(this, R.string.phone_stop_record_first, Toast.LENGTH_LONG).show(); return@setSingleChoiceItems }
+                if (backgroundMode && PhoneCameraBackgroundService.running) {
+                    PhoneCameraBackgroundService.changeSettingsLocal(this, PhoneCameraBackgroundService.ACTION_QUALITY, options[index])
+                } else {
+                    prefs.edit().putInt("remote_quality",options[index]).apply()
+                    stopStreaming()
+                    if (visible) tryStart()
+                }
+            }.setNegativeButton(R.string.cancelar, null).show()
+    }
+
+    private fun chooseLocalFps() {
+        val options = intArrayOf(5,10,15,24,30)
+        val prefs = getSharedPreferences("phone_video", MODE_PRIVATE)
+        androidx.appcompat.app.AlertDialog.Builder(this).setTitle(R.string.viewer_remote_fps_title)
+            .setSingleChoiceItems(options.map { "$it FPS" }.toTypedArray(),
+                options.indexOf(prefs.getInt("remote_fps",10))) { dialog, index ->
+                dialog.dismiss()
+                if (backgroundMode && PhoneCameraBackgroundService.running)
+                    PhoneCameraBackgroundService.changeSettingsLocal(this,PhoneCameraBackgroundService.ACTION_FPS,options[index])
+                else {
+                    fpsTarget = options[index]
+                    prefs.edit().putInt("remote_fps",options[index]).apply()
+                }
+            }.setNegativeButton(R.string.cancelar, null).show()
+    }
+
+    private fun chooseRecordingProfile() {
+        val labels = arrayOf("Economia • 10 FPS / 1 Mbps", "Equilibrado • 15 FPS / 2 Mbps",
+            "Qualidade • 24 FPS / 4 Mbps", "Alta fluidez • 30 FPS / 6 Mbps")
+        val prefs = getSharedPreferences("phone_video", MODE_PRIVATE)
+        val fps = intArrayOf(10, 15, 24, 30)
+        val bitrate = intArrayOf(1_000_000, 2_000_000, 4_000_000, 6_000_000)
+        androidx.appcompat.app.AlertDialog.Builder(this).setTitle(R.string.phone_record_profile_title)
+            .setSingleChoiceItems(labels, fps.indexOf(prefs.getInt("record_fps", 15))) { dialog, index ->
+                dialog.dismiss()
+                if (recordingRequested) { Toast.makeText(this, R.string.phone_stop_record_first, Toast.LENGTH_LONG).show(); return@setSingleChoiceItems }
+                prefs.edit().putInt("record_fps", fps[index]).putInt("record_bitrate", bitrate[index]).apply()
+                Toast.makeText(this, R.string.phone_record_profile_saved, Toast.LENGTH_SHORT).show()
+            }.setNegativeButton(R.string.cancelar, null).show()
+    }
+
+    private fun selectedStreamCodec(): String = getSharedPreferences("phone_video", MODE_PRIVATE)
+        .getString("stream_codec", "mjpeg")?.takeIf { it == "h264" } ?: "mjpeg"
+
+    private fun chooseLocalCodec() {
+        val options = arrayOf("MJPEG • compatibilidade", "H.264 • experimental, menos tráfego")
+        val old = selectedStreamCodec()
+        androidx.appcompat.app.AlertDialog.Builder(this).setTitle(R.string.phone_codec_title)
+            .setSingleChoiceItems(options, if (old == "h264") 1 else 0) { dialog, index ->
+                dialog.dismiss()
+                val chosen = if (index == 1) "h264" else "mjpeg"
+                if (chosen == old) return@setSingleChoiceItems
+                if (recordingRequested || (dualMode && chosen == "h264")) {
+                    Toast.makeText(this, if (dualMode) R.string.phone_background_single_only else R.string.phone_stop_record_first,
+                        Toast.LENGTH_LONG).show()
+                    return@setSingleChoiceItems
+                }
+                if (backgroundMode && PhoneCameraBackgroundService.running) {
+                    PhoneCameraBackgroundService.changeCodecLocal(this, chosen)
+                } else {
+                    getSharedPreferences("phone_video", MODE_PRIVATE).edit().putString("stream_codec", chosen).apply()
+                    if (transmissionEnabled && chosen == "h264") {
+                        stopStreaming()
+                        toggleBackgroundMode()
+                    }
+                }
+                codecButton.text = chosen.uppercase(Locale.US)
+            }.setNegativeButton(R.string.cancelar, null).show()
+    }
+
+    private fun showDiagnostic() {
+        val report = PhoneStreamDiagnostics.report("tela=${if (backgroundMode) "apagável" else "normal"}, " +
+            "transmissão=${if (backgroundMode) PhoneCameraBackgroundService.running else server != null}, " +
+            "últimoErro=${PhoneCameraBackgroundService.lastError ?: "nenhum"}")
+        androidx.appcompat.app.AlertDialog.Builder(this).setTitle(R.string.phone_diagnostic_title)
+            .setMessage(report)
+            .setPositiveButton(R.string.phone_diagnostic_copy) { _, _ ->
+                val manager = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                manager.setPrimaryClip(android.content.ClipData.newPlainText("Diagnóstico Minha Câmera", report))
+                Toast.makeText(this, R.string.phone_diagnostic_copied, Toast.LENGTH_SHORT).show()
+            }
+            .setNeutralButton(R.string.phone_diagnostic_share) { _, _ ->
+                startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND)
+                    .setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, report), getString(R.string.phone_diagnostic_share)))
+            }.setNegativeButton(R.string.ui_close, null).show()
     }
 
     private fun openQrDialog() {
@@ -915,6 +1103,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private fun stopStreaming() {
         recordingRequested = false
         uiHandler.removeCallbacks(recordTick)
+        // O relógio continua ativo na tela e reflete imediatamente uma nova sessão ou parada.
         uiHandler.removeCallbacks(performanceTick)
         showRecordState(false)
         try { recordWorker.execute { finishRecording() } } catch (_: Exception) { }
@@ -933,6 +1122,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         qrDialog = null
         val previous = server
         server = null
+        sessionStartMs = 0L
         previous?.stop()
         val c = camera
         camera = null
