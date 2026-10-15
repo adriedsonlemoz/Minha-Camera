@@ -1,6 +1,6 @@
 # Descobertas do Minha Câmera úteis para o Vigia IA
 
-Atualizado em **1.4.9+19** (2026-10-11).
+Atualizado em **1.4.26+36** (2026-10-15).
 
 Este material serve como registro técnico: **não significa que o Vigia IA foi modificado**.
 
@@ -15,7 +15,7 @@ Este material serve como registro técnico: **não significa que o Vigia IA foi 
 
 - `RtspCodec.kt`: detectar o codec **de vídeo** pelo SDP (`m=video` + `a=rtpmap`), ignorando rtpmap de áudio. Não determinar o codec apenas pelo nome do caminho ou pelo retorno HTTP/RTSP 200.
 - `ScanActivity.kt`: quando o primário é H.265, testar o caminho secundário antes de salvá-lo como principal; usar H.264 se confirmado pelo SDP. Não presumir que todo substream é H.264.
-- `PlayerActivity.kt`: manter Media3 como padrão, tentar URLs alternativas e, se necessário, abrir com LibVLC para melhorar compatibilidade com HEVC/RTSP. Prever timeout, cancelamento de callbacks obsoletos e liberação de recursos.
+- `PlayerActivity.kt`: lição histórica da 1.4.2 era iniciar Media3; a 1.4.26 alterou essa escolha após crash não tratado em `RtspClient.java:544` do Media3 1.3.1 ao processar `CSeq` ausente. Iniciar LibVLC diretamente até validar uma versão do Media3 que trate respostas RTSP malformadas sem encerrar o processo. Prever timeout, cancelamento de callbacks obsoletos e liberação de recursos.
 - Nunca publicar URLs RTSP com credenciais em logs, relatórios de erro ou analytics. Preferir um armazenamento protegido por keystore/criptografia com processo de migração dos dados legados.
 
 ## Atenções na adaptação para Flutter/Android
@@ -93,3 +93,10 @@ Os testes simulados da 1.4.2 validam o **parser SDP e a sondagem RTSP**, não a 
 ## Minha Câmera 1.4.18: indicação de bateria no vídeo
 
 `PhoneBatteryTelemetry` lê nível e temperatura **da bateria local** pelo Android. `PhoneBatteryOverlay` aplica selo NV21 uma vez antes dos dois destinos, MJPEG e gravação MP4. Para o Vigia IA, considerar overlay opcional na visualização ou telemetria separada, pois o selo irreversível nos pixels pode não atender usos em que é necessário obter a imagem original. A função não foi incorporada ao Vigia IA.
+
+## Crash de resposta RTSP Media3 1.3.1 (Minha Câmera 1.4.26)
+
+- Log real: `thread=ExoPlayer:Playback`, `NullPointerException`, `RtspClient$MessageListener.handleRtspResponse:544`. Na versão 1.3.1, a linha usa `checkNotNull` sobre o cabeçalho `CSeq` da resposta.
+- `try/catch` em `ExoPlayer.prepare()` e `Player.Listener.onPlayerError` não contêm exceções não tratadas no `HandlerThread` do cliente RTSP; um fallback pós-falha não chega a ser executado.
+- Mitigação no app: LibVLC como motor exclusivo acionável para RTSP, com tentativa de URLs alternativas, PiP e gravação preservados. Media3 permanece desabilitado até atualização/testes de protocolos RTSP irregulares.
+- Investigar com captura RTSP redigida sem segredos antes de atribuir definitivamente a causa ao firmware da câmera. Não modificar automaticamente o Vigia IA.

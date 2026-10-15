@@ -36,3 +36,9 @@
 - Validar janelas QR e scanner retrato em dois dispositivos, inclusive MIUI e autorização de câmera.
 - Confirmar que ao fechar o QR a transmissão não é interrompida e que a leitura abre o espectador.
 - Verificar tamanhos reduzidos, modo noturno e acessibilidade dos controles de 4 ícones.
+
+## Acompanhamento 1.4.26 (RTSP)
+
+- Validar na Câmera 209 que o LibVLC reproduz e não há mais `RtspClient.handleRtspResponse:544` (motor Media3 RTSP suspenso).
+- Reavaliar versão Media3 futura com resposta RTSP sem `CSeq` e testes físicos antes de reabilitar a opção. Não reintroduzir fallback assíncrono incapaz de capturar crashes em `HandlerThread`.
+- Medir qualidade, latência, consumo e PiP no celular do guidão; não inferir estabilidade por testes estáticos.

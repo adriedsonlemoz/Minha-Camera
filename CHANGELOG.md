@@ -1,3 +1,11 @@
+## 1.4.26+36 — 2026-10-15
+
+- Corrigido o caminho de fechamento ao conectar RTSP: `NullPointerException` não tratada em `RtspClient.MessageListener.handleRtspResponse` do Media3 1.3.1 (linha 544; leitura de cabeçalho `CSeq` ausente).
+- LibVLC 3.7.7 agora é o único motor RTSP acessível por iniciar, repetir conexão e trocar URLs alternativas. A opção Media3 foi suspensa no menu, e há uma proteção central para impedir seu acionamento indireto.
+- Não há mais tentativa inicial com Media3 antes de cair para LibVLC: a exceção era lançada na thread interna, antes de um fallback. O Media3 permanece como código desativado para reavaliação futura após atualização/testes.
+- Mantidos PiP nativo RTSP/MJPEG, gravação por LibVLC, espelhamento do receptor, descoberta ONVIF, cinco ABIs e assinatura existente. Nenhum dado cadastrado é apagado.
+- Análise baseada no log entregue; sem captura do tráfego bruto não é possível provar se a câmera omitiu `CSeq` ou se o cabeçalho se perdeu na resposta. Compilação/funcionamento no Android ainda pendentes.
+
 ## 1.4.25+35 — 2026-10-15
 
 - PiP nativo em **Celular → Assistir** (MJPEG), com vídeo isolado, sem controle extra ou sobreposição por permissão especial. A leitura sobrevive ao `onPause` e termina no `onStop` quando PiP não estiver ativo; reconexão e espelho preservados.

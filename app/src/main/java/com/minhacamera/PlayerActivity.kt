@@ -42,10 +42,13 @@ import org.videolan.libvlc.util.VLCVideoLayout
 import java.io.File
 import java.util.Locale
 
-/** Keep the original Media3 -> LibVLC fallback. Recording uses the active VLC stream. */
+/** RTSP em LibVLC por padrão: Media3 1.3.1 pode encerrar o processo em resposta sem CSeq. */
 @OptIn(UnstableApi::class)
 class PlayerActivity : AppCompatActivity() {
     private enum class Engine { MEDIA3, VLC }
+    // Bloqueio explícito para impedir reentrada acidental no parser RTSP Media3 1.3.1.
+    // Apenas reabilitar depois de atualizar/testar Media3 com respostas RTSP malformadas.
+    private val media3RtspEnabled = false
     private var exo: ExoPlayer? = null
     private var vlcCore: LibVLC? = null
     private var vlcPlayer: VlcMediaPlayer? = null
@@ -65,7 +68,7 @@ class PlayerActivity : AppCompatActivity() {
     private lateinit var videoContainer: FrameLayout
     private var urls: List<String> = emptyList()
     private var index = 0
-    private var engine = Engine.MEDIA3
+    private var engine = Engine.VLC
     private var generation = 0
     private var active = false
     private var hevcSeen = false
@@ -115,7 +118,7 @@ class PlayerActivity : AppCompatActivity() {
         urls = (listOf(main) + alternatives).filter { it.startsWith("rtsp://", true) }.distinct()
         displayMode = (savedInstanceState?.getInt("displayMode") ?: 0).coerceIn(0, 2)
         fullscreen = savedInstanceState?.getBoolean("fullscreen") ?: false
-        findViewById<View>(R.id.btnRetry).setOnClickListener { resetAndPlay(Engine.MEDIA3) }
+        findViewById<View>(R.id.btnRetry).setOnClickListener { resetAndPlay(Engine.VLC) }
         recordButton.setOnClickListener { onRecordClick() }
         findViewById<View>(R.id.btnRecordings).setOnClickListener { startActivity(Intent(this, RecordingsActivity::class.java)) }
         findViewById<View>(R.id.btnDisplay).setOnClickListener {
@@ -174,7 +177,6 @@ class PlayerActivity : AppCompatActivity() {
         viewport.post { applyDisplayMode(); applyFullscreen() }
     }
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menu.add(0, 2001, 0, R.string.usar_media3)
         menu.add(0, 2002, 1, R.string.usar_vlc)
         menu.add(0, 2003, 2, R.string.informacoes_tecnicas)
         menu.add(0, 2004, 3, R.string.identificar_camera)
@@ -182,7 +184,6 @@ class PlayerActivity : AppCompatActivity() {
         return true
     }
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
-        2001 -> { resetAndPlay(Engine.MEDIA3); true }
         2002 -> { resetAndPlay(Engine.VLC); true }
         2003 -> { AlertDialog.Builder(this).setTitle(R.string.informacoes_tecnicas).setMessage(getString(
             R.string.engine_fluxo, if (engine == Engine.MEDIA3) "Media3" else "LibVLC", index+1, urls.size
@@ -194,7 +195,7 @@ class PlayerActivity : AppCompatActivity() {
     override fun onSupportNavigateUp(): Boolean { if (fullscreen) { fullscreen=false; applyFullscreen() } else finish(); return true }
     override fun onStart() {
         super.onStart()
-        if (!active) { active = true; resetAndPlay(Engine.MEDIA3) }
+        if (!active) { active = true; resetAndPlay(Engine.VLC) }
     }
     override fun onStop() {
         if (android.os.Build.VERSION.SDK_INT >= 26 && isInPictureInPictureMode) { super.onStop(); return }
@@ -283,7 +284,9 @@ class PlayerActivity : AppCompatActivity() {
         }.also { it.start() }
     }
     private fun resetAndPlay(startEngine: Engine) {
-        recordPending = false; index = 0; engine = startEngine
+        recordPending = false; index = 0
+        // Centraliza a política: nenhum botão/tentativa inicia Media3 RTSP nesta release.
+        engine = if (media3RtspEnabled) startEngine else Engine.VLC
         failures.clear(); hevcSeen = false
         if (active) playCurrent()
     }
@@ -312,6 +315,7 @@ class PlayerActivity : AppCompatActivity() {
     }
     private fun playCurrent() {
         val url = urls.getOrNull(index)
+        if (!media3RtspEnabled) engine = Engine.VLC
         val current = ++generation; failedGeneration = -1
         releasePlayers(); videoReady = false; videoAspect = 0.0; applyDisplayMode(); errorBox.visibility = View.GONE
         if (url == null) { showFailure(); return }
@@ -487,7 +491,9 @@ class PlayerActivity : AppCompatActivity() {
         if (!active || failedGeneration == generation) return
         failedGeneration = generation
         failures.add("$from (fluxo ${index+1}): ${maskCredentials(detail)}")
-        if (index+1 < urls.size) index++ else if (engine == Engine.MEDIA3) { engine=Engine.VLC; index=0 } else { showFailure(); return }
+        if (index + 1 < urls.size) index++
+        else if (engine == Engine.MEDIA3 && media3RtspEnabled) { engine = Engine.VLC; index = 0 }
+        else { showFailure(); return }
         val failed = generation
         vlcView.post { if (active && generation == failed && !isFinishing && !isDestroyed) playCurrent() }
     }

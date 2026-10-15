@@ -1,3 +1,10 @@
+# Minha Câmera 1.4.26 (versionCode 36)
+
+- **Correção do fechamento RTSP:** o registro recebido apontou `NullPointerException` em Media3 1.3.1 (`RtspClient.java:544`), ao tentar processar uma resposta RTSP sem `CSeq` disponível. O erro ocorre na thread de reprodução e o fallback anterior não conseguia interceptá-lo.
+- Reprodução RTSP, nova tentativa e URLs alternativas iniciam diretamente em LibVLC 3.7.7. Seleção manual de Media3 desabilitada temporariamente para evitar o caminho identificado como fatal.
+- PiP para RTSP/MJPEG, gravação RTSP por LibVLC, câmeras salvas, descoberta, versão universal/ABIs e assinatura preservados.
+- A causa da resposta incompleta e a compatibilidade com a câmera real precisam de teste. Sem compilação Android ou teste físico nesta entrega.
+
 # Minha Câmera 1.4.25 (versionCode 35)
 
 - PiP nativo para recepção MJPEG em **Celular → Assistir → Mais → Janela flutuante** e para câmera IP RTSP pelo botão **PiP**; sem nova permissão especial.
