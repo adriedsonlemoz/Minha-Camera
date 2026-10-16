@@ -21,7 +21,7 @@ class GalleryUI(unittest.TestCase):
         self.assertIn('bg_gallery_filter_selected', src)
     def test_metadata_controls_are_persistent_and_async(self):
         src = (JAVA/'GalleryActivity.kt').read_text()
-        for name in ('Tamanho do arquivo', 'Resolução da imagem', 'Duração dos vídeos', 'Data na miniatura'):
+        for name in ('Tamanho do arquivo', 'Resolução da imagem', 'Duração dos vídeos', 'Data do arquivo'):
             self.assertIn(name, src)
         self.assertIn('getSharedPreferences("gallery_presentation"',src)
         self.assertIn('GalleryMetadata.load',src)

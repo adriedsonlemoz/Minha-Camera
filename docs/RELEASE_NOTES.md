@@ -1,3 +1,10 @@
+# Minha Câmera 1.4.64 (versionCode 74)
+
+- Galeria local inicia por padrão em lista com prévia à esquerda, nome e detalhes à direita, como no Explorador XP.
+- Alternância persistente Lista/Miniaturas na tela de configurações renovada, juntamente com opções de metadados e ações da galeria.
+- Gerenciamento, player, busca, filtros e visualização remota preservados.
+- Testes locais executados; build APK e validação em dispositivo pendentes.
+
 # Minha Câmera 1.4.63 (versionCode 73)
 
 - Corrige falha do Build APK 62 em `:app:compileReleaseKotlin` causada por literal ARGB de tipo `Long` em `GalleryActivity.kt:515`.

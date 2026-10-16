@@ -144,7 +144,10 @@ Experimente habilitar H.264 ou outro perfil na câmera e refazer a busca.</strin
     <string name="phone_reconnecting">Sinal perdido. Reconectando…</string>
     <string name="phone_access_denied">Acesso negado. Escaneie o novo QR.</string>
     <string name="viewer_remote_zoom_requested">Zoom solicitado à câmera</string>
-    <string name="novidades_text">Versão 1.4.63 (código 73)
+    <string name="novidades_text">Versão 1.4.64 (código 74)
+- Galeria agora abre em lista: miniatura à esquerda, nome e informações à direita.
+- Escolha Lista ou Miniaturas nas configurações; preferência salva automaticamente.
+- Menu de personalização redesenhado com opções de metadados e ações reunidas.
 - Corrigida a compilação Kotlin da galeria: literal ARGB com conversão explícita para Int.
 - Preflight de cores ARGB adicionado ao GitHub Actions para detectar erro semelhante.
 - Central multimídia mais compacta, com busca ao lado de Remoto e Configurações.

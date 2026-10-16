@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.63 (versionCode 73)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.64 (versionCode 74)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Novo em 1.4.64:** Galeria abre por padrão em **Lista**, com miniatura à esquerda e nome, tamanho, resolução, duração e data (configuráveis) à direita. A opção **Miniaturas** mantém a grade existente, com preferência de layout persistente. O menu Configurações foi reorganizado em uma única tela com seleção visual Lista/Miniaturas, opções de metadados e ferramentas para ordenar, selecionar, escolher mídias e atualizar. Permissões e gerenciamento de arquivos preservados. **Build Release e testes no aparelho pendentes.**
 
 **Novo em 1.4.63:** Corrigido erro de compilação Kotlin do Build APK 62: o literal hexadecimal da cor de fundo da etiqueta da galeria era inferido como `Long`, enquanto a API Android exige `Int`. Corrigido com `0x990A1422.toInt()` e incluído preflight no GitHub Actions para detectar chamadas semelhantes. **Compilação Release da nova versão e testes físicos ainda pendentes.**
 

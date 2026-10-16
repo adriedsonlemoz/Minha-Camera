@@ -18,6 +18,7 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ImageButton
 import android.view.inputmethod.InputMethodManager
@@ -37,6 +38,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.io.File
 import java.text.SimpleDateFormat
@@ -67,6 +69,7 @@ class GalleryActivity : AppCompatActivity() {
     private lateinit var searchButton: ImageButton
     private val filterButtons = linkedMapOf<String, Button>()
     private val preferences by lazy { getSharedPreferences("gallery_presentation", MODE_PRIVATE) }
+    private var galleryLayoutMode = "list"
     private var showSize = true
     private var showResolution = true
     private var showDuration = true
@@ -115,6 +118,7 @@ class GalleryActivity : AppCompatActivity() {
             setTheme(R.style.Theme_MinhaCamera_Amoled)
         super.onCreate(savedInstanceState)
         supportActionBar?.hide() // Cabeçalho compacto com busca e remoto na mesma linha.
+        galleryLayoutMode = if (preferences.getString("layout_mode", "list") == "grid") "grid" else "list"
         showSize = preferences.getBoolean("size", true)
         showResolution = preferences.getBoolean("resolution", true)
         showDuration = preferences.getBoolean("duration", true)
@@ -208,7 +212,8 @@ class GalleryActivity : AppCompatActivity() {
         content.addView(center, LinearLayout.LayoutParams(-1, 0, 1f))
         grid = RecyclerView(this).apply {
             val screenDp = resources.configuration.screenWidthDp
-            layoutManager = GridLayoutManager(this@GalleryActivity, (screenDp / 112).coerceIn(3, 6))
+            layoutManager = if (galleryLayoutMode == "list") LinearLayoutManager(this@GalleryActivity)
+                else GridLayoutManager(this@GalleryActivity, (screenDp / 112).coerceIn(3, 6))
             setHasFixedSize(true)
             itemAnimator = null
         }
@@ -262,40 +267,152 @@ class GalleryActivity : AppCompatActivity() {
         }
     }
 
-    private fun showGalleryOptions() {
-        val labels = arrayOf("Tamanho do arquivo", "Resolução da imagem", "Duração dos vídeos", "Data na miniatura")
-        val flags = booleanArrayOf(showSize, showResolution, showDuration, showDate)
-        AlertDialog.Builder(this)
-            .setTitle("Exibição da galeria")
-            .setMultiChoiceItems(labels, flags) { _, index, checked ->
-                flags[index] = checked
-                showSize = flags[0]
-                showResolution = flags[1]
-                showDuration = flags[2]
-                showDate = flags[3]
-                preferences.edit().putBoolean("size", showSize)
-                    .putBoolean("resolution", showResolution)
-                    .putBoolean("duration", showDuration)
-                    .putBoolean("date", showDate).apply()
-                showFiltered()
-            }
-            .setPositiveButton("Concluir", null)
-            .setNeutralButton("Mais ações") { _, _ -> showGalleryActions() }
-            .show()
+    /** Layout persistente: começa em lista e nunca altera a seleção ou os filtros. */
+    private fun changeGalleryLayout(mode: String) {
+        val normalized = if (mode == "grid") "grid" else "list"
+        if (galleryLayoutMode == normalized) return
+        galleryLayoutMode = normalized
+        preferences.edit().putString("layout_mode", normalized).apply()
+        val screenDp = resources.configuration.screenWidthDp
+        grid.layoutManager = if (normalized == "list") LinearLayoutManager(this)
+            else GridLayoutManager(this, (screenDp / 112).coerceIn(3, 6))
+        grid.scrollToPosition(0)
+        showFiltered()
     }
 
-    private fun showGalleryActions() {
-        val actions = arrayOf("Ordenar arquivos", if (selectMode) "Cancelar seleção" else "Selecionar vários",
-            "Escolher fotos/vídeos", "Atualizar galeria")
-        AlertDialog.Builder(this).setTitle("Ações da galeria")
-            .setItems(actions) { _, index ->
-                when (index) {
-                    0 -> chooseOrder()
-                    1 -> { selectMode = !selectMode; if (!selectMode) selected.clear(); showFiltered() }
-                    2 -> documents.launch(arrayOf("image/*", "video/*"))
-                    3 -> refresh()
+    /** Configurações consolidadas e compactas, acessíveis sem submenus. */
+    private fun showGalleryOptions() {
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(12), dp(18), dp(8))
+        }
+        val scroll = ScrollView(this).apply {
+            isFillViewport = false
+            addView(root)
+        }
+        fun section(text: String) = TextView(this).apply {
+            this.text = text.uppercase(Locale("pt", "BR"))
+            textSize = 11f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(getColor(R.color.ui_muted))
+            setPadding(dp(2), dp(13), 0, dp(7))
+        }.also { root.addView(it) }
+        TextView(this).apply {
+            text = "Escolha como navegar e quais detalhes mostrar."
+            textSize = 13f
+            setTextColor(getColor(R.color.ui_muted))
+            setPadding(dp(2), 0, 0, dp(3))
+        }.also { root.addView(it) }
+        section("Visualização")
+        val choices = LinkedHashMap<String, LinearLayout>()
+        val modes = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        fun modeCard(key: String, label: String, hint: String, iconId: Int): LinearLayout {
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                minHeight = dp(84)
+                setPadding(dp(6), dp(10), dp(6), dp(10))
+                isClickable = true
+                isFocusable = true
+                contentDescription = "$label: $hint"
+            }
+            val icon = ImageView(this).apply {
+                setImageResource(iconId)
+                layoutParams = LinearLayout.LayoutParams(dp(22), dp(22))
+            }
+            card.addView(icon)
+            card.addView(TextView(this).apply {
+                text = label; textSize = 14f; typeface = Typeface.DEFAULT_BOLD
+                setTextColor(getColor(R.color.app_text)); gravity = Gravity.CENTER
+                setPadding(0, dp(4), 0, 0)
+            })
+            card.addView(TextView(this).apply {
+                text = hint; textSize = 11f; gravity = Gravity.CENTER
+                setTextColor(getColor(R.color.ui_muted))
+            })
+            choices[key] = card
+            card.setOnClickListener {
+                changeGalleryLayout(key)
+                choices.forEach { (mode, choice) ->
+                    choice.setBackgroundResource(if (mode == galleryLayoutMode)
+                        R.drawable.bg_gallery_filter_selected else R.drawable.bg_gallery_filter)
+                    choice.isSelected = mode == galleryLayoutMode
                 }
-            }.show()
+            }
+            modes.addView(card, LinearLayout.LayoutParams(0, dp(90), 1f).apply { marginEnd = dp(5) })
+            return card
+        }
+        modeCard("list", "Lista", "Nome e informações", R.drawable.ic_ui_list)
+        modeCard("grid", "Miniaturas", "Grade de imagens", R.drawable.ic_ui_gallery)
+        choices.forEach { (mode, card) ->
+            card.setBackgroundResource(if (mode == galleryLayoutMode)
+                R.drawable.bg_gallery_filter_selected else R.drawable.bg_gallery_filter)
+            card.isSelected = mode == galleryLayoutMode
+        }
+        root.addView(modes)
+        section("Informações exibidas")
+        listOf(
+            Triple("Tamanho do arquivo", showSize, "size"),
+            Triple("Resolução da imagem", showResolution, "resolution"),
+            Triple("Duração dos vídeos", showDuration, "duration"),
+            Triple("Data do arquivo", showDate, "date")
+        ).forEach { (label, checked, key) ->
+            root.addView(CheckBox(this).apply {
+                text = label
+                textSize = 13f
+                setTextColor(getColor(R.color.app_text))
+                isChecked = checked
+                minHeight = dp(42)
+                setPadding(dp(3), 0, 0, 0)
+                setOnCheckedChangeListener { _, value ->
+                    when (key) {
+                        "size" -> showSize = value
+                        "resolution" -> showResolution = value
+                        "duration" -> showDuration = value
+                        "date" -> showDate = value
+                    }
+                    preferences.edit().putBoolean(key, value).apply()
+                    showFiltered()
+                }
+            })
+        }
+        section("Gerenciar")
+        val actions = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(actions)
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Configurações da galeria")
+            .setView(scroll)
+            .setPositiveButton("Concluir", null)
+            .create()
+        fun actionRow(label: String, iconId: Int, action: () -> Unit) {
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(12), dp(3), dp(10), dp(3))
+                setBackgroundResource(R.drawable.bg_gallery_filter)
+                isClickable = true
+                isFocusable = true
+                contentDescription = label
+                setOnClickListener { dialog.dismiss(); action() }
+            }
+            row.addView(ImageView(this).apply { setImageResource(iconId) },
+                LinearLayout.LayoutParams(dp(20), dp(20)).apply { marginEnd = dp(12) })
+            row.addView(TextView(this).apply {
+                text = label; textSize = 13f; setTextColor(getColor(R.color.app_text))
+            }, LinearLayout.LayoutParams(-1, dp(38)).apply { gravity = Gravity.CENTER_VERTICAL })
+            actions.addView(row, LinearLayout.LayoutParams(-1, dp(46)).apply { bottomMargin = dp(4) })
+        }
+        actionRow("Ordenar arquivos", R.drawable.ic_ui_sort) { chooseOrder() }
+        actionRow(if (selectMode) "Cancelar seleção" else "Selecionar vários", R.drawable.ic_ui_gallery) {
+            selectMode = !selectMode
+            if (!selectMode) selected.clear()
+            showFiltered()
+        }
+        actionRow("Escolher fotos/vídeos", R.drawable.ic_ui_gallery) {
+            documents.launch(arrayOf("image/*", "video/*"))
+        }
+        actionRow("Atualizar galeria", R.drawable.ic_ui_refresh) { refresh() }
+        dialog.show()
     }
 
     override fun onResume() { super.onResume(); if (::adapter.isInitialized) refresh() }
@@ -498,21 +615,77 @@ class GalleryActivity : AppCompatActivity() {
         }
     }
 
+    /** Dois layouts reais de célula: lista leve como no Explorador XP e grade opcional. */
     inner class GalleryAdapter : RecyclerView.Adapter<GalleryAdapter.Holder>() {
         var items = listOf<GalleryItem>()
-        inner class Holder(val frame: FrameLayout, val thumbnail: ImageView, val overlay: TextView) : RecyclerView.ViewHolder(frame)
+        inner class Holder(
+            val root: ViewGroup,
+            val thumbnail: ImageView,
+            val metadata: TextView,
+            val filename: TextView? = null,
+            val checkmark: TextView? = null
+        ) : RecyclerView.ViewHolder(root)
+
+        override fun getItemViewType(position: Int) = if (galleryLayoutMode == "list") 1 else 0
+
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
+            if (viewType == 1) {
+                val row = LinearLayout(parent.context).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(12), dp(7), dp(10), dp(7))
+                    layoutParams = RecyclerView.LayoutParams(-1, dp(94))
+                }
+                val picture = FrameLayout(parent.context).apply {
+                    setBackgroundColor(Color.rgb(22, 33, 47))
+                    background = androidx.core.content.ContextCompat.getDrawable(this@GalleryActivity, R.drawable.bg_gallery_filter)
+                    clipToOutline = true
+                }
+                row.addView(picture, LinearLayout.LayoutParams(dp(76), dp(76)))
+                val photo = ImageView(parent.context).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
+                picture.addView(photo, FrameLayout.LayoutParams(-1, -1))
+                val words = LinearLayout(parent.context).apply {
+                    orientation = LinearLayout.VERTICAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    setPadding(dp(12), 0, dp(4), 0)
+                }
+                row.addView(words, LinearLayout.LayoutParams(0, -1, 1f))
+                val name = TextView(parent.context).apply {
+                    textSize = 14f
+                    maxLines = 2
+                    ellipsize = TextUtils.TruncateAt.END
+                    setTextColor(getColor(R.color.app_text))
+                }
+                words.addView(name, LinearLayout.LayoutParams(-1, -2))
+                val info = TextView(parent.context).apply {
+                    textSize = 12f
+                    maxLines = 2
+                    ellipsize = TextUtils.TruncateAt.END
+                    setTextColor(getColor(R.color.ui_muted))
+                    setPadding(0, dp(4), 0, 0)
+                }
+                words.addView(info, LinearLayout.LayoutParams(-1, -2))
+                val mark = TextView(parent.context).apply {
+                    text = "✓"; textSize = 21f
+                    gravity = Gravity.CENTER
+                    setTextColor(getColor(R.color.app_text))
+                    visibility = View.GONE
+                }
+                row.addView(mark, LinearLayout.LayoutParams(dp(30), dp(48)))
+                return Holder(row, photo, info, name, mark)
+            }
             val frame = FrameLayout(parent.context).apply {
                 layoutParams = RecyclerView.LayoutParams(-1, dp(120)).apply { setMargins(dp(2), dp(2), dp(2), dp(2)) }
                 setBackgroundColor(Color.rgb(22, 33, 47))
             }
-            val photo = ImageView(parent.context).apply {
-                scaleType = ImageView.ScaleType.CENTER_CROP
-            }
+            val photo = ImageView(parent.context).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
             frame.addView(photo, FrameLayout.LayoutParams(-1, -1))
             val overlay = TextView(parent.context).apply {
-                setTextColor(Color.WHITE); textSize = 10f; gravity = Gravity.END
-                setPadding(dp(5), dp(3), dp(5), dp(3)); setBackgroundColor(0x990A1422.toInt())
+                setTextColor(Color.WHITE)
+                textSize = 10f
+                gravity = Gravity.END
+                setPadding(dp(5), dp(3), dp(5), dp(3))
+                setBackgroundColor(0x990A1422.toInt())
                 maxLines = 3
             }
             frame.addView(overlay, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.RIGHT))
@@ -521,37 +694,46 @@ class GalleryActivity : AppCompatActivity() {
         override fun getItemCount() = items.size
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val item = items[position]
+            val isList = holder.filename != null
             val marked = item.key in selected
-            val dateText = if (showDate) SimpleDateFormat("dd/MM", Locale("pt", "BR"))
-                .format(Date(item.dateSeconds * 1000)) else ""
-            holder.overlay.text = if (marked) "✓ Selecionado" else
-                listOfNotNull(if (item.isVideo) "▶" else null, dateText.takeIf { it.isNotEmpty() }).joinToString("  ")
-            holder.overlay.visibility = if (marked || item.isVideo || showDate || showSize || showResolution) View.VISIBLE else View.GONE
-            holder.frame.alpha = if (marked) 0.65f else 1f
-            holder.frame.contentDescription = "${if (item.isVideo) "Vídeo" else "Foto"}: ${item.name}"
-            // Solicita miniaturas suficientes para telas de maior densidade, sem usar o arquivo original na grade.
-            val columns = (grid.layoutManager as GridLayoutManager).spanCount
-            val thumbPx = (resources.displayMetrics.widthPixels * 1.4f / columns).toInt().coerceIn(360, 640)
+            val dateText = SimpleDateFormat("dd/MM/yyyy", Locale("pt", "BR"))
+                .format(Date(item.dateSeconds * 1000))
+            holder.filename?.text = item.name
+            holder.checkmark?.visibility = if (marked) View.VISIBLE else View.GONE
+            val baseBits = mutableListOf<String>()
+            if (item.isVideo) baseBits.add("▶ Vídeo")
+            else if (isList && item.privateFile != null) baseBits.add("Gravação")
+            if (showSize && item.size > 0) baseBits.add(Formatter.formatShortFileSize(this@GalleryActivity, item.size))
+            if (item.isVideo && showDuration && item.durationMs > 0) baseBits.add(GalleryMetadata.formatDuration(item.durationMs))
+            if (showDate) baseBits.add(dateText)
+            holder.metadata.text = if (marked && !isList) "✓ Selecionado" else baseBits.joinToString(" · ")
+            holder.metadata.visibility = if (marked && !isList || baseBits.isNotEmpty() || showResolution) View.VISIBLE else View.GONE
+            holder.root.alpha = if (marked) 0.67f else 1f
+            holder.root.contentDescription = "${if (item.isVideo) "Vídeo" else "Foto"}: ${item.name}"
+            // Lista: miniatura menor; grade: densidade adaptativa sem carregar o arquivo original inteiro.
+            val thumbPx = if (isList) dp(180).coerceIn(180, 340) else {
+                val columns = (grid.layoutManager as? GridLayoutManager)?.spanCount ?: 3
+                (resources.displayMetrics.widthPixels * 1.4f / columns).toInt().coerceIn(360, 640)
+            }
             GalleryThumbnails.load(this@GalleryActivity, item, holder.thumbnail, thumbPx)
             holder.thumbnail.setTag(R.id.gallery_media_tag, item.key)
-            if (!marked && (showSize || showResolution || (showDuration && item.isVideo))) {
+            if (!marked && (showSize || showResolution || (showDuration && item.isVideo) || showDate)) {
                 GalleryMetadata.load(this@GalleryActivity, item) { metadata ->
                     if (holder.thumbnail.getTag(R.id.gallery_media_tag) != item.key || item.key in selected) return@load
                     val bits = mutableListOf<String>()
-                    if (item.isVideo) bits.add("▶")
+                    if (item.isVideo) bits.add(if (isList) "▶ Vídeo" else "▶")
                     if (showSize && item.size > 0) bits.add(Formatter.formatShortFileSize(this@GalleryActivity, item.size))
                     if (showResolution && metadata.width > 0 && metadata.height > 0)
                         bits.add("${metadata.width}×${metadata.height}")
                     val duration = if (metadata.durationMs > 0) metadata.durationMs else item.durationMs
                     if (item.isVideo && showDuration && duration > 0) bits.add(GalleryMetadata.formatDuration(duration))
-                    if (showDate) bits.add(SimpleDateFormat("dd/MM", Locale("pt", "BR"))
-                        .format(Date(item.dateSeconds * 1000)))
-                    holder.overlay.text = bits.joinToString(" · ")
-                    holder.overlay.visibility = if (bits.isEmpty()) View.GONE else View.VISIBLE
+                    if (showDate) bits.add(dateText)
+                    holder.metadata.text = bits.joinToString(" · ")
+                    holder.metadata.visibility = if (bits.isEmpty()) View.GONE else View.VISIBLE
                 }
             }
-            holder.frame.setOnLongClickListener { selectMode = true; toggle(item); true }
-            holder.frame.setOnClickListener { if (selectMode) toggle(item) else open(item) }
+            holder.root.setOnLongClickListener { selectMode = true; toggle(item); true }
+            holder.root.setOnClickListener { if (selectMode) toggle(item) else open(item) }
         }
     }
     private fun toggle(item: GalleryItem) {

@@ -1,3 +1,10 @@
+## 1.4.64+74 — 2026-10-16
+- Galeria local inicia em lista, seguindo o padrão do Explorador XP: foto/vídeo à esquerda, nome e metadados à direita.
+- Opção de grade de miniaturas mantida; escolha de Lista ou Miniaturas salva nas preferências.
+- Configurações consolidadas e estilizadas com seletor visual, metadados opcionais e ações de organização e gerenciamento na mesma janela.
+- Mantidos player interno, seleção múltipla, busca, filtros, permissões, exclusão com autorização do Android e biblioteca remota.
+- Testes estáticos e automatizados; compilação APK e validação de UI em Android pendentes.
+
 ## 1.4.63+73 — 2026-10-16
 - Corrigido erro em `GalleryActivity.kt:515` detectado pelo GitHub Actions Build APK 62: `setBackgroundColor(0x990A1422)` inferia `Long`, incompatível com parâmetro `Int`; convertido para `0x990A1422.toInt()`, preservando o tom e o alfa da etiqueta sobre as miniaturas.
 - Preflight `scripts/check_kotlin_argb_literals.py` executado antes do Gradle no workflow, com regressão `tests/test_gallery_build_fix_1463.py` para detectar literais ARGB problemáticos em chamadas Kotlin que exigem `Int`.
