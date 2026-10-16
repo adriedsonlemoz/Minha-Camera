@@ -1,3 +1,10 @@
+## 1.4.41+51 — 2026-10-15
+
+- Central Multimídia passa a atalho azul ao lado de Buscar, Adicionar e Manual; quatro ações por câmera na mesma linha, com rótulos legíveis e sem revelar credenciais do RTSP.
+- O visualizador exibe 19 ações e configurações em cards compactos: cinco colunas quando couber, quatro ou três nas telas mais estreitas, preservando rolagem vertical e acessibilidade.
+- Itens antes no diálogo Mais passam a ser visíveis: orientação, bateria no vídeo, indicadores, biblioteca remota, detalhes técnicos, formato e diagnóstico; resolução/FPS/câmera/Eco mostram estados abreviados nos próprios cards.
+- Sem alterações de protocolo, gravação ou permissões. Verificações estáticas disponíveis; compilação Android e teste visual/em dispositivos ainda pendentes.
+
 ## 1.4.40+50 — 2026-10-15
 
 - Captura MJPEG e H.264 com orientação automática estável pelo sensor (800ms) ou modos manualmente fixados em vertical/horizontal. Opção na tela Transmitir → Mais → Orientação da câmera.

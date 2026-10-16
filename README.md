@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.40 (versionCode 50)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.41 (versionCode 51)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Novo em 1.4.41:** tela inicial com quatro atalhos de mesmo tamanho, incluindo Mídia; cada dispositivo mostra Abrir, Copiar, Editar e Excluir na mesma linha. O visualizador agora exibe todos os controles em cards compactos (19 ações) numa grade de cinco colunas em aparelhos usuais, reorganizada em quatro/três colunas apenas quando necessário. Resolução, FPS, câmera, Eco, orientação, sobreposição, indicadores, biblioteca remota e diagnóstico ficam diretamente visíveis, com rolagem. O protocolo, transmissão, gravação e atalhos PiP/tela cheia foram preservados. **Sem APK compilado/teste no aparelho nesta entrega.**
 
 **Novo em 1.4.40:** escolha Automático, Vertical fixo ou Horizontal fixo no transmissor em Mais → Orientação da câmera; MJPEG e H.264 usam orientação do dispositivo ou seleção manual, com estabilização de movimento. No receptor, o menu Mais permite Seguir Android, Vertical fixo ou Horizontal fixo; a imagem respeita a proporção real dos quadros. Durante REC, a orientação do MP4 fica travada para não mudar as dimensões do arquivo; novas escolhas são aplicadas após parar a gravação. No serviço com a tela apagada, a orientação automática depende da disponibilidade do sensor no aparelho: para câmera fixa use Vertical/Horizontal fixo.
 

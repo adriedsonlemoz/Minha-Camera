@@ -464,8 +464,11 @@ class MainActivity : AppCompatActivity() {
             view.findViewById<MaterialButton>(R.id.btnCopy).setOnClickListener { copyCameraUrl(camera) }
             view.findViewById<MaterialButton>(R.id.btnEdit).setOnClickListener { showEditDialog(realPosition) }
             view.findViewById<MaterialButton>(R.id.btnDelete).setOnClickListener { confirmDelete(realPosition) }
-            view.findViewById<MaterialButton>(R.id.btnCopy).text =
-                if (isPhoneCamera(camera)) getString(R.string.ui_link_copy) else getString(R.string.copiar_rtsp)
+            view.findViewById<MaterialButton>(R.id.btnCopy).apply {
+                text = getString(R.string.ui_copy_short)
+                contentDescription = if (isPhoneCamera(camera)) getString(R.string.ui_link_copy)
+                    else getString(R.string.copiar_rtsp)
+            }
             return view
         }
     }

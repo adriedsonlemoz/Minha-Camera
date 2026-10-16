@@ -1,3 +1,11 @@
+# Minha Câmera 1.4.41 (versionCode 51)
+
+- Tela inicial: Central Multimídia em botão azul compacto com Buscar, Adicionar e Manual; botões Abrir, Copiar, Editar, Excluir juntos em linha.
+- Visualizador: todos os 19 comandos únicos em cards compactos visíveis, com grade responsiva de cinco colunas (quatro ou três em larguras muito pequenas), rolável verticalmente.
+- Menu Mais desnecessário: opções de orientação, bateria, indicadores, mídia remota, detalhes, codec e diagnóstico incorporadas à tela de vídeo.
+- Comandos remotos de resolução, FPS, câmera e Eco usam os mesmos endpoints anteriores e exibem estados abreviados.
+- Sem alteração de assinatura, permissões, protocolo ou gravação. Build Android e teste em dispositivo pendentes.
+
 # Minha Câmera 1.4.40 (versionCode 50)
 
 - Orientação automática com estabilização do sensor; seleção de retrato/paisagem fixa para monitoramento doméstico e retrovisor de bicicleta.

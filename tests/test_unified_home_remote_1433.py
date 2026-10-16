@@ -28,8 +28,9 @@ def test_media_settings_theme_and_metadata():
     man=(RES.parent/'AndroidManifest.xml').read_text()
     assert '.SettingsActivity' in man and '.MultimediaActivity' in man
     settings=(SRC/'SettingsActivity.kt').read_text()
-    assert 'drilemoz@gmail.com' in settings
-    assert 'settings_google_unavailable' in settings
+    assert 'SupportProjectActivity::class.java' in settings
+    assert 'drilemoz@gmail.com' in (SRC/'SupportProjectActivity.kt').read_text()
+    assert 'settings_google_unavailable' in (SRC/'SupportProjectActivity.kt').read_text()
     assert 'Google Play Billing' in (RES/'values/strings.xml').read_text()
     assert 'AppCompatDelegate.setDefaultNightMode' in (SRC/'CameraTheme.kt').read_text()
     assert 'X-Device-Model' in (SRC/'PhoneCameraServer.kt').read_text()

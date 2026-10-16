@@ -13,8 +13,6 @@ import android.os.Environment
 import android.content.ContentValues
 import android.provider.MediaStore
 import android.graphics.Color
-import android.graphics.drawable.ColorDrawable
-import androidx.appcompat.widget.SwitchCompat
 import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
@@ -24,12 +22,12 @@ import android.widget.ImageView
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
+import android.widget.GridLayout
 import android.view.ViewGroup
 import android.widget.Toast
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.content.ContextCompat
 import java.io.BufferedInputStream
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -104,7 +102,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     private lateinit var temperatureLabel: TextView
     private lateinit var resolutionLabel: TextView
     private lateinit var fpsLabel: TextView
-    private lateinit var ecoSwitch: SwitchCompat
+    private lateinit var ecoLabel: TextView
     private lateinit var recordLabel: TextView
     private lateinit var recordIcon: ImageView
     private lateinit var onlineDot: View
@@ -136,7 +134,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     private lateinit var fitIcon: ImageView
     private lateinit var mirrorLabel: TextView
     private lateinit var previewContainer: View
-    private lateinit var controls: View
+    private lateinit var controls: GridLayout
+    private var currentControlColumns = 0
     private lateinit var receiverInstructions: View
     @Volatile private var active = false
     @Volatile private var connection: HttpURLConnection? = null
@@ -177,7 +176,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         temperatureLabel = findViewById(R.id.viewerTemperature)
         resolutionLabel = findViewById(R.id.viewerRemoteQualityValue)
         fpsLabel = findViewById(R.id.viewerRemoteFpsValue)
-        ecoSwitch = findViewById(R.id.viewerRemoteEcoSwitch)
+        ecoLabel = findViewById(R.id.viewerRemoteEcoValue)
         recordingClock = findViewById(R.id.viewerRecordingClock)
         facingLabel = findViewById(R.id.viewerRemoteFacingValue)
         fullscreenHost = findViewById(R.id.phoneViewerFullscreenHost)
@@ -243,7 +242,19 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                 Toast.makeText(this, R.string.viewer_eco_unavailable, Toast.LENGTH_LONG).show()
             } else setRemoteEco(remoteEco != true)
         }
-        findViewById<View>(R.id.phoneViewerMore).setOnClickListener { openMoreDialog() }
+        // Todos os comandos antes ocultos no menu Mais agora têm card próprio.
+        findViewById<View>(R.id.phoneViewerMore).setOnClickListener { chooseViewerOrientation() }
+        findViewById<View>(R.id.viewerBatteryAction).setOnClickListener { toggleVideoBatteryOverlay() }
+        findViewById<View>(R.id.viewerIndicatorsAction).setOnClickListener { openTelemetryOptions() }
+        findViewById<View>(R.id.viewerLibraryAction).setOnClickListener {
+            startActivity(Intent(this, RemoteMultimediaActivity::class.java)
+                .putExtra("url", intent.getStringExtra("url")))
+        }
+        findViewById<View>(R.id.viewerDetailsAction).setOnClickListener { toggleTechnicalDetails() }
+        findViewById<View>(R.id.viewerCodecAction).setOnClickListener { chooseRemoteCodec() }
+        findViewById<View>(R.id.viewerDiagnosticsAction).setOnClickListener { showRemoteDiagnostic() }
+        // Mantém cinco colunas nas telas usuais e reduz em dispositivos muito estreitos.
+        controls.post { adaptControlColumns() }
         refreshPreviewOrientation()
         refreshFitModeUi()
         refreshMirrorModeUi()
@@ -251,6 +262,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         applyTelemetry(null)
         refreshRecordingUi()
         updateEcoUi()
+        refreshQuickControlStates()
     }
 
     /** O receptor pode seguir o Android, ficar vertical ou horizontal fixo. */
@@ -282,6 +294,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
         refreshPreviewOrientation()
+        if (::controls.isInitialized) controls.post { adaptControlColumns() }
     }
 
     private fun refreshPreviewOrientation() {
@@ -408,79 +421,54 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         if (focusMode) toggleFocusMode() else super.onBackPressed()
     }
 
-    private fun openMoreDialog() {
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            val pad = (20 * resources.displayMetrics.density).toInt()
-            setPadding(pad, pad, pad, pad / 2)
+    /** Reorganiza os mesmos cards, sem remover controles quando o visor é estreito. */
+    private fun adaptControlColumns() {
+        val usableWidth = controls.width.takeIf { it > 0 } ?: return
+        val widthDp = usableWidth / resources.displayMetrics.density
+        val columns = when {
+            widthDp < 248f -> 3
+            widthDp < 318f -> 4
+            else -> 5
         }
-        content.setBackgroundResource(R.drawable.bg_phone_more_dialog)
-        val scroll = ScrollView(this).apply { isFillViewport = true; addView(content) }
-        val dialog = AlertDialog.Builder(this).setView(scroll).create()
-        fun addRow(label: String, icon: Int, switch: Boolean? = null, action: () -> Unit) {
-            val row = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = android.view.Gravity.CENTER_VERTICAL
-                minimumHeight = (58 * resources.displayMetrics.density).toInt()
-                isClickable = true
-                isFocusable = true
-                background = androidx.core.content.ContextCompat.getDrawable(this@PhoneCameraViewerActivity, R.drawable.bg_ui_card)
-                val margin = (4 * resources.displayMetrics.density).toInt()
-                setPadding(margin * 2, margin, margin * 2, margin)
+        if (currentControlColumns == columns) return
+        // Definir primeiro a quantidade de colunas evita exceção na realocação das crianças.
+        controls.columnCount = columns
+        val margin = (2 * resources.displayMetrics.density + .5f).toInt()
+        for (i in 0 until controls.childCount) {
+            val tile = controls.getChildAt(i)
+            val params = GridLayout.LayoutParams(GridLayout.spec(i / columns), GridLayout.spec(i % columns, 1f)).apply {
+                width = 0
+                height = (82 * resources.displayMetrics.density + .5f).toInt()
+                setMargins(margin, margin, margin, margin)
+                setGravity(android.view.Gravity.FILL_HORIZONTAL)
             }
-            val imageView = ImageView(this).apply { setImageResource(icon) }
-            row.addView(imageView, LinearLayout.LayoutParams((25 * resources.displayMetrics.density).toInt(), (25 * resources.displayMetrics.density).toInt()))
-            val labelView = TextView(this).apply {
-                text = label
-                setTextColor(ContextCompat.getColor(this@PhoneCameraViewerActivity, R.color.app_text))
-                textSize = 15f
-            }
-            row.addView(labelView, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f).apply {
-                marginStart = (12 * resources.displayMetrics.density).toInt()
-            })
-            if (switch != null) row.addView(SwitchCompat(this).apply {
-                isChecked = switch
-                isClickable = false
-                isFocusable = false
-            })
-            row.setOnClickListener { dialog.dismiss(); action() }
-            content.addView(row, LinearLayout.LayoutParams(-1,-2).apply { bottomMargin = (7*resources.displayMetrics.density).toInt() })
+            tile.layoutParams = params
         }
-        val titleView = TextView(this).apply {
-            setText(R.string.ui_more)
-            textSize = 23f
-            setTextColor(ContextCompat.getColor(this@PhoneCameraViewerActivity, R.color.app_text))
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
-        }
-        content.addView(titleView, LinearLayout.LayoutParams(-1,-2).apply { bottomMargin = (12*resources.displayMetrics.density).toInt() })
-        addRow(getString(R.string.phone_viewer_orientation_title), R.drawable.ic_ui_screen) {
-            chooseViewerOrientation()
-        }
-        addRow(getString(R.string.pip_window), R.drawable.ic_ui_pip) { enterPip() }
-        addRow(getString(R.string.phone_view_focus), R.drawable.ic_fit, focusMode) { toggleFocusMode() }
-        addRow(getString(R.string.phone_view_mirror), R.drawable.ic_ui_mirror, mirrorMode) { toggleMirrorMode() }
-        addRow(getString(R.string.imagem_inteira), R.drawable.ic_fit, !fillMode) { toggleFitMode() }
-        addRow(getString(R.string.phone_show_battery_overlay), R.drawable.ic_ui_battery, showTelemetry) {
-            showTelemetry = !showTelemetry
-            getSharedPreferences("phone_viewer", MODE_PRIVATE).edit().putBoolean("telemetry_visible", showTelemetry).apply()
-            applyTelemetry(lastBattery)
-        }
-        addRow(getString(R.string.phone_view_telemetry_options), R.drawable.ic_ui_battery) { openTelemetryOptions() }
-        addRow(getString(R.string.tentar_novamente), R.drawable.ic_ui_scan) { stop(); start() }
-        addRow("Central Multimídia remota", R.drawable.ic_ui_video) {
-            startActivity(Intent(this, RemoteMultimediaActivity::class.java).putExtra("url", intent.getStringExtra("url")))
-        }
-        addRow(getString(if (remoteRecording == true) R.string.phone_remote_record_stop else R.string.phone_remote_record_start), R.drawable.ic_ui_record) {
-            setRemoteRecording(remoteRecording != true)
-        }
-        addRow(getString(R.string.viewer_technical_details), R.drawable.ic_ui_video) {
-            val show = !detailsVisible
-            detailsVisible = show
-            getSharedPreferences("phone_viewer", MODE_PRIVATE).edit().putBoolean("details_visible", show).apply()
-            applyTelemetry(lastBattery)
-        }
-        dialog.show()
-        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        currentControlColumns = columns
+        controls.requestLayout()
+    }
+
+    private fun toggleVideoBatteryOverlay() {
+        showTelemetry = !showTelemetry
+        getSharedPreferences("phone_viewer", MODE_PRIVATE).edit()
+            .putBoolean("telemetry_visible", showTelemetry).apply()
+        applyTelemetry(lastBattery)
+        refreshQuickControlStates()
+    }
+
+    private fun toggleTechnicalDetails() {
+        detailsVisible = !detailsVisible
+        getSharedPreferences("phone_viewer", MODE_PRIVATE).edit()
+            .putBoolean("details_visible", detailsVisible).apply()
+        applyTelemetry(lastBattery)
+        refreshQuickControlStates()
+    }
+
+    private fun refreshQuickControlStates() {
+        findViewById<View>(R.id.viewerBatteryAction).alpha = if (showTelemetry) 1f else .55f
+        findViewById<View>(R.id.viewerDetailsAction).alpha = if (detailsVisible) 1f else .75f
+        findViewById<View>(R.id.viewerBatteryAction).isSelected = showTelemetry
+        findViewById<View>(R.id.viewerDetailsAction).isSelected = detailsVisible
     }
 
     /** Todos os comandos remotos usam POST e o token privado previamente validado. */
@@ -603,9 +591,10 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         applyTelemetry(lastBattery)
         refreshRecordingUi()
         updateEcoUi()
-        if (remoteQuality != null) resolutionLabel.text = "${remoteQuality}p (perfil)"
-        if (remoteFps != null) fpsLabel.text = "$remoteFps FPS (alvo)"
-        if (remoteFacing != null) facingLabel.setText(if (remoteFacing == 1) R.string.phone_front_camera else R.string.phone_back_camera)
+        if (state.resolution != null) resolutionLabel.text = state.resolution.replace('x', '×')
+        else if (remoteQuality != null) resolutionLabel.text = "${remoteQuality}p"
+        if (remoteFps != null) fpsLabel.text = "$remoteFps FPS"
+        if (remoteFacing != null) facingLabel.text = if (remoteFacing == 1) "Frontal" else "Traseira"
     }
 
     private fun startH264(session: Int) {
@@ -739,8 +728,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     }
 
     private fun updateEcoUi() {
-        ecoSwitch.isChecked = remoteEco == true
-        ecoSwitch.alpha = if (remoteEco == null) 0.4f else 1f
+        ecoLabel.text = when (remoteEco) { true -> "Ligado"; false -> "Desligado"; null -> "--" }
+        findViewById<View>(R.id.viewerRemoteEco).alpha = if (remoteEco == null) .65f else 1f
     }
 
     private fun refreshRecordingUi() {
@@ -1039,8 +1028,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                     remoteFacing = newest.cameraFacing ?: remoteFacing
                     remoteQuality = newest.qualityProfile ?: remoteQuality
                     remoteFps = newest.targetFps ?: remoteFps
-                    if (remoteFacing != null) facingLabel.setText(
-                        if (remoteFacing == 1) R.string.phone_front_camera else R.string.phone_back_camera)
+                    if (remoteFacing != null) facingLabel.text = if (remoteFacing == 1) "Frontal" else "Traseira"
                     if (remoteRecording == true && newest.recordingSeconds != null) {
                         val seconds = newest.recordingSeconds.coerceAtLeast(0)
                         recordingClock.text = String.format(Locale.US, "● REC %02d:%02d:%02d",

@@ -71,31 +71,26 @@
     </LinearLayout>
   </LinearLayout>
 
+  <!-- Quatro atalhos da mesma família visual, com rótulos curtos em telas estreitas. -->
   <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-      android:paddingHorizontal="16dp" android:orientation="horizontal" android:gravity="center_vertical">
+      android:paddingHorizontal="12dp" android:orientation="horizontal" android:gravity="center_vertical"
+      android:baselineAligned="false">
     <Button android:id="@+id/mainScan" android:layout_width="0dp" android:layout_weight="1"
-        android:layout_height="50dp" android:text="@string/ui_search" android:textAllCaps="false"/>
+        android:layout_height="48dp" android:layout_marginHorizontal="2dp"
+        android:minWidth="0dp" android:paddingHorizontal="0dp" android:text="Buscar" android:textSize="11sp"
+        android:textAllCaps="false"/>
     <Button android:id="@+id/mainAdd" android:layout_width="0dp" android:layout_weight="1"
-        android:layout_height="50dp" android:layout_marginStart="6dp" android:text="@string/ui_add" android:textAllCaps="false"/>
-    <Button android:id="@+id/phoneManual" android:layout_width="0dp" android:layout_weight="1.25"
-        android:layout_height="50dp" android:layout_marginStart="6dp" android:text="@string/ui_manual_link"
-        android:textSize="10sp" android:textAllCaps="false"/>
-  </LinearLayout>
-
-  <LinearLayout android:id="@+id/mainMedia" android:layout_width="match_parent" android:layout_height="wrap_content"
-      android:gravity="center_vertical" android:layout_marginHorizontal="16dp" android:layout_marginTop="12dp"
-      android:padding="16dp" android:background="@drawable/bg_ui_card" android:orientation="horizontal">
-    <ImageView android:layout_width="32dp" android:layout_height="32dp" android:src="@drawable/ic_ui_gallery"
-        android:contentDescription="@null"/>
-    <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1"
-        android:layout_marginStart="12dp" android:orientation="vertical">
-      <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-          android:text="@string/home_multimedia" android:textColor="@color/app_text" android:textStyle="bold" android:textSize="18sp"/>
-      <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-          android:text="Fotos, vídeos, gravações locais e do outro celular"
-          android:textColor="@color/ui_muted" android:textSize="12sp"/>
-    </LinearLayout>
-    <ImageView android:layout_width="18dp" android:layout_height="18dp" android:src="@drawable/ic_ui_expand" android:contentDescription="@null"/>
+        android:layout_height="48dp" android:layout_marginHorizontal="2dp"
+        android:minWidth="0dp" android:paddingHorizontal="0dp" android:text="Adicionar" android:textSize="10sp"
+        android:textAllCaps="false"/>
+    <Button android:id="@+id/phoneManual" android:layout_width="0dp" android:layout_weight="1"
+        android:layout_height="48dp" android:layout_marginHorizontal="2dp"
+        android:minWidth="0dp" android:paddingHorizontal="0dp" android:text="Manual" android:textSize="11sp"
+        android:contentDescription="Inserir endereço manualmente" android:textAllCaps="false"/>
+    <Button android:id="@+id/mainMedia" android:layout_width="0dp" android:layout_weight="1"
+        android:layout_height="48dp" android:layout_marginHorizontal="2dp"
+        android:minWidth="0dp" android:paddingHorizontal="0dp" android:text="Mídia" android:textSize="11sp"
+        android:contentDescription="Central multimídia" android:textAllCaps="false"/>
   </LinearLayout>
 
   <TextView android:layout_width="match_parent" android:layout_height="wrap_content"

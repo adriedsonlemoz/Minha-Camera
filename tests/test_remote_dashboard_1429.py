@@ -31,5 +31,5 @@ def test_remote_commands_token_based_and_disabled_without_service():
 
 def test_no_nonfunctional_remote_zoom_or_resolution_controls():
     layout=(ROOT/'app/src/main/res/layout/activity_phone_viewer.xml').read_text()
-    assert 'Resolução / alterar' in layout and 'Taxa de quadros / alterar' in layout
+    assert 'android:text="Resolução"' in layout and 'android:text="FPS"' in layout
     assert 'Zoom remoto' not in layout
