@@ -100,6 +100,29 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             statusHandler.postDelayed(this, 1500)
         }
     }
+    /** MJPEG não recebe as capacidades só pelos quadros. Reconsulta o serviço também
+     * após trocar de prévia para câmera com tela apagada, sem reconectar o vídeo.
+     */
+    private var mjpegStatusPending = false
+    private val mjpegStatusTick = object : Runnable {
+        override fun run() {
+            if (!active || viewerCodec != "mjpeg") return
+            if (!mjpegStatusPending) {
+                mjpegStatusPending = true
+                Thread({
+                    val snapshot = probeStatus()
+                    runOnUiThread {
+                        mjpegStatusPending = false
+                        if (!active || viewerCodec != "mjpeg") return@runOnUiThread
+                        if (snapshot.codec == "h264") { stop(); start(); return@runOnUiThread }
+                        if (snapshot.codec == "mjpeg") applyRemoteStatus(snapshot)
+                    }
+                }, "mjpeg-camera-status").apply { isDaemon = true; start() }
+            }
+            statusHandler.postDelayed(this, 2500L)
+        }
+    }
+
     private data class RemoteStatus(val codec: String?, val transmissionSeconds: Long?,
         val recordSeconds: Long?, val recording: Boolean?, val battery: Int?, val temp: Int?,
         val charging: Boolean?, val eco: Boolean?, val quality: Int?, val fps: Int?, val facing: Int?,
@@ -141,6 +164,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     private var remoteFps: Int? = null
     private var remoteZoomPercent: Int? = null
     private var remoteZoomRatio100: Int? = null
+    /** Fallback explícito, não enviado ao transmissor e nunca apresentado como zoom remoto. */
+    private var localZoomFactor = 1f
     private lateinit var remoteZoomLabel: TextView
     private lateinit var scrollContent: ScrollView
     private lateinit var normalPreviewParent: LinearLayout
@@ -262,6 +287,12 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         findViewById<View>(R.id.viewerRemoteFps).setOnClickListener { chooseRemoteFps() }
         findViewById<View>(R.id.viewerRemoteZoom).setOnClickListener { chooseRemoteZoom() }
         findViewById<View>(R.id.viewerFullZoom).setOnClickListener { chooseRemoteZoom() }
+        for (id in intArrayOf(R.id.viewerZoomMinus, R.id.viewerFullZoomMinus))
+            findViewById<View>(id).setOnClickListener { stepZoom(-1) }
+        for (id in intArrayOf(R.id.viewerZoomPlus, R.id.viewerFullZoomPlus))
+            findViewById<View>(id).setOnClickListener { stepZoom(1) }
+        for (id in intArrayOf(R.id.viewerZoomReset, R.id.viewerFullZoomReset))
+            findViewById<View>(id).setOnClickListener { resetZoom() }
         findViewById<View>(R.id.viewerRemoteFacing).setOnClickListener { chooseRemoteFacing() }
         findViewById<View>(R.id.viewerFullBack).setOnClickListener { if (focusMode) toggleFocusMode() }
         findViewById<View>(R.id.viewerFullRecord).setOnClickListener { setRemoteRecording(remoteRecording != true) }
@@ -524,8 +555,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             val quarterTurn = rotationDegrees % 180 != 0
             val scale = if (quarterTurn && hostWidth > 0f && hostHeight > 0f)
                 minOf(hostWidth / hostHeight, hostHeight / hostWidth) else 1f
-            video.scaleX = scale
-            video.scaleY = scale
+            video.scaleX = scale * localZoomFactor
+            video.scaleY = scale * localZoomFactor
         }
     }
 
@@ -664,12 +695,40 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         }, 950)
     }
 
+    private fun stepZoom(direction: Int) {
+        val current = remoteZoomPercent
+        if (current != null) {
+            sendRemoteZoom((current + direction * 10).coerceIn(0, 100))
+        } else {
+            // A câmera pode não expor controle remoto de zoom. Aqui só o receptor é ampliado.
+            localZoomFactor = (localZoomFactor + direction * .25f).coerceIn(1f, 3f)
+            applyLocalZoom()
+        }
+    }
+
+    private fun resetZoom() {
+        if (remoteZoomPercent != null) sendRemoteZoom(0)
+        localZoomFactor = 1f
+        applyLocalZoom()
+    }
+
+    private fun applyLocalZoom() {
+        image.scaleX = localZoomFactor
+        image.scaleY = localZoomFactor
+        // H.264 usa a mesma transformação visual, sem modificar a câmera.
+        updateVideoRotation()
+        updateZoomLabel()
+    }
+
+    private fun updateZoomLabel() {
+        remoteZoomLabel.text = if (remoteZoomPercent == null) {
+            String.format(Locale.forLanguageTag("pt-BR"), "Local %.2f×", localZoomFactor)
+        } else remoteZoomRatio100?.let { String.format(Locale.US, "%.1f×", it / 100f) }
+            ?: "Remoto ${remoteZoomPercent}%"
+    }
+
     private fun chooseRemoteZoom() {
         val current = remoteZoomPercent
-        if (current == null) {
-            Toast.makeText(this, "Zoom remoto indisponível neste modo ou nesta câmera", Toast.LENGTH_LONG).show()
-            return
-        }
         val container = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             val pad = (20 * resources.displayMetrics.density).toInt()
@@ -678,48 +737,53 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         val label = TextView(this).apply {
             textSize = 18f
             setTextColor(getColor(R.color.app_text))
-            text = remoteZoomRatio100?.let { String.format(Locale.US, "Zoom da câmera: %.1f×", it/100f) }
-                ?: "Zoom: $current%"
+            text = if (current == null) "Zoom local (somente neste celular)"
+                else remoteZoomRatio100?.let { String.format(Locale.US, "Zoom da câmera: %.1f×", it / 100f) }
+                    ?: "Zoom remoto: $current%"
         }
         container.addView(label)
         val slider = SeekBar(this).apply {
             max = 100
-            progress = current
-            contentDescription = "Zoom digital remoto de 0 a 100%"
+            progress = current ?: (((localZoomFactor - 1f) / 2f) * 100).toInt()
+            contentDescription = if (current == null) "Ampliação local" else "Zoom remoto da câmera"
         }
         container.addView(slider)
-        val description = TextView(this).apply {
-            text = "0% é 1×. O máximo depende da câmera; não aumenta a resolução real."
+        container.addView(TextView(this).apply {
+            text = if (current == null) "Amplia apenas a imagem no receptor (1× a 3×). Não altera o vídeo enviado."
+                else "0% é 1× na câmera. O máximo depende do hardware, sem ganho de resolução real."
             textSize = 13f
             setTextColor(getColor(R.color.ui_muted))
-        }
-        container.addView(description)
+        })
         slider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) label.text = "Zoom solicitado: $progress%"
+                if (fromUser) label.text = if (current == null) "Ampliação local: ${1f + progress / 50f}×"
+                    else "Zoom remoto solicitado: $progress%"
             }
             override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
         })
         AlertDialog.Builder(this)
-            .setTitle("Zoom remoto")
+            .setTitle(if (current == null) "Zoom local" else "Zoom remoto")
             .setView(container)
             .setNegativeButton("Cancelar", null)
-            .setNeutralButton("1×") { _, _ -> sendRemoteZoom(0) }
-            .setPositiveButton("Aplicar") { _, _ -> sendRemoteZoom(slider.progress) }
-            .show()
+            .setNeutralButton("1×") { _, _ -> resetZoom() }
+            .setPositiveButton("Aplicar") { _, _ ->
+                if (current != null) sendRemoteZoom(slider.progress)
+                else {
+                    localZoomFactor = 1f + slider.progress / 50f
+                    applyLocalZoom()
+                }
+            }.show()
     }
 
     private fun sendRemoteZoom(percent: Int) {
         if (remoteZoomPercent == null) {
-            Toast.makeText(this, "Zoom não disponível", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Câmera sem zoom remoto; use o zoom local", Toast.LENGTH_SHORT).show()
             return
         }
-        val endpoint = PhoneCameraUrls.zoomCommandUrl(intent.getStringExtra("url").orEmpty(),percent)
-        postRemote(endpoint,
-            R.string.viewer_remote_zoom_requested) {
-            remoteZoomPercent = percent.coerceIn(0,100)
-            remoteZoomLabel.text = "Atualizando…"
+        val endpoint = PhoneCameraUrls.zoomCommandUrl(intent.getStringExtra("url").orEmpty(), percent)
+        postRemote(endpoint, R.string.viewer_remote_zoom_requested) {
+            remoteZoomLabel.text = "Confirmando…"
         }
     }
 
@@ -797,9 +861,16 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         remoteFps = state.fps ?: remoteFps
         // A câmera pode não oferecer zoom (modo H.264, dupla ou aparelho sem suporte).
         if (state.codec != null) {
+            if (state.zoomPercent != null && remoteZoomPercent == null && localZoomFactor != 1f) {
+                // O zoom da câmera voltou a funcionar. Não deixar recorte local somado ao remoto.
+                localZoomFactor = 1f
+                image.scaleX = 1f
+                image.scaleY = 1f
+                updateVideoRotation()
+            }
             remoteZoomPercent = state.zoomPercent
             remoteZoomRatio100 = state.zoomRatio100
-            remoteZoomLabel.text = state.zoomRatio100?.let { String.format(Locale.US,"%.1f×",it/100f) } ?: "Indisponível"
+            updateZoomLabel()
         }
         remoteFacing = state.facing ?: remoteFacing
         state.recordSeconds?.let { seconds ->
@@ -1038,6 +1109,9 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         codecButton.text = "MJPEG"
         remoteClock.text = getString(R.string.phone_clock_idle)
         val session = ++attempts
+        mjpegStatusPending = false
+        statusHandler.removeCallbacks(mjpegStatusTick)
+        statusHandler.postDelayed(mjpegStatusTick, 1800L)
         fps.reset(SystemClock.elapsedRealtime())
         displayedFirstFrame = false
         lastDeliveryMs = null
@@ -1320,6 +1394,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
 
     private fun stop() {
         statusHandler.removeCallbacks(codecStatusTick)
+        statusHandler.removeCallbacks(mjpegStatusTick)
+        mjpegStatusPending = false
         statusPollPending = false
         releaseVlc()
         active = false

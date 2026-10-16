@@ -278,13 +278,14 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         }
     }
     private var backgroundRequestedAt = 0L
+    private var lastBackgroundJpeg: ByteArray? = null
     private lateinit var backgroundPreview: ImageView
     private val backgroundTick = object : Runnable {
         override fun run() {
             if (!visible || !backgroundMode) return
             val service = PhoneCameraBackgroundService
             if (!service.running) {
-                if (SystemClock.elapsedRealtime() - backgroundRequestedAt < 10_000L && service.lastError == null) {
+                if (SystemClock.elapsedRealtime() - backgroundRequestedAt < 14_000L && service.lastError == null) {
                     uiHandler.postDelayed(this, 600)
                     return
                 }
@@ -292,15 +293,24 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                 refreshTransmissionButton()
                 window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
                 backgroundPreview.visibility = View.GONE
-                status.text = service.lastError ?: getString(R.string.phone_background_ended)
+                val failure = service.lastError ?: getString(R.string.phone_background_ended)
+                status.text = failure
+                PhoneStreamDiagnostics.add("Tela apagada: serviço não assumiu a câmera ($failure)")
+                Toast.makeText(this@PhoneCameraActivity, "Falha no modo tela apagada: $failure", Toast.LENGTH_LONG).show()
+                lastBackgroundJpeg = null
                 tryStart()
                 return
             }
             service.latestJpeg?.let { jpeg ->
-                BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)?.let { bitmap ->
-                    backgroundPreview.setImageBitmap(bitmap)
-                    backgroundPreview.visibility = View.VISIBLE
-                    placeholder.visibility = View.GONE
+                if (jpeg !== lastBackgroundJpeg) {
+                    // Miniatura local reduzida: não decodificar Full HD na UI a cada segundo.
+                    val opts = BitmapFactory.Options().apply { inSampleSize = 4 }
+                    BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, opts)?.let { bitmap ->
+                        backgroundPreview.setImageBitmap(bitmap)
+                        backgroundPreview.visibility = View.VISIBLE
+                        placeholder.visibility = View.GONE
+                        lastBackgroundJpeg = jpeg
+                    }
                 }
             }
             service.latestBattery?.let { battery ->
@@ -496,6 +506,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         uiHandler.removeCallbacks(performanceTick)
         uiHandler.removeCallbacks(backgroundTick)
         backgroundPreview.setImageDrawable(null)
+        lastBackgroundJpeg = null
         // Terminar gravações pendentes antes de encerrar o worker.
         worker.shutdown()
         recordWorker.shutdown()
@@ -1200,6 +1211,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             recordingRequested = false
             showRecordState(false)
             backgroundPreview.setImageDrawable(null)
+            lastBackgroundJpeg = null
             backgroundPreview.visibility = View.GONE
             placeholder.visibility = View.VISIBLE
             telemetryPreview.visibility = View.GONE
@@ -1231,7 +1243,9 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         }
         transmissionEnabled = false
         stopStreaming()
+        // O serviço assumirá a câmera após a liberação da prévia e da porta HTTP.
         backgroundMode = true
+        PhoneStreamDiagnostics.add("Mudança para tela apagada solicitada; aguardando câmera do serviço")
         if (visible) { uiHandler.removeCallbacks(clockTick); uiHandler.post(clockTick) }
         refreshTransmissionButton()
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

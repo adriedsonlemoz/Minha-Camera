@@ -126,3 +126,9 @@ Separar detecção de porta TCP de confirmação do serviço RTSP. `OPTIONS` com
 - Corrigir a orientação local do MJPEG com matriz da ImageView (90°/180°/270°, ajuste de proporção e espelhamento) antes de transformar ou recomprimir frames; o caminho de LibVLC deve ser validado separadamente.
 - Os comandos de gravação e foto sobrepostos em modo paisagem devem continuar usando endpoints remotos existentes e estado confirmado pelo transmissor.
 - Exportação de diagnóstico via Storage Access Framework permite salvar TXT sem permissões amplas de armazenamento; mascarar credenciais antes de oferecer exportação.
+
+## Aprendizado v1.4.59: tela apagada e zoom remoto
+
+A troca de uma câmera mantida pela Activity para um serviço de câmera em segundo plano pode bloquear a UI se a superfície EGL for preparada na thread principal e pode falhar na reabertura imediata de recurso/porta. Preparar EGL em worker, habilitar SO_REUSEADDR **antes** do bind, limitar retries, registrar a classe do erro sem credenciais e não confundir visualização local com publicação de quadros. São mitigadores, não garantia de acesso à câmera sob restrições do Android.
+
+O receptor MJPEG deve atualizar periodicamente capacidades do transmissor após handoff, especialmente zoom. Zoom aplicado por Camera.Parameters altera o quadro na origem; quando a API ou o modo não suportar o controle, ampliar apenas no receptor identificando explicitamente "zoom local". Priorizar consumo mínimo no Redmi A3 e confirmar com o aparelho real.

@@ -51,6 +51,7 @@ class ZoomAndPreview58(unittest.TestCase):
         self.assertIn('controlUrl(input, "zoom/$percent")',urls)
         viewer=(KOT/'PhoneCameraViewerActivity.kt').read_text()
         self.assertIn('if (current == null)',viewer)
-        self.assertIn('"Indisponível"',viewer)
+        self.assertIn('Zoom local',viewer)
+        self.assertIn('private fun stepZoom(direction: Int)',viewer)
 
 if __name__=='__main__':unittest.main()

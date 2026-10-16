@@ -43,7 +43,12 @@ class PhoneCameraServer(
     private val mediaOpen: ((String) -> McrpMediaStream?)? = null
 ) {
     init { require(token.matches(Regex("[0-9a-f]{32}"))) }
-    private val server = ServerSocket(8765, 4, address)
+    // A porta e o token permanecem os mesmos na troca entre Activity e Service.
+    // Habilitar SO_REUSEADDR antes de bind evita falhas transitórias após fechar sockets MJPEG.
+    private val server = ServerSocket().apply {
+        reuseAddress = true
+        bind(java.net.InetSocketAddress(address, 8765), 4)
+    }
     val url: String = "http://${address.hostAddress}:${server.localPort}/live/$token"
     private val peers = ConcurrentHashMap.newKeySet<Socket>()
     private val peerCount = AtomicInteger()

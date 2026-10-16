@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.58 (versionCode 68)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.59 (versionCode 69)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Novo em 1.4.59:** interface de zoom com atalhos −/1×/+ no receptor e na tela cheia, consulta periódica das capacidades MJPEG para atualizar o zoom após troca de serviço e zoom local alternativo identificado quando o hardware não expõe zoom da câmera. Inicialização do EGL da tela apagada fora da thread principal, tentativas limitadas de recuperação da abertura da câmera e reuso rápido da porta HTTP; miniatura local otimizada. Inspeção de vídeo sugere interrupção na transferência Activity → serviço, mas sem logs do aparelho não é possível determinar a exceção original. **Compilação Android e validação em aparelho pendentes.**
 
 **Novo em 1.4.58:** na tela Transmitir, os botões Iniciar/Parar e Pausar/Retomar e seus indicadores saem de cima do vídeo e passam para uma faixa compacta abaixo da prévia. A barra de ações da tela cheia ganha fundo opaco e uma área própria reservada abaixo da imagem, sem encobrir o enquadramento. O receptor recebe Zoom remoto, com seletor de 0 a 100% do limite de zoom digital suportado pelo Android na câmera transmissora, botão para voltar a 1× e atalho na tela cheia. O zoom é aplicado na câmera transmissora por API Camera com verificação de suporte, protocolo HTTP autenticado e retorno da porcentagem e razão confirmadas. Disponível tanto na Activity quanto no serviço de transmissão MJPEG com tela apagada, desde que a câmera suporte zoom; H.264 experimental e câmera dupla continuam sem esse recurso. **Build Android e validação física continuam pendentes.**
 

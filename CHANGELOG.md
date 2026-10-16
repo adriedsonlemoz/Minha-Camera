@@ -1,3 +1,12 @@
+## 1.4.59+69 — 2026-10-16
+- Análise do vídeo de 33,9s: a transição ao modo tela apagada exibe "Iniciando..." e volta a "Iniciar" após falhar/encerrar o serviço. Causa exata depende de diagnóstico real do aparelho.
+- Inicialização EGL assíncrona e recuperação limitada da câmera; SO_REUSEADDR antes do bind evita conflito transitório da porta no repasse entre Activity e Service.
+- Miniatura local na tela apagável decodificada em resolução reduzida para não sobrecarregar a UI.
+- Receptor agora atualiza capacidades MJPEG periodicamente; zoom remoto pode ficar disponível assim que o serviço assumir a câmera.
+- Botões compactos zoom −, 1× e + na tela normal e horizontal; zoom local alternativo 1×–3× sinalizado quando a câmera não oferece zoom nativo.
+- Mantida a regra de tela cheia automática só na horizontal. H.264 segue experimental.
+- Build Android e testes físicos pendentes.
+
 ## 1.4.58+68 — 2026-10-16
 
 - Removidos controles de transmissão e indicadores da área do vídeo; agora em painel próprio abaixo da prévia. Barra de ações na tela cheia separada da imagem, com fundo opaco e altura reservada no ScrollView.

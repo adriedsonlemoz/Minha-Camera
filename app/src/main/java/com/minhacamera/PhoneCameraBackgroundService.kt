@@ -213,6 +213,8 @@ class PhoneCameraBackgroundService : Service() {
     @Volatile private var ecoEnabled = false
     private var closing = false
     private var foregroundStarted = false
+    @Volatile private var pendingCameraStart = false
+    private var startGeneration = 0
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -257,7 +259,7 @@ class PhoneCameraBackgroundService : Service() {
                 if (!changeStreamCodec(desired)) PhoneStreamDiagnostics.add("Troca de codec rejeitada durante outra operação")
             }
             ACTION_START -> {
-                if (running || closing) return START_NOT_STICKY
+                if (running || closing || pendingCameraStart) return START_NOT_STICKY
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                     lastError = getString(R.string.phone_permission_denied)
                     stopSelf()
@@ -285,14 +287,72 @@ class PhoneCameraBackgroundService : Service() {
                         })
                     PhoneStreamDiagnostics.add("Solicitada captura em segundo plano: $liveCodec")
                     val facing = intent.getIntExtra(EXTRA_FACING, Camera.CameraInfo.CAMERA_FACING_BACK)
-                    startCapture(facing)
+                    pendingCameraStart = true
+                    val generation = ++startGeneration
+                    // Inicializar EGL em outra thread evita travar a interface por até 4 s.
+                    Thread({
+                        val prepared = try { PhoneHeadlessPreview.create(640, 480) }
+                            catch (e: Exception) {
+                                mainHandler.post {
+                                    if (generation == startGeneration && !closing) {
+                                        lastError = "Preparação EGL: ${e.javaClass.simpleName}"
+                                        PhoneStreamDiagnostics.add("Tela apagada: $lastError")
+                                        stopCaptureAndFinish()
+                                    }
+                                }
+                                return@Thread
+                            }
+                        mainHandler.post {
+                            if (closing || generation != startGeneration) {
+                                prepared.close()
+                            } else {
+                                startPreparedCapture(facing, prepared, generation)
+                            }
+                        }
+                    }, "camera-headless-prepare").apply { isDaemon = true; start() }
                 } catch (e: Exception) {
-                    lastError = e.javaClass.simpleName.take(60) // não registrar URL/token
+                    lastError = "Inicio de serviço: ${e.javaClass.simpleName}"
+                    PhoneStreamDiagnostics.add("Tela apagada: $lastError")
                     stopCaptureAndFinish()
                 }
             }
         }
         return START_NOT_STICKY
+    }
+
+    /** Permite a Activity liberar a câmera antes de o Service tentar reabri-la.
+     *  Somente erros transitórios de Camera/porta provocam uma nova tentativa limitada.
+     */
+    private fun startPreparedCapture(facing: Int, prepared: PhoneHeadlessPreview, generation: Int,
+                                     attempt: Int = 0) {
+        if (closing || generation != startGeneration) { prepared.close(); return }
+        try {
+            startCapture(facing, prepared)
+            pendingCameraStart = false
+        } catch (e: Exception) {
+            // Se falhou antes de anexar à câmera, a prévia ainda precisa ser liberada.
+            prepared.close()
+            val cause = e.javaClass.simpleName
+            PhoneStreamDiagnostics.add("Tela apagada: falha de inicialização ${attempt + 1}: $cause")
+            if (attempt < 2 && generation == startGeneration && !closing) {
+                mainHandler.postDelayed({
+                    // O primeiro preview foi fechado no rollback de startCapture.
+                    // Preparar novo EGL em worker para manter a UI responsiva.
+                    Thread({
+                        val retryPreview = runCatching { PhoneHeadlessPreview.create(640, 480) }.getOrNull()
+                        mainHandler.post {
+                            if (retryPreview == null) {
+                                lastError = "Falha ao preparar prévia após $cause"
+                                stopCaptureAndFinish()
+                            } else startPreparedCapture(facing, retryPreview, generation, attempt + 1)
+                        }
+                    }, "camera-headless-retry").apply { isDaemon = true; start() }
+                }, if (attempt == 0) 450L else 1000L)
+            } else {
+                lastError = "Câmera em segundo plano indisponível ($cause)"
+                stopCaptureAndFinish()
+            }
+        }
     }
 
     private fun pending(action: String, requestCode: Int): PendingIntent = PendingIntent.getService(
@@ -330,7 +390,7 @@ class PhoneCameraBackgroundService : Service() {
             .notify(NOTIFICATION_ID, notification())
     }
 
-    private fun startCapture(facing: Int) {
+    private fun startCapture(facing: Int, prepared: PhoneHeadlessPreview? = null) {
         val ip = NetUtil.wifiIpv4(this) ?: throw IllegalStateException("Wi-Fi indisponível")
         val remoteLibrary = PhoneRemoteLibrary(applicationContext)
         val session = PhoneCameraServer(ip, PhoneCameraAccess.token(this),
@@ -384,7 +444,7 @@ class PhoneCameraBackgroundService : Service() {
             }, mediaIndex = { remoteLibrary.json() }, mediaOpen = { remoteLibrary.open(it) })
         try {
             server = session
-            openPreview(session, facing, requestedQuality)
+            openPreview(session, facing, requestedQuality, prepared)
             session.start()
             streamUrl = session.url
             lastError = null
@@ -400,6 +460,10 @@ class PhoneCameraBackgroundService : Service() {
             session.stop()
             server = null
             releasePreview()
+            if (prepared != null && headlessPreview !== prepared) {
+                // Mesmo na falha antes de associar, a superfície pré-criada precisa ser fechada.
+                runCatching { prepared.close() }
+            }
             throw e
         }
     }
@@ -446,7 +510,8 @@ class PhoneCameraBackgroundService : Service() {
         } finally { switching = false }
     }
 
-    private fun openPreview(session: PhoneCameraServer, facing: Int, quality: Int) {
+    private fun openPreview(session: PhoneCameraServer, facing: Int, quality: Int,
+                            prepared: PhoneHeadlessPreview? = null) {
         val deviceId = (0 until Camera.getNumberOfCameras()).firstOrNull { id ->
             val info = Camera.CameraInfo()
             Camera.getCameraInfo(id, info)
@@ -481,7 +546,8 @@ class PhoneCameraBackgroundService : Service() {
         activeFrontFacing = info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT
         frameRotationDegrees = PhoneOrientationMode.frameDegrees(info.orientation, activeFrontFacing,
             PhoneOrientationMode.deviceDegrees(currentOrientationMode, physicalDegrees))
-        val preview = PhoneHeadlessPreview.create(size.width, size.height)
+        val preview = prepared ?: PhoneHeadlessPreview.create(size.width, size.height)
+        preview.surfaceTexture.setDefaultBufferSize(size.width, size.height)
         headlessPreview = preview
         opened.setPreviewTexture(preview.surfaceTexture)
         val byteCount = size.width * size.height * 3 / 2
@@ -683,6 +749,8 @@ class PhoneCameraBackgroundService : Service() {
     private fun stopCaptureAndFinish() {
         if (closing) return
         closing = true
+        startGeneration++
+        pendingCameraStart = false
         orientationSensor.disable()
         running = false
         recording = false

@@ -1,3 +1,13 @@
+# Minha Câmera 1.4.59 (versionCode 69)
+
+- Modo tela apagada: prévia EGL preparada em thread de trabalho, retorno imediato da solicitação na interface e tentativas limitadas de recuperação ao assumir a câmera.
+- Servidor HTTP usa SO_REUSEADDR antes de bind para troca mais confiável da porta 8765 entre Activity e serviço.
+- Miniaturas da tela apagável decodificadas reduzidas para aliviar a thread principal.
+- Zoom remoto: reconsulta de capacidades MJPEG a cada 2,5 s, inclusive após a troca para o serviço em segundo plano.
+- Zoom −, 1× e + nos modos normal e tela cheia; se o zoom real da câmera estiver indisponível, usa ampliação local marcada como tal (não altera transmissão).
+- Rotação automática para tela cheia apenas na horizontal; mantém modo vertical normal. O vídeo fornecido não substitui validação Android em aparelho físico.
+- Compilação APK, desempenho real do Redmi A3 e confirmação de causa do erro do serviço pendentes.
+
 # Minha Câmera 1.4.58 (versionCode 68)
 
 - Botões Iniciar/Parar e Pausar/Retomar agora ficam abaixo do vídeo no modo Transmitir, com indicadores de desempenho fora da imagem.
