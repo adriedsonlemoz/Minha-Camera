@@ -512,7 +512,7 @@ class GalleryActivity : AppCompatActivity() {
             frame.addView(photo, FrameLayout.LayoutParams(-1, -1))
             val overlay = TextView(parent.context).apply {
                 setTextColor(Color.WHITE); textSize = 10f; gravity = Gravity.END
-                setPadding(dp(5), dp(3), dp(5), dp(3)); setBackgroundColor(0x990A1422)
+                setPadding(dp(5), dp(3), dp(5), dp(3)); setBackgroundColor(0x990A1422.toInt())
                 maxLines = 3
             }
             frame.addView(overlay, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.RIGHT))

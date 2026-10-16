@@ -1,3 +1,10 @@
+# Minha Câmera 1.4.63 (versionCode 73)
+
+- Corrige falha do Build APK 62 em `:app:compileReleaseKotlin` causada por literal ARGB de tipo `Long` em `GalleryActivity.kt:515`.
+- Cor da etiqueta de miniaturas preservada usando conversão explícita `.toInt()`.
+- Acrescenta checagem preventiva de literais ARGB às verificações do GitHub Actions e teste de regressão.
+- Preserva as melhorias da Central Multimídia 1.4.62; compilação APK Release e testes reais pendentes.
+
 # Minha Câmera 1.4.62 (versionCode 72)
 
 - Galeria mais compacta: título, busca recolhível, Remoto e configurações na mesma barra; filtros com ícones; mais espaço para imagens.

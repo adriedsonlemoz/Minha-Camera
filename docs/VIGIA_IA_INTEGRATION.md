@@ -148,3 +148,7 @@ O receptor MJPEG deve atualizar periodicamente capacidades do transmissor após 
 - Miniaturas decodificadas em dimensões adequadas à densidade real da grade e metadados de vídeo/foto consultados fora da UI com cache limitado.
 - Metadados opcionais de tamanho/resolução/duração não devem ser tratados como presentes se o provedor SAF/MediaStore não informar.
 - Não replicar no Vigia IA automaticamente sem testes de consumo e scrolling no Android real.
+
+## 1.4.63: cores ARGB Kotlin em UI Android
+
+O erro real do Build APK 62 ocorreu porque `0x990A1422` tem o bit 31 definido e é inferido como `Long` pelo Kotlin, porém `View.setBackgroundColor` exige `Int`. Usar `0x990A1422.toInt()` ou `Color.argb()` e testar essa classe de erro no preflight da CI. Essa nota é para aprendizado técnico; nenhuma alteração foi feita no Vigia IA.

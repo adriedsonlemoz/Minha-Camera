@@ -1,3 +1,8 @@
+## 1.4.63+73 — 2026-10-16
+- Corrigido erro em `GalleryActivity.kt:515` detectado pelo GitHub Actions Build APK 62: `setBackgroundColor(0x990A1422)` inferia `Long`, incompatível com parâmetro `Int`; convertido para `0x990A1422.toInt()`, preservando o tom e o alfa da etiqueta sobre as miniaturas.
+- Preflight `scripts/check_kotlin_argb_literals.py` executado antes do Gradle no workflow, com regressão `tests/test_gallery_build_fix_1463.py` para detectar literais ARGB problemáticos em chamadas Kotlin que exigem `Int`.
+- Galeria compacta, metadados, player, modos de câmera e assinatura Release preservados. Compilação Android da 1.4.63 e validação em aparelho ainda pendentes.
+
 ## 1.4.62+72 — 2026-10-16
 - Central Multimídia com cabeçalho próprio: pesquisa recolhível ao lado do título; botão Remoto com ícone de celular; ajustes de exibição no cabeçalho. Removidas aba Neste aparelho, barra extensa de busca/ordenação e botões inferiores redundantes.
 - Quatro filtros com ícones vetoriais pequenos e estados sem traços de borda excessivos; grade usa mais área vertical.

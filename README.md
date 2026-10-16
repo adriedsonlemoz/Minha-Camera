@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.62 (versionCode 72)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.63 (versionCode 73)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Novo em 1.4.63:** Corrigido erro de compilação Kotlin do Build APK 62: o literal hexadecimal da cor de fundo da etiqueta da galeria era inferido como `Long`, enquanto a API Android exige `Int`. Corrigido com `0x990A1422.toInt()` e incluído preflight no GitHub Actions para detectar chamadas semelhantes. **Compilação Release da nova versão e testes físicos ainda pendentes.**
 
 **Novo em 1.4.62:** Cabeçalho compacto da Central Multimídia: busca recolhível à esquerda dos atalhos, botão Remoto com ícone de celular e menu de exibição/ações. Sem a aba "Neste aparelho", sem faixa de ferramentas duplicada e sem botões fixos inferiores. Filtros com ícones e seleção discreta; miniaturas ampliadas em pixels reais para reduzir aparência embaçada. Exibição opcional e persistida de tamanho, resolução, duração e data por arquivo, com metadados consultados fora da UI e sem inventar informação ausente. **APK e validação em aparelho pendentes.**
 
