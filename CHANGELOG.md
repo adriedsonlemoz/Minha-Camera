@@ -1,3 +1,10 @@
+## 1.4.60+70 — 2026-10-16
+- Pinça de dois dedos no vídeo do receptor, tela normal e horizontal/tela cheia: afastar amplia, aproximar reduz; toque simples continua acionando os controles.
+- Zoom real da câmera MJPEG por comandos autenticados e coalescidos a cada ~230 ms; no máximo uma requisição pendente em voo, com envio do último nível ao soltar os dedos.
+- Quando o zoom remoto não está disponível, ampliação local de 1× a 3×, sem alterar os bytes transmitidos. H.264 usa somente essa alternativa.
+- Bloqueio da tela cheia impede o gesto; rolagem da tela não intercepta a pinça; permanecem atalhos de zoom existentes e PiP.
+- Testes estáticos Python e teste puro Kotlin do cálculo dos limites adicionados; validação física e APK Android ainda pendentes.
+
 ## 1.4.59+69 — 2026-10-16
 - Análise do vídeo de 33,9s: a transição ao modo tela apagada exibe "Iniciando..." e volta a "Iniciar" após falhar/encerrar o serviço. Causa exata depende de diagnóstico real do aparelho.
 - Inicialização EGL assíncrona e recuperação limitada da câmera; SO_REUSEADDR antes do bind evita conflito transitório da porta no repasse entre Activity e Service.

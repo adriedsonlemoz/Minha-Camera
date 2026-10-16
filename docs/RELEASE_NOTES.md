@@ -1,3 +1,11 @@
+# Minha Câmera 1.4.60 (versionCode 70)
+
+- Ampliação/redução por gesto de pinça no vídeo de Assistir, tanto vertical quanto horizontal/tela cheia.
+- Quando MJPEG anuncia zoom da câmera, usa a API existente via comandos Wi-Fi autenticados. Gestos enviam valores absolutos de 0–100% do intervalo suportado, com ritmo limitado e sem fila ilimitada.
+- Sem zoom remoto (ou H.264), usa ampliação local 1×–3× no receptor; não altera gravação nem imagem transmitida.
+- Um dedo continua exibindo/ocultando os controles. A pinça não alterna a tela cheia e respeita Bloquear.
+- Mantidos os atalhos anteriores. Testes Android em hardware e compilação Release pendentes.
+
 # Minha Câmera 1.4.59 (versionCode 69)
 
 - Modo tela apagada: prévia EGL preparada em thread de trabalho, retorno imediato da solicitação na interface e tentativas limitadas de recuperação ao assumir a câmera.

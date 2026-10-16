@@ -35,7 +35,9 @@ class PiPAndCrashTests(unittest.TestCase):
         self.assertIn('override fun onStop()', self.viewer)
         self.assertIn('if (!active) start()', self.viewer)
         self.assertIn('if (android.os.Build.VERSION.SDK_INT >= 26 && isInPictureInPictureMode)', self.player)
-        self.assertIn('override fun onDestroy() { stop(); super.onDestroy() }', self.viewer)
+        self.assertIn('override fun onDestroy()', self.viewer)
+        self.assertIn('statusHandler.removeCallbacks(gestureZoomTick)', self.viewer)
+        self.assertIn('stop()\n        super.onDestroy()', self.viewer)
 
     def test_pip_previews_and_restore(self):
         ids = {e.attrib.get(A+'id') for e in self.layout.iter()}

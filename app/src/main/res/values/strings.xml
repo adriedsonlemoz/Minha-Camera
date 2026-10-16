@@ -144,7 +144,11 @@ Experimente habilitar H.264 ou outro perfil na câmera e refazer a busca.</strin
     <string name="phone_reconnecting">Sinal perdido. Reconectando…</string>
     <string name="phone_access_denied">Acesso negado. Escaneie o novo QR.</string>
     <string name="viewer_remote_zoom_requested">Zoom solicitado à câmera</string>
-    <string name="novidades_text">Versão 1.4.59 (código 69)
+    <string name="novidades_text">Versão 1.4.60 (código 70)
+- Zoom por pinça com dois dedos na imagem do modo Assistir, vertical ou horizontal.
+- Afastar aumenta e aproximar diminui: zoom da câmera MJPEG quando disponível, local caso contrário.
+- Os gestos têm limite e não enviam pedidos a cada quadro; último ajuste aplicado ao soltar.
+- Toque simples e bloqueio da tela cheia continuam funcionando.
 - Zoom: controles menos, 1× e mais na tela normal e tela cheia.
 - Zoom remoto atualiza após passar para o modo tela apagada; alternativa local claramente identificada.
 - Preparação EGL sem bloquear a interface e recuperação limitada de falhas de câmera.

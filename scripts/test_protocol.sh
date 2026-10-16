@@ -55,3 +55,8 @@ kotlinc \
   "$ROOT/tests/RtspSessionSmoke.kt" \
   -include-runtime -d "$BUILD/rtsp-session.jar"
 java -jar "$BUILD/rtsp-session.jar"
+
+# Pinça: regras puras de zoom local/remoto, sem Android e sem acesso a rede.
+kotlinc "$ROOT/app/src/main/java/com/minhacamera/PhonePinchZoom.kt" \
+  "$ROOT/tests/PhonePinchZoomSmoke.kt" -include-runtime -d "$BUILD/pinch-zoom.jar"
+java -jar "$BUILD/pinch-zoom.jar"

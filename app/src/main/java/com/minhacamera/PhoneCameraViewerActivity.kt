@@ -18,6 +18,7 @@ import java.io.FileOutputStream
 import java.util.Locale
 import android.view.View
 import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.FrameLayout
@@ -202,6 +203,22 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     private var viewerControlsLocked = false
     private lateinit var viewerUnlock: View
 
+    /** Pinça de dois dedos: usa zoom remoto MJPEG quando disponível, senão zoom local.
+     * Não modifica o stream no modo local e nunca envia uma requisição por quadro.
+     */
+    private lateinit var pinchDetector: ScaleGestureDetector
+    private var pinchTouched = false
+    private var pinchOngoing = false
+    private var pinchScaleTotal = 1f
+    private var pinchStartRemotePercent: Int? = null
+    private var pinchStartLocalFactor = 1f
+    private var gestureZoomPending: Int? = null
+    private var gestureZoomInFlight = false
+    private var gestureZoomInFlightPercent: Int? = null
+    private var lastGestureZoomSentAt = 0L
+    private var lastGestureZoomSent: Int? = null
+    private val gestureZoomTick = Runnable { dispatchGestureZoom() }
+
     // A tela cheia automática acompanha a orientação; saída manual é respeitada
     // até que o telefone seja novamente girado (evita reentradas inesperadas).
     private var automaticFullscreenOrientation: Int? = null
@@ -280,6 +297,43 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                 fullControls.visibility = if (fullControls.visibility == View.VISIBLE) View.INVISIBLE else View.VISIBLE
             else if (!focusMode) toggleFocusMode()
         }
+        pinchDetector = ScaleGestureDetector(this, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+                if (viewerControlsLocked || isPipLayout) return false
+                pinchOngoing = true
+                pinchScaleTotal = 1f
+                pinchStartRemotePercent = gestureZoomPending ?: gestureZoomInFlightPercent ?: remoteZoomPercent
+                pinchStartLocalFactor = localZoomFactor
+                return true
+            }
+
+            override fun onScale(detector: ScaleGestureDetector): Boolean {
+                if (!pinchOngoing || viewerControlsLocked) return false
+                pinchScaleTotal = (pinchScaleTotal * detector.scaleFactor).coerceIn(.1f, 10f)
+                val initialRemote = pinchStartRemotePercent
+                if (initialRemote != null) {
+                    val desired = PhonePinchZoom.remotePercent(initialRemote, pinchScaleTotal)
+                    queueGestureZoom(desired)
+                    remoteZoomLabel.text = "Zoom remoto solicitado: $desired%"
+                } else {
+                    localZoomFactor = PhonePinchZoom.localFactor(pinchStartLocalFactor, pinchScaleTotal)
+                    applyLocalZoom()
+                }
+                return true
+            }
+
+            override fun onScaleEnd(detector: ScaleGestureDetector) {
+                pinchOngoing = false
+                if (pinchStartRemotePercent != null) {
+                    // A última posição dos dedos deve chegar ao transmissor.
+                    gestureZoomPending?.let { queueGestureZoom(it, flush = true) }
+                }
+            }
+        })
+        // Os dois modos (vertical e horizontal) reutilizam exatamente esta prévia.
+        // Interceptar somente o toque no vídeo, sem roubar os botões sobrepostos.
+        previewContainer.setOnTouchListener { _, event -> handlePreviewTouch(event) }
+        image.setOnTouchListener { _, event -> handlePreviewTouch(event) }
         findViewById<View>(R.id.viewerPipAction).setOnClickListener { enterPip() }
         findViewById<View>(R.id.viewerRotateAction).setOnClickListener { rotateVideo() }
         findViewById<View>(R.id.viewerSnapshotAction).setOnClickListener { requestRemotePhoto() }
@@ -396,7 +450,12 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         syncLandscapeFullscreen()
     }
     override fun onStop() { if (!(android.os.Build.VERSION.SDK_INT >= 26 && isInPictureInPictureMode)) stop(); super.onStop() }
-    override fun onDestroy() { stop(); super.onDestroy() }
+    override fun onDestroy() {
+        statusHandler.removeCallbacks(gestureZoomTick)
+        gestureZoomPending = null
+        stop()
+        super.onDestroy()
+    }
 
     override fun onPictureInPictureModeChanged(inPictureInPictureMode: Boolean, newConfig: Configuration) {
         super.onPictureInPictureModeChanged(inPictureInPictureMode, newConfig)
@@ -698,6 +757,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     private fun stepZoom(direction: Int) {
         val current = remoteZoomPercent
         if (current != null) {
+            gestureZoomPending = null
+            statusHandler.removeCallbacks(gestureZoomTick)
             sendRemoteZoom((current + direction * 10).coerceIn(0, 100))
         } else {
             // A câmera pode não expor controle remoto de zoom. Aqui só o receptor é ampliado.
@@ -710,6 +771,85 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         if (remoteZoomPercent != null) sendRemoteZoom(0)
         localZoomFactor = 1f
         applyLocalZoom()
+    }
+
+    /** Mantém o toque simples existente; pinça não abre/fecha a tela cheia por acidente. */
+    private fun handlePreviewTouch(event: MotionEvent): Boolean {
+        if (isPipLayout) return false
+        if (viewerControlsLocked) return true
+        pinchDetector.onTouchEvent(event)
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN -> pinchTouched = false
+            MotionEvent.ACTION_POINTER_DOWN -> {
+                pinchTouched = true
+                // ScrollView não deve roubar o movimento de dois dedos da prévia.
+                previewContainer.parent?.requestDisallowInterceptTouchEvent(true)
+            }
+            MotionEvent.ACTION_UP -> {
+                previewContainer.parent?.requestDisallowInterceptTouchEvent(false)
+                if (!pinchTouched) previewContainer.performClick()
+                pinchTouched = false
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                previewContainer.parent?.requestDisallowInterceptTouchEvent(false)
+                pinchTouched = false
+            }
+        }
+        return true
+    }
+
+    /** Coalescência de gestos: mantém no máximo uma requisição em voo, com intervalo mínimo. */
+    private fun queueGestureZoom(percent: Int, flush: Boolean = false) {
+        if (remoteZoomPercent == null || viewerControlsLocked) return
+        gestureZoomPending = percent.coerceIn(0, 100)
+        statusHandler.removeCallbacks(gestureZoomTick)
+        val elapsed = SystemClock.uptimeMillis() - lastGestureZoomSentAt
+        val delay = if (flush) 0L else (230L - elapsed).coerceAtLeast(0L)
+        statusHandler.postDelayed(gestureZoomTick, delay)
+    }
+
+    private fun dispatchGestureZoom() {
+        if (gestureZoomInFlight || viewerControlsLocked || isFinishing || isDestroyed) return
+        val percent = gestureZoomPending ?: return
+        gestureZoomPending = null
+        if (percent == lastGestureZoomSent) return
+        val endpoint = PhoneCameraUrls.zoomCommandUrl(intent.getStringExtra("url").orEmpty(), percent)
+            ?: return
+        gestureZoomInFlight = true
+        gestureZoomInFlightPercent = percent
+        lastGestureZoomSentAt = SystemClock.uptimeMillis()
+        Thread({
+            val ok = try {
+                NetUtil.bindToWifi(applicationContext)
+                val conn = URL(endpoint).openConnection() as HttpURLConnection
+                try {
+                    conn.requestMethod = "POST"
+                    conn.connectTimeout = 3500
+                    conn.readTimeout = 3500
+                    conn.instanceFollowRedirects = false
+                    conn.setRequestProperty("Content-Length", "0")
+                    conn.responseCode == 204
+                } finally { conn.disconnect() }
+            } catch (_: Exception) { false }
+            runOnUiThread {
+                gestureZoomInFlight = false
+                gestureZoomInFlightPercent = null
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                if (ok) {
+                    lastGestureZoomSent = percent
+                    remoteZoomPercent = percent
+                    remoteZoomRatio100 = null // aguardando nível de ampliação efetivo no status
+                    if (!pinchOngoing) updateZoomLabel()
+                } else {
+                    // Sem cascata de pedidos após uma falha; avisar só uma vez por tentativa.
+                    gestureZoomPending = null
+                    Toast.makeText(this, "Não foi possível ajustar o zoom remoto", Toast.LENGTH_SHORT).show()
+                }
+                val newer = gestureZoomPending
+                if (newer != null) queueGestureZoom(newer, flush = !pinchOngoing)
+                else if (ok && !pinchOngoing) refreshRemoteStatusSoon()
+            }
+        }, "camera-pinch-zoom").apply { isDaemon = true; start() }
     }
 
     private fun applyLocalZoom() {
@@ -777,6 +917,9 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     }
 
     private fun sendRemoteZoom(percent: Int) {
+        lastGestureZoomSent = null
+        gestureZoomPending = null
+        statusHandler.removeCallbacks(gestureZoomTick)
         if (remoteZoomPercent == null) {
             Toast.makeText(this, "Câmera sem zoom remoto; use o zoom local", Toast.LENGTH_SHORT).show()
             return
@@ -868,9 +1011,14 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                 image.scaleY = 1f
                 updateVideoRotation()
             }
-            remoteZoomPercent = state.zoomPercent
-            remoteZoomRatio100 = state.zoomRatio100
-            updateZoomLabel()
+            // Uma resposta antiga de telemetria não deve sobrescrever a pinça em curso.
+            if (!pinchOngoing && gestureZoomPending == null && !gestureZoomInFlight) {
+                // Mudanças externas (slider/botões/reinício da câmera) invalidam a deduplicação.
+                if (lastGestureZoomSent != state.zoomPercent) lastGestureZoomSent = null
+                remoteZoomPercent = state.zoomPercent
+                remoteZoomRatio100 = state.zoomRatio100
+                updateZoomLabel()
+            }
         }
         remoteFacing = state.facing ?: remoteFacing
         state.recordSeconds?.let { seconds ->
@@ -893,6 +1041,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         try {
             val parent = previewContainer as FrameLayout
             val view = VLCVideoLayout(this)
+            // Também aceita pinça na superfície do LibVLC; em H.264 o fallback é local.
+            view.setOnTouchListener { _, event -> handlePreviewTouch(event) }
             parent.addView(view, 1, FrameLayout.LayoutParams(-1, -1))
             vlcVideo = view
             updateVideoRotation()
