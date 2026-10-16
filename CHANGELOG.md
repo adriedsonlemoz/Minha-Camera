@@ -1,3 +1,11 @@
+## 1.4.55+65 — 2026-10-16
+- Tela cheia automática do receptor em retrato ou paisagem no modo de orientação Automático, mantendo a transmissão e a ImageView; controles essenciais sobrepostos, com botão para retornar à grade. Sair manualmente não reabre até a próxima mudança física de orientação.
+- Giro de vídeo local em passos de 90° com matriz de imagem, espelhamento e FIT/FILL proporcionais, sem alterar JPEGs ou stream no Redmi A3; ajuste da camada VLC H.264 experimental também é solicitado.
+- Grade do receptor com altura de ações 66 dp (antes 82 dp) e ícones compactos, preservando mínimo de toque de 48 dp.
+- Seletores de qualidade, FPS, lente, orientação e codec ganham cartões ilustrados; não alteram valores antes de retorno de sucesso dos comandos.
+- Diagnóstico remoto usa CameraReportDialog com ações Copiar e Exportar TXT via SAF, preservando relatórios e mascarando padrões de credenciais.
+- Não muda o servidor MJPEG/RTSP, o cadastro de câmeras, nem as chaves de assinatura. A verificação da orientação em Android físico e do H.264 permanece necessária.
+
 ## 1.4.54+64 — 2026-10-16
 - Relatórios da Jortan JT-9686 na 1.4.53 mostram autenticação Digest e DESCRIBE 200 com H.265 no caminho `/`, mas SETUP/PLAY não confirmados e LibVLC sem bytes ou quadros.
 - Corrigido o diagnóstico TCP RTSP: usa `HA2=MD5(MÉTODO:URI)` para cada comando, contador `nc` incremental para qop=auth, `cnonce` estável por sessão e o mesmo socket depois do desafio 401, com fallback de reconexão somente quando a câmera o fecha.

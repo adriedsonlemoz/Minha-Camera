@@ -1,3 +1,11 @@
+# Minha Câmera 1.4.55 (versionCode 65)
+
+- Tela cheia automática do receptor nos modos vertical e horizontal quando acompanha a rotação do Android, com controles essenciais discretos por cima da imagem e saída para ajustes completos.
+- Giro local em 90°/180°/270° e enquadramento proporcional para MJPEG; rotação H.264 via superfície VLC permanece experimental, exigindo teste real.
+- Controles reduzidos de 82 para 66 dp. Diálogos de FPS, resolução, codec, lente e orientação com ícones e seleção destacada.
+- Diagnóstico remoto organizado com Copiar e Exportar TXT por seletor de arquivo do Android; o relatório não deve conter tokens/senhas.
+- Compilação APK Android/ci e testes físicos com Redmi A3 e receptor ainda pendentes; FPS reais e atrasos não foram artificialmente alterados.
+
 # Minha Câmera 1.4.54 (versionCode 64)
 
 - Diagnóstico RTSP Digest correto para `DESCRIBE`, `SETUP` e `PLAY`, sem expor credenciais, nonce ou identificador de sessão.

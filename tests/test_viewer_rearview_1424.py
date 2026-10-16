@@ -26,7 +26,9 @@ class RearviewTests(unittest.TestCase):
         self.assertIn("@+id/phoneViewerMore", whole)
 
     def test_mirror_is_view_transform_not_reencode(self):
-        self.assertIn("image.scaleX = if (mirrorMode) -1f else 1f", self.code)
+        self.assertIn("image.setVideoTransform(rotationDegrees, mirrorMode, fillMode)", self.code)
+        matrix = (PKG / "PhoneViewerImageView.kt").read_text()
+        self.assertIn('transform.postScale(-1f, 1f)', matrix)
         self.assertIn('putBoolean("mirror", mirrorMode)', self.code)
         self.assertIn('getBoolean("mirror", false)', self.code)
         self.assertNotIn("Bitmap.createBitmap(image", self.code)

@@ -119,3 +119,10 @@ O GET /control/<token>/status inclui X-Device-Model e X-Resolution quando dispon
 ## Aprendizado RTSP da versão 1.4.48
 
 Separar detecção de porta TCP de confirmação do serviço RTSP. `OPTIONS` com resposta `RTSP/` indica serviço reconhecível; ausência de resposta não prova RTSP e HTTP não deve ser classificado como vídeo. O `DESCRIBE` válido confirma metadados SDP, mas **não garante decodificação**: confirmar o primeiro quadro real antes de atualizar um cadastro. Preservar credenciais e endereços privados nos diagnósticos exportados. ONVIF é opcional e sua ausência não confirma falta de serviços proprietários.
+
+## Aprendizado 1.4.55 (receptor / retrovisor)
+
+- Tela cheia pode ser aplicada por realocação do mesmo contêiner de vídeo para uma camada imersiva, sem reiniciar MJPEG nem gravador remoto.
+- Corrigir a orientação local do MJPEG com matriz da ImageView (90°/180°/270°, ajuste de proporção e espelhamento) antes de transformar ou recomprimir frames; o caminho de LibVLC deve ser validado separadamente.
+- Os comandos de gravação e foto sobrepostos em modo paisagem devem continuar usando endpoints remotos existentes e estado confirmado pelo transmissor.
+- Exportação de diagnóstico via Storage Access Framework permite salvar TXT sem permissões amplas de armazenamento; mascarar credenciais antes de oferecer exportação.

@@ -37,7 +37,7 @@
         android:textStyle="bold" android:textSize="13sp" android:paddingBottom="8dp"/>
     <LinearLayout android:id="@+id/phoneViewerVideoParent" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
         <FrameLayout android:id="@+id/phoneViewerPreviewContainer" android:layout_width="match_parent" android:layout_height="290dp" android:background="@drawable/bg_ui_preview" android:clipToOutline="true">
-            <ImageView android:id="@+id/phoneImage" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#050A10" android:contentDescription="@string/phone_camera" android:scaleType="fitCenter"/>
+            <com.minhacamera.PhoneViewerImageView android:id="@+id/phoneImage" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#050A10" android:contentDescription="@string/phone_camera"/>
             <TextView android:id="@+id/viewerRecordingClock" android:layout_width="wrap_content" android:layout_height="wrap_content"
                 android:layout_gravity="bottom|end" android:layout_margin="10dp" android:padding="8dp"
                 android:background="@drawable/bg_phone_telemetry" android:textColor="#FFFFFFFF"
@@ -58,217 +58,217 @@
     <GridLayout android:id="@+id/phoneViewerControls" android:layout_width="match_parent"
         android:layout_height="wrap_content" android:columnCount="5" android:alignmentMode="alignMargins"
         android:orientation="horizontal" android:useDefaultMargins="false">
-        <LinearLayout android:id="@+id/viewerRecordAction" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/viewerRecordAction" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Gravar">
-            <ImageView android:id="@+id/viewerRecordActionIcon" android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:id="@+id/viewerRecordActionIcon" android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_record" android:contentDescription="@null"/>
             <TextView android:id="@+id/viewerRecordActionLabel" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Gravar" android:textColor="@color/app_text" android:textSize="10sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/viewerSnapshotAction" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/viewerSnapshotAction" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Foto">
-            <ImageView android:id="@+id/viewerSnapshotActionIcon" android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:id="@+id/viewerSnapshotActionIcon" android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_camera" android:contentDescription="@null"/>
             <TextView android:id="@+id/viewerSnapshotActionLabel" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Foto" android:textColor="@color/app_text" android:textSize="10sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/viewerRotateAction" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/viewerRotateAction" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Girar">
-            <ImageView android:id="@+id/viewerRotateActionIcon" android:layout_width="23dp" android:layout_height="23dp"
-                android:src="@drawable/ic_ui_flip" android:contentDescription="@null"/>
+            <ImageView android:id="@+id/viewerRotateActionIcon" android:layout_width="21dp" android:layout_height="21dp"
+                android:src="@drawable/ic_ui_rotate_90" android:contentDescription="@null"/>
             <TextView android:id="@+id/viewerRotateActionLabel" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Girar" android:textColor="@color/app_text" android:textSize="10sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/phoneViewerFocus" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/phoneViewerFocus" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Expandir">
-            <ImageView android:id="@+id/phoneViewerFocusIcon" android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:id="@+id/phoneViewerFocusIcon" android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_expand" android:contentDescription="@null"/>
             <TextView android:id="@+id/phoneViewerFocusLabel" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Expandir" android:textColor="@color/app_text" android:textSize="10sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/phoneViewerFit" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/phoneViewerFit" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Inteira">
-            <ImageView android:id="@+id/phoneViewerFitIcon" android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:id="@+id/phoneViewerFitIcon" android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_expand" android:contentDescription="@null"/>
             <TextView android:id="@+id/phoneViewerFitLabel" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Inteira" android:textColor="@color/app_text" android:textSize="10sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/phoneViewerMirror" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/phoneViewerMirror" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Espelho">
-            <ImageView android:id="@+id/phoneViewerMirrorIcon" android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:id="@+id/phoneViewerMirrorIcon" android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_mirror" android:contentDescription="@null"/>
             <TextView android:id="@+id/phoneViewerMirrorLabel" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Espelho" android:textColor="@color/app_text" android:textSize="10sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/phoneRetry" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/phoneRetry" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Reconectar">
-            <ImageView android:id="@+id/phoneRetryIcon" android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:id="@+id/phoneRetryIcon" android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_scan" android:contentDescription="@null"/>
             <TextView android:id="@+id/phoneRetryLabel" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Reconectar" android:textColor="@color/app_text" android:textSize="10sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/viewerPipAction" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/viewerPipAction" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="PiP">
-            <ImageView android:id="@+id/viewerPipActionIcon" android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:id="@+id/viewerPipActionIcon" android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_pip" android:contentDescription="@null"/>
             <TextView android:id="@+id/viewerPipActionLabel" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="PiP" android:textColor="@color/app_text" android:textSize="10sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/viewerRemoteQuality" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/viewerRemoteQuality" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Resolução">
-            <ImageView android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_video" android:contentDescription="@null"/>
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Resolução" android:textColor="@color/app_text" android:textSize="10sp"/>
             <TextView android:id="@+id/viewerRemoteQualityValue" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:gravity="center" android:text="--" android:textColor="@color/brand_primary" android:textStyle="bold" android:textSize="9sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/viewerRemoteFps" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/viewerRemoteFps" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="FPS">
-            <ImageView android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_scan" android:contentDescription="@null"/>
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="FPS" android:textColor="@color/app_text" android:textSize="10sp"/>
             <TextView android:id="@+id/viewerRemoteFpsValue" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:gravity="center" android:text="--" android:textColor="@color/brand_primary" android:textStyle="bold" android:textSize="9sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/viewerRemoteFacing" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/viewerRemoteFacing" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Câmera">
-            <ImageView android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_camera" android:contentDescription="@null"/>
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Câmera" android:textColor="@color/app_text" android:textSize="10sp"/>
             <TextView android:id="@+id/viewerRemoteFacingValue" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:gravity="center" android:text="--" android:textColor="@color/brand_primary" android:textStyle="bold" android:textSize="9sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/viewerRemoteEco" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/viewerRemoteEco" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Eco">
-            <ImageView android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_leaf" android:contentDescription="@null"/>
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Eco" android:textColor="@color/app_text" android:textSize="10sp"/>
             <TextView android:id="@+id/viewerRemoteEcoValue" android:layout_width="match_parent" android:layout_height="wrap_content" android:maxLines="1" android:ellipsize="end" android:gravity="center" android:text="--" android:textColor="@color/brand_primary" android:textStyle="bold" android:textSize="9sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/phoneViewerMore" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/phoneViewerMore" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Orientação">
-            <ImageView android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_screen" android:contentDescription="@null"/>
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Orientação" android:textColor="@color/app_text" android:textSize="10sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/viewerBatteryAction" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/viewerBatteryAction" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Bateria">
-            <ImageView android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_battery" android:contentDescription="@null"/>
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Bateria" android:textColor="@color/app_text" android:textSize="10sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/viewerIndicatorsAction" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/viewerIndicatorsAction" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Indicadores">
-            <ImageView android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_battery" android:contentDescription="@null"/>
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Indicadores" android:textColor="@color/app_text" android:textSize="10sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/viewerLibraryAction" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/viewerLibraryAction" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Mídia remota">
-            <ImageView android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_gallery" android:contentDescription="@null"/>
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Mídia remota" android:textColor="@color/app_text" android:textSize="10sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/viewerDetailsAction" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/viewerDetailsAction" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Detalhes">
-            <ImageView android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_video" android:contentDescription="@null"/>
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Detalhes" android:textColor="@color/app_text" android:textSize="10sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/viewerCodecAction" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/viewerCodecAction" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Codec">
-            <ImageView android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_video" android:contentDescription="@null"/>
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Codec" android:textColor="@color/app_text" android:textSize="10sp"/>
         </LinearLayout>
-        <LinearLayout android:id="@+id/viewerDiagnosticsAction" android:layout_width="0dp" android:layout_height="82dp"
+        <LinearLayout android:id="@+id/viewerDiagnosticsAction" android:layout_width="0dp" android:layout_height="66dp"
             android:layout_columnWeight="1" android:layout_gravity="fill_horizontal" android:layout_margin="2dp"
             android:paddingHorizontal="2dp" android:gravity="center" android:orientation="vertical"
             android:background="@drawable/bg_ui_card" android:clickable="true" android:focusable="true"
             android:contentDescription="Diagnóstico">
-            <ImageView android:layout_width="23dp" android:layout_height="23dp"
+            <ImageView android:layout_width="21dp" android:layout_height="21dp"
                 android:src="@drawable/ic_ui_bug" android:contentDescription="@null"/>
             <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="5dp" android:gravity="center" android:maxLines="2"
+                android:layout_marginTop="2dp" android:gravity="center" android:maxLines="2"
                 android:ellipsize="end" android:text="Diagnóstico" android:textColor="@color/app_text" android:textSize="10sp"/>
         </LinearLayout>
     </GridLayout>
@@ -289,24 +289,24 @@
 <FrameLayout android:id="@+id/phoneViewerFullscreenHost" android:layout_width="match_parent"
     android:layout_height="match_parent" android:background="#000000" android:visibility="gone">
     <LinearLayout android:id="@+id/viewerFullscreenControls" android:layout_width="wrap_content"
-        android:layout_height="56dp" android:layout_gravity="bottom|center_horizontal"
+        android:layout_height="52dp" android:layout_gravity="bottom|center_horizontal"
         android:layout_marginBottom="20dp" android:paddingHorizontal="10dp" android:gravity="center"
         android:background="@drawable/bg_viewer_full_controls" android:orientation="horizontal">
-        <ImageView android:id="@+id/viewerFullBack" android:layout_width="44dp" android:layout_height="44dp"
+        <ImageView android:id="@+id/viewerFullBack" android:layout_width="48dp" android:layout_height="48dp"
             android:padding="11dp" android:src="@drawable/ic_back" android:tint="#FFFFFF"
             android:clickable="true" android:focusable="true" android:contentDescription="Sair da tela inteira" />
-        <ImageView android:id="@+id/viewerFullRecord" android:layout_width="44dp" android:layout_height="44dp"
+        <ImageView android:id="@+id/viewerFullRecord" android:layout_width="48dp" android:layout_height="48dp"
             android:padding="11dp" android:src="@drawable/ic_ui_record" android:tint="#FF8585"
             android:clickable="true" android:focusable="true" android:contentDescription="Gravar remotamente" />
-        <ImageView android:id="@+id/viewerFullPhoto" android:layout_width="44dp" android:layout_height="44dp"
+        <ImageView android:id="@+id/viewerFullPhoto" android:layout_width="48dp" android:layout_height="48dp"
             android:padding="11dp" android:src="@drawable/ic_ui_camera" android:tint="#FFFFFF"
             android:clickable="true" android:focusable="true" android:contentDescription="Foto remota" />
-        <ImageView android:id="@+id/viewerFullRotate" android:layout_width="44dp" android:layout_height="44dp"
-            android:padding="11dp" android:src="@drawable/ic_ui_flip" android:tint="#FFFFFF"
+        <ImageView android:id="@+id/viewerFullRotate" android:layout_width="48dp" android:layout_height="48dp"
+            android:padding="11dp" android:src="@drawable/ic_ui_rotate_90" android:tint="#FFFFFF"
             android:clickable="true" android:focusable="true" android:contentDescription="Girar imagem" />
-        <ImageView android:id="@+id/viewerFullPip" android:layout_width="44dp" android:layout_height="44dp"
-            android:padding="11dp" android:src="@drawable/ic_ui_pip" android:tint="#FFFFFF"
-            android:clickable="true" android:focusable="true" android:contentDescription="Abrir PiP" />
+        <ImageView android:id="@+id/viewerFullFit" android:layout_width="48dp" android:layout_height="48dp"
+            android:padding="11dp" android:src="@drawable/ic_ui_expand" android:tint="#FFFFFF"
+            android:clickable="true" android:focusable="true" android:contentDescription="Preencher ou mostrar vídeo inteiro" />
     </LinearLayout>
 </FrameLayout>
 <FrameLayout android:id="@+id/phoneViewerPipHost" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000000" android:visibility="gone"/>

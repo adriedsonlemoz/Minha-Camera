@@ -22,7 +22,8 @@ class CameraReportDialog(
     private val activity: AppCompatActivity,
     heading: String,
     initialText: String,
-    private val export: (String) -> Unit
+    private val export: (String) -> Unit,
+    private val subtitle: String = "Diagnóstico local • sem senhas ou tokens"
 ) {
     private fun dp(value: Int) = (value * activity.resources.displayMetrics.density + 0.5f).toInt()
     private val body = TextView(activity).apply {
@@ -62,7 +63,7 @@ class CameraReportDialog(
         header.addView(close, LinearLayout.LayoutParams(dp(44), dp(44)))
         container.addView(header)
         container.addView(TextView(activity).apply {
-            text = "Diagnóstico local • sem senhas ou tokens"
+            text = subtitle
             textSize = 12f
             setTextColor(activity.getColor(R.color.ui_muted))
         })

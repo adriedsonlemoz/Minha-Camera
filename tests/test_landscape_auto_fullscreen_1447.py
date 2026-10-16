@@ -12,8 +12,9 @@ class AutoLandscapeFullscreen1447(unittest.TestCase):
             'PhoneOrientationMode.AUTO',
             'Configuration.ORIENTATION_LANDSCAPE',
             'private fun syncLandscapeFullscreen()',
-            'landscapeDismissedByUser',
-            'if (landscapeFullscreen && focusMode)',
+            'dismissedFullscreenOrientation',
+            'automaticFullscreenOrientation',
+            'Configuration.ORIENTATION_PORTRAIT',
             'focusMode = false',
             'focusMode = true',
             'syncLandscapeFullscreen()'
@@ -29,7 +30,7 @@ class AutoLandscapeFullscreen1447(unittest.TestCase):
         xml = (ROOT / 'app/src/main/res/layout/activity_phone_viewer.xml').read_text()
         bg = (ROOT / 'app/src/main/res/drawable/bg_viewer_full_controls.xml').read_text()
         self.assertIn('viewerFullscreenControls', xml)
-        for name in ('viewerFullBack','viewerFullRecord','viewerFullPhoto','viewerFullRotate','viewerFullPip'):
+        for name in ('viewerFullBack','viewerFullRecord','viewerFullPhoto','viewerFullRotate','viewerFullFit'):
             self.assertIn(name, xml)
         self.assertIn('#660B1420', bg)
 
