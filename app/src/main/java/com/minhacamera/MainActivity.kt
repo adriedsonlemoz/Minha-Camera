@@ -360,19 +360,200 @@ class MainActivity : AppCompatActivity() {
             getString(R.string.resumo_camera_salva, parsed.user.ifBlank { "-" }, pathLabel, alternativos)
     }
 
+    private fun splitRtspUri(u: String): Pair<Int, String> {
+        val p = Uri.parse(u)
+        val port = if (p.port != -1) p.port else 554
+        val path = (p.encodedPath ?: "/") + (p.encodedQuery?.let { "?$it" } ?: "")
+        return Pair(port, path)
+    }
+
+    private fun altRtspPaths(path: String): List<String> {
+        val out = mutableListOf<String>()
+        fun add(p: String) { if (p != path) out.add(p) }
+        when {
+            path.contains("subtype=0") -> add(path.replace("subtype=0", "subtype=1"))
+            path.endsWith("/Streaming/Channels/101") -> add("/Streaming/Channels/102")
+            path == "/stream1" -> add("/stream2")
+            path == "/onvif1" -> add("/onvif2")
+            path == "/live/ch00_0" -> add("/live/ch00_1")
+            path == "/h264Preview_01_main" -> add("/h264Preview_01_sub")
+            path == "/11" -> add("/12")
+            path == "/ch1/main" -> add("/ch1/sub")
+            path.contains("/live/main") -> add(path.replace("main", "sub"))
+        }
+        return out
+    }
+
+    private fun analyzeAndApplyCamera(pos: Int) {
+        val camera = cams.getOrNull(pos) ?: return
+        if (isPhoneCamera(camera)) return
+        val parsed = CameraFormUi.parseRtsp(camera.url)
+        if (parsed.host.isBlank()) {
+            Toast.makeText(this, R.string.ip_invalido, Toast.LENGTH_LONG).show()
+            return
+        }
+        val currentPath = CameraFormUi.normalizePathChoice(parsed.path)
+        val paths = (listOf(currentPath).filter { it.isNotEmpty() } + RtspProbe.PATHS).distinct()
+        val dlg = AlertDialog.Builder(this)
+            .setTitle(R.string.rtsp_analyze_apply)
+            .setMessage(getString(R.string.consultando_onvif))
+            .setCancelable(false)
+            .create()
+        dlg.show()
+
+        Thread {
+            var okUrl: String? = null
+            var okAlts: List<String> = camera.alts
+            var warn = ""
+            var authFails = 0
+            var noReply = 0
+            var firstDebug = ""
+            val details = StringBuilder()
+
+            val on = OnvifClient.findStreamUri(parsed.host, parsed.user, parsed.pass, emptyList())
+            details.append("ONVIF: ").append(on.log.ifEmpty { "sem resposta" }).append('\n')
+            val streams = OnvifClient.order(on.streams)
+            if (streams.isNotEmpty()) {
+                val urls = streams.map { st ->
+                    val (pt, ph) = splitRtspUri(st.uri)
+                    CameraFormUi.buildRtspUrl(parsed.host, pt, parsed.user, parsed.pass, ph)
+                }
+                okUrl = urls.firstOrNull()
+                okAlts = urls.drop(1)
+                if (streams.firstOrNull()?.encoding?.contains("264") != true)
+                    warn = getString(R.string.aviso_h265)
+            }
+
+            if (okUrl == null) {
+                for ((i, path) in paths.withIndex()) {
+                    if (Thread.currentThread().isInterrupted) break
+                    runOnUiThread {
+                        if (!isFinishing && !isDestroyed) {
+                            dlg.setMessage(getString(R.string.testando_caminho, i + 1, paths.size))
+                        }
+                    }
+                    val r = RtspProbe.probe(parsed.host, parsed.port, parsed.user, parsed.pass, path)
+                    if (i == 0 && firstDebug.isEmpty()) firstDebug = r.debug
+                    details.append(path)
+                        .append("  →  ").append(r.detail)
+                        .append(if (r.videoCodec != null) " [${r.videoCodec}]" else "")
+                        .append('\n')
+                    when (r.status) {
+                        ProbeStatus.OK -> {
+                            val primary = CameraFormUi.buildRtspUrl(parsed.host, parsed.port, parsed.user, parsed.pass, path)
+                            val altCandidates = altRtspPaths(path)
+                            val verifiedH264 = if (r.videoCodec == "H265") {
+                                altCandidates.firstOrNull { candidate ->
+                                    val check = RtspProbe.probe(parsed.host, parsed.port, parsed.user, parsed.pass, candidate)
+                                    details.append(candidate).append(" → ").append(check.detail)
+                                        .append(" [").append(check.videoCodec ?: "?").append("]\n")
+                                    check.status == ProbeStatus.OK && check.videoCodec == "H264"
+                                }
+                            } else null
+                            okUrl = verifiedH264?.let {
+                                CameraFormUi.buildRtspUrl(parsed.host, parsed.port, parsed.user, parsed.pass, it)
+                            } ?: primary
+                            okAlts = (listOf(primary) + altCandidates.map {
+                                CameraFormUi.buildRtspUrl(parsed.host, parsed.port, parsed.user, parsed.pass, it)
+                            }).filter { it != okUrl }.distinct()
+                            if (r.videoCodec == "H265" && verifiedH264 == null) warn = getString(R.string.aviso_h265)
+                            break
+                        }
+                        ProbeStatus.AUTH_FAIL -> {
+                            noReply = 0
+                            authFails++
+                            if (authFails >= 2) break
+                        }
+                        ProbeStatus.NOT_FOUND -> {
+                            authFails = 0
+                            noReply = 0
+                        }
+                        ProbeStatus.ERROR -> {
+                            authFails = 0
+                            if (r.detail.startsWith("sem resposta")) {
+                                noReply++
+                                if (noReply >= 3) break
+                            } else noReply = 0
+                        }
+                    }
+                }
+            }
+
+            val report = details.toString() +
+                (if (firstDebug.isNotEmpty()) "
+" + getString(R.string.detalhes_tecnicos) + "
+" + firstDebug else "")
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                dlg.dismiss()
+                if (okUrl != null) {
+                    cams[pos] = Camera(camera.name, okUrl!!, okAlts)
+                    store.save(cams)
+                    refresh()
+                    val message = buildString {
+                        append(getString(R.string.rtsp_apply_done))
+                        if (warn.isNotEmpty()) append("
+
+").append(warn)
+                        append("
+
+").append(report)
+                    }
+                    AlertDialog.Builder(this)
+                        .setTitle(camera.name)
+                        .setMessage(message)
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                } else {
+                    val msg = when {
+                        authFails >= 2 -> R.string.falha_login
+                        noReply >= 3 -> R.string.falha_sem_resposta
+                        else -> R.string.falha_caminho
+                    }
+                    AlertDialog.Builder(this)
+                        .setTitle(camera.name)
+                        .setMessage(getString(msg) + "
+
+" + report)
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show()
+                }
+            }
+        }.start()
+    }
+
     private fun showOptions(pos: Int) {
-        val options = arrayOf(
-            getString(R.string.editar),
-            getString(R.string.copiar_rtsp_com_senha),
-            getString(R.string.excluir)
-        )
+        val camera = cams[pos]
+        val options = if (isPhoneCamera(camera)) {
+            arrayOf(
+                getString(R.string.editar),
+                getString(R.string.copiar_rtsp_com_senha),
+                getString(R.string.excluir)
+            )
+        } else {
+            arrayOf(
+                getString(R.string.editar),
+                getString(R.string.rtsp_analyze_apply),
+                getString(R.string.copiar_rtsp_com_senha),
+                getString(R.string.excluir)
+            )
+        }
         AlertDialog.Builder(this)
-            .setTitle(cams[pos].name)
+            .setTitle(camera.name)
             .setItems(options) { _, which ->
-                when (which) {
-                    0 -> showEditDialog(pos)
-                    1 -> copyCameraUrl(cams[pos])
-                    else -> confirmDelete(pos)
+                if (isPhoneCamera(camera)) {
+                    when (which) {
+                        0 -> showEditDialog(pos)
+                        1 -> copyCameraUrl(camera)
+                        else -> confirmDelete(pos)
+                    }
+                } else {
+                    when (which) {
+                        0 -> showEditDialog(pos)
+                        1 -> analyzeAndApplyCamera(pos)
+                        2 -> copyCameraUrl(camera)
+                        else -> confirmDelete(pos)
+                    }
                 }
             }
             .show()

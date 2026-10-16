@@ -120,6 +120,81 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private fun orientationMode() = PhoneOrientationMode.normalize(
         getSharedPreferences("phone_video", MODE_PRIVATE).getString(PhoneOrientationMode.PREF_KEY, null))
 
+    private fun setCardValue(id: Int, value: String) {
+        findViewById<TextView>(id).text = value
+    }
+
+    private fun orientationSummary(): String = when (orientationMode()) {
+        PhoneOrientationMode.PORTRAIT -> "Vertical"
+        PhoneOrientationMode.LANDSCAPE -> "Horizontal"
+        else -> "Auto"
+    }
+
+    private fun qualitySummary(): String = when (getSharedPreferences("phone_video", MODE_PRIVATE)
+        .getInt("remote_quality", 480)) {
+        360 -> "360p"
+        480 -> "480p"
+        720 -> "720p"
+        768 -> "1024×768"
+        1080 -> "1080p"
+        else -> "Auto"
+    }
+
+    private fun recordingProfileSummary(): String {
+        val prefs = getSharedPreferences("phone_video", MODE_PRIVATE)
+        val fps = prefs.getInt("record_fps", 15)
+        val bitrateMbps = prefs.getInt("record_bitrate", 2_000_000) / 1_000_000
+        return "$fps FPS · ${bitrateMbps}M"
+    }
+
+    private fun facingSummary(): String = when {
+        dualMode -> "Duas"
+        selectedFacing == Camera.CameraInfo.CAMERA_FACING_FRONT -> "Frontal"
+        else -> "Traseira"
+    }
+
+    private fun refreshTransmitterCards() {
+        if (!::recordLabel.isInitialized) return
+        setCardValue(R.id.valuePhoneSwitch, facingSummary())
+        setCardValue(R.id.valuePhoneDual, if (dualMode) "Ligado" else "Uma")
+        setCardValue(R.id.valuePhoneQr, if (server != null || backgroundMode) "Abrir" else "Aguardar")
+        setCardValue(R.id.valuePhoneLink, if (server != null || backgroundMode) "Copiar" else "Aguardar")
+        setCardValue(R.id.valuePhoneCode, "Novo")
+        setCardValue(R.id.valuePhoneOrientation, orientationSummary())
+        setCardValue(R.id.valuePhoneQuality, qualitySummary())
+        setCardValue(R.id.valuePhoneFps, "${fpsTarget} FPS")
+        val codec = selectedStreamCodec().uppercase(Locale.US)
+        setCardValue(R.id.valuePhoneCodec, codec)
+        setCardValue(R.id.valuePhoneOverlay, if (showBatteryOverlay) "Ligado" else "Desligado")
+        setCardValue(R.id.valuePhoneEco, if (ecoEnabled) "Ligado" else "Desligado")
+        setCardValue(R.id.valuePhoneBackground, if (backgroundMode) "Ligado" else "Desligado")
+        setCardValue(R.id.valuePhoneStorage, recordingProfileSummary())
+        setCardValue(R.id.valuePhoneDiagnostic, "Abrir")
+        setCardValue(R.id.valuePhoneRecord, if (recordingRequested) "Parar" else "MP4")
+    }
+
+    private fun toggleBatteryOverlayCard() {
+        showBatteryOverlay = !showBatteryOverlay
+        getSharedPreferences("phone_video", MODE_PRIVATE).edit()
+            .putBoolean("show_battery_overlay", showBatteryOverlay).apply()
+        lastTelemetryLabel = ""
+        telemetryPreview.visibility = if (showBatteryOverlay && server != null) View.VISIBLE else View.GONE
+        Toast.makeText(this, if (showBatteryOverlay)
+            R.string.phone_show_battery_overlay else R.string.phone_hide_battery_overlay,
+            Toast.LENGTH_SHORT).show()
+        refreshTransmitterCards()
+    }
+
+    private fun toggleEcoCard() {
+        ecoEnabled = !ecoEnabled
+        getSharedPreferences("phone_video", MODE_PRIVATE).edit()
+            .putBoolean("eco_enabled", ecoEnabled).apply()
+        Toast.makeText(this, if (ecoEnabled)
+            R.string.phone_eco_activated else R.string.phone_eco_deactivated,
+            Toast.LENGTH_SHORT).show()
+        refreshTransmitterCards()
+    }
+
     private var worker = Executors.newSingleThreadExecutor()
     private val recordWorker = Executors.newSingleThreadExecutor()
     private val encoding = AtomicBoolean(false)
@@ -219,9 +294,20 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         recordButton = findViewById(R.id.phoneRecord)
         recordLabel = findViewById(R.id.phoneRecordLabel)
         recordIcon = findViewById(R.id.phoneRecordIcon)
-        findViewById<View>(R.id.phoneDual).setOnClickListener { toggleDual() }
+        findViewById<View>(R.id.phoneDual).setOnClickListener { toggleDual(); refreshTransmitterCards() }
         recordButton.setOnClickListener { toggleRecording() }
-        findViewById<View>(R.id.phoneMore).setOnClickListener { openMoreDialog() }
+        findViewById<View>(R.id.phoneLink).setOnClickListener { openLinkDialog() }
+        findViewById<View>(R.id.phoneCode).setOnClickListener { findViewById<View>(R.id.phoneRevoke).performClick() }
+        findViewById<View>(R.id.phoneOrientation).setOnClickListener { chooseOrientationMode() }
+        findViewById<View>(R.id.phoneQualityCard).setOnClickListener { chooseLocalQuality() }
+        findViewById<View>(R.id.phoneFpsCard).setOnClickListener { chooseLocalFps() }
+        findViewById<View>(R.id.phoneCodecCard).setOnClickListener { chooseLocalCodec() }
+        findViewById<View>(R.id.phoneOverlay).setOnClickListener { toggleBatteryOverlayCard() }
+        findViewById<View>(R.id.phoneEcoCard).setOnClickListener { toggleEcoCard() }
+        findViewById<View>(R.id.phoneBackgroundCard).setOnClickListener { toggleBackgroundMode() }
+        findViewById<View>(R.id.phoneStorage).setOnClickListener { chooseRecordingProfile() }
+        findViewById<View>(R.id.phoneStorage).setOnLongClickListener { chooseRecordingProfile(); true }
+        findViewById<View>(R.id.phoneDiagnosticCard).setOnClickListener { showDiagnostic() }
         preview.surfaceTextureListener = this
         // SurfaceTexture desenha como uma View normal, mesmo dentro de ScrollView.
         surfaceReady = preview.isAvailable
@@ -271,6 +357,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         }
         status.setText(R.string.phone_waiting)
         refreshNetworkIndicator(false)
+        refreshTransmitterCards()
     }
 
     override fun onResume() {
@@ -302,6 +389,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         }
         codecButton.text = selectedStreamCodec().uppercase(Locale.US)
         refreshTransmissionButton()
+        refreshTransmitterCards()
         uiHandler.removeCallbacks(clockTick)
         uiHandler.post(clockTick)
     }
@@ -371,6 +459,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         if (::transmissionButton.isInitialized) transmissionButton.setText(
             if (transmissionEnabled || backgroundMode) R.string.phone_transmit_stop else R.string.phone_transmit_start)
         refreshNetworkIndicator(live)
+        refreshTransmitterCards()
     }
 
     private fun refreshNetworkIndicator(active: Boolean) {
@@ -865,6 +954,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             recordingStartedAt = 0L
             if (server != null) status.setText(R.string.phone_online)
         }
+        refreshTransmitterCards()
     }
 
     /** Executar exclusivamente no worker de gravação após os quadros já enfileirados. */
@@ -990,23 +1080,11 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             chooseRecordingProfile()
         }
         content.findViewById<View>(R.id.moreOverlayRow).setOnClickListener {
-            showBatteryOverlay = !showBatteryOverlay
-            getSharedPreferences("phone_video", MODE_PRIVATE).edit()
-                .putBoolean("show_battery_overlay", showBatteryOverlay).apply()
-            lastTelemetryLabel = ""
-            telemetryPreview.visibility = View.GONE
-            Toast.makeText(this, if (showBatteryOverlay)
-                R.string.phone_show_battery_overlay else R.string.phone_hide_battery_overlay,
-                Toast.LENGTH_SHORT).show()
+            toggleBatteryOverlayCard()
             refreshStates()
         }
         content.findViewById<View>(R.id.moreEcoRow).setOnClickListener {
-            ecoEnabled = !ecoEnabled
-            getSharedPreferences("phone_video", MODE_PRIVATE).edit()
-                .putBoolean("eco_enabled", ecoEnabled).apply()
-            Toast.makeText(this, if (ecoEnabled)
-                R.string.phone_eco_activated else R.string.phone_eco_deactivated,
-                Toast.LENGTH_SHORT).show()
+            toggleEcoCard()
             refreshStates()
         }
         content.findViewById<View>(R.id.moreBackgroundRow).setOnClickListener {
@@ -1040,6 +1118,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                     if (!recordingRequested) updateOrientation()
                     else Toast.makeText(this, R.string.phone_orientation_deferred, Toast.LENGTH_LONG).show()
                 }
+                refreshTransmitterCards()
             }.setNegativeButton(R.string.cancelar, null).show()
     }
 
@@ -1059,6 +1138,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                     stopStreaming()
                     if (visible) tryStart()
                 }
+                refreshTransmitterCards()
             }.setNegativeButton(R.string.cancelar, null).show()
     }
 
@@ -1075,6 +1155,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                     fpsTarget = options[index]
                     prefs.edit().putInt("remote_fps",options[index]).apply()
                 }
+                refreshTransmitterCards()
             }.setNegativeButton(R.string.cancelar, null).show()
     }
 
@@ -1090,6 +1171,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                 if (recordingRequested) { Toast.makeText(this, R.string.phone_stop_record_first, Toast.LENGTH_LONG).show(); return@setSingleChoiceItems }
                 prefs.edit().putInt("record_fps", fps[index]).putInt("record_bitrate", bitrate[index]).apply()
                 Toast.makeText(this, R.string.phone_record_profile_saved, Toast.LENGTH_SHORT).show()
+                refreshTransmitterCards()
             }.setNegativeButton(R.string.cancelar, null).show()
     }
 
@@ -1119,6 +1201,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                     }
                 }
                 codecButton.text = chosen.uppercase(Locale.US)
+                refreshTransmitterCards()
             }.setNegativeButton(R.string.cancelar, null).show()
     }
 

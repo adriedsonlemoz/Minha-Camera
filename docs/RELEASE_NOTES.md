@@ -1,3 +1,11 @@
+# Minha Câmera 1.4.43 (versionCode 53)
+
+- O transmissor **Usar o celular como câmera** agora mantém os controles/ajustes importantes visíveis em cards com ícones na própria tela, sem esconder o uso principal dentro do menu Mais.
+- Há acesso direto a Link, Código, bateria no vídeo, Eco, tela apagada, orientação, resolução, FPS, codec, perfil MP4 e diagnóstico, além de QR, gravação, câmera e modo duplo.
+- Câmeras RTSP já cadastradas ganharam a ação **Analisar e aplicar** no menu de opções, para reavaliar o fluxo e atualizar URL principal e alternativas salvas.
+- Continuidade do suporte a MJPEG/H.264 experimental, gravação MP4 e monitoramento local sem nuvem obrigatória.
+- Compilação Android e testes em aparelho ainda pendentes.
+
 # Minha Câmera 1.4.42 (versionCode 52)
 
 - Corrige 16 erros AAPT2 em `:app:processReleaseResources` (Build APK 42) removendo atributos `app:insetLeft`, `app:insetRight`, `app:insetTop` e `app:insetBottom` inexistentes dos quatro botões Material no cartão de dispositivos.

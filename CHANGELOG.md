@@ -1,3 +1,9 @@
+## 1.4.43+53 — 2026-10-15
+- Tela **Usar o celular como câmera** reorganizada com controles e ajustes visíveis em grade na própria página, sem depender do menu Mais para funções principais.
+- Novos cards diretos para Link, Código, sobreposição de bateria, Eco, tela apagada, orientação, resolução, FPS, codec, perfil MP4 e diagnóstico, preservando QR, gravação, troca de câmera e modo duplo.
+- Câmeras RTSP já cadastradas agora oferecem **Analisar e aplicar** no menu de opções (toque longo), para reexaminar o fluxo e atualizar automaticamente URL principal e alternativas salvas.
+- Validação Android/CI e teste físico do APK ainda pendentes nesta entrega.
+
 ## 1.4.42+52 — 2026-10-15
 
 - Corrige o Build APK 42: o AAPT2 interrompia `:app:processReleaseResources` com 16 erros `attribute insetLeft/Right/Top/Bottom not found` em `item_camera.xml`.

@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.42 (versionCode 52)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.43 (versionCode 53)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Novo em 1.4.43:** a tela **Usar o celular como câmera** voltou a mostrar os atalhos/ajustes com ícones visíveis na própria página, em grade, sem esconder funções principais só no menu Mais. Agora há cards diretos para Link, Código, bateria no vídeo, Eco, tela apagada, orientação, resolução, FPS, codec, MP4 e diagnóstico, além de câmera, QR e gravação. Câmeras RTSP já cadastradas ganharam a opção **Analisar e aplicar** no menu de opções (toque longo), para reexaminar o fluxo e atualizar URL/alternativas salvas. **Sem APK compilado/testado no aparelho nesta entrega.**
 
 **Correção 1.4.42 (Build APK 42):** removidos 16 atributos `app:insetLeft/Right/Top/Bottom` inválidos dos quatro botões no layout `item_camera.xml`, que impediam `:app:processReleaseResources`. A grade de quatro ações por câmera permanece intacta. Adicionada validação preventiva dos atributos no preflight Android. Não muda assinatura, permissão, fluxo de vídeo ou orientação. **O novo APK ainda deve ser compilado e instalado no CI/aparelho.**
 
