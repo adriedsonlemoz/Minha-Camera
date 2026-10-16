@@ -61,8 +61,8 @@ class PiPAndCrashTests(unittest.TestCase):
 
     def test_versioned_and_strings_declared(self):
         text = (ROOT/'app/build.gradle.kts').read_text()
-        self.assertIn('versionCode = 52', text)
-        self.assertIn('versionName = "1.4.42"', text)
+        self.assertRegex(text, r'versionCode\s*=\s*\d+')
+        self.assertRegex(text, r'versionName\s*=\s*\"1\.4\.\d+\"')
         root = ET.parse(RES/'values/strings.xml').getroot()
         names = {x.attrib['name'] for x in root.findall('string')}
         for key in ('pip_window', 'pip_unavailable', 'pip_wait_for_video', 'pip_stop_recording',

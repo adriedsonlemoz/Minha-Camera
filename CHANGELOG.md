@@ -1,3 +1,9 @@
+## 1.4.45+55 — 2026-10-16
+- Corrigida a falha do Build APK 45 em `:app:compileReleaseKotlin`: quebras de linha reais dentro de strings de relatório em `MainActivity.kt` (linhas 483–519).
+- O relatório **Analisar e aplicar** volta a usar sequências escapadas `\n` / `\n\n`; mantidas as funcionalidades RTSP e orientação de câmera.
+- Adicionado preflight `scripts/check_kotlin_strings.py` com quatro testes de regressão, executado pelo GitHub Actions antes da compilação.
+- Parser PSI Kotlin, validações estáticas e testes locais aprovados; compilação Android/CI e teste em dispositivo permanecem pendentes.
+
 ## 1.4.44+54 — 2026-10-15
 - Corrigida a orientação do transmissor nos modos **Vertical fixo** e **Horizontal fixo** para evitar imagem de cabeça para baixo quando o aparelho está no lado oposto da rotação.
 - Os modos fixos agora preservam a família retrato/paisagem, mas escolhem automaticamente o lado físico correto (0/180 ou 90/270) com base na posição real do aparelho.

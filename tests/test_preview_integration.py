@@ -18,7 +18,7 @@ for required in ('c.setPreviewTexture(preview.surfaceTexture', 'onSurfaceTexture
                  'preview.isAvailable', 'stopStreaming()', 'publishedStreamFrame',
                  'receivedCameraFrames', 'renderedPreviewFrames', 'R.string.phone_no_frames',
                  'status.setText(R.string.phone_online)', 'session.publish(encoded, battery)',
-                 'R.layout.dialog_phone_qr', 'R.id.phoneQr', 'R.id.phoneMore',
+                 'R.layout.dialog_phone_qr', 'R.id.phoneQr', 'R.id.phoneOrientation', 'R.id.phoneEcoCard',
                  'R.id.phoneSwitch', 'R.id.phoneRevoke'):
     assert required in s, required
 assert 'qrDialog?.dismiss()' in s

@@ -1,3 +1,11 @@
+# Minha Câmera 1.4.45 (versionCode 55)
+
+- Corrige erro sintático do Build APK 45 em `MainActivity.kt`, causado por quebras de linha literais em strings de relatório RTSP.
+- Mensagens do comando **Analisar e aplicar** agora usam `\n` de forma compatível com Kotlin, mantendo o relatório de resultado.
+- Adicionada verificação automatizada de strings Kotlin ao preflight do GitHub Actions e quatro testes para impedir a regressão.
+- Preservados controles do transmissor, MJPEG/H.264, gravação, RTSP, orientação fixa da 1.4.44 e assinatura permanente.
+- Ainda exige compilação Android pelo GitHub Actions e verificação no aparelho.
+
 # Minha Câmera 1.4.44 (versionCode 54)
 
 - Corrigido o problema em que a imagem do transmissor podia sair **de cabeça para baixo** no modo horizontal/vertical fixo quando o aparelho estava montado no lado oposto da rotação esperada.

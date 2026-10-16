@@ -480,9 +480,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             val report = details.toString() +
-                (if (firstDebug.isNotEmpty()) "
-" + getString(R.string.detalhes_tecnicos) + "
-" + firstDebug else "")
+                (if (firstDebug.isNotEmpty()) "\n" + getString(R.string.detalhes_tecnicos) + "\n" + firstDebug else "")
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 dlg.dismiss()
@@ -492,12 +490,8 @@ class MainActivity : AppCompatActivity() {
                     refresh()
                     val message = buildString {
                         append(getString(R.string.rtsp_apply_done))
-                        if (warn.isNotEmpty()) append("
-
-").append(warn)
-                        append("
-
-").append(report)
+                        if (warn.isNotEmpty()) append("\n\n").append(warn)
+                        append("\n\n").append(report)
                     }
                     AlertDialog.Builder(this)
                         .setTitle(camera.name)
@@ -512,9 +506,7 @@ class MainActivity : AppCompatActivity() {
                     }
                     AlertDialog.Builder(this)
                         .setTitle(camera.name)
-                        .setMessage(getString(msg) + "
-
-" + report)
+                        .setMessage(getString(msg) + "\n\n" + report)
                         .setPositiveButton(android.R.string.ok, null)
                         .show()
                 }

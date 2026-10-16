@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.44 (versionCode 54)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.45 (versionCode 55)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Correção 1.4.45 (Build APK 45):** corrigidas cinco strings de relatório RTSP com quebras de linha literais inválidas em `MainActivity.kt` (`:app:compileReleaseKotlin`, linhas 483–519). Foram substituídas por escapes Kotlin `\n` e `\n\n`, preservando a ação **Analisar e aplicar**. Adicionados `scripts/check_kotlin_strings.py`, testes de regressão e execução obrigatória no preflight do GitHub Actions para detectar o erro antes do Gradle. **A correção passou por parser PSI Kotlin local, mas ainda requer compilação Android/CI e teste em aparelho.**
 
 **Correção 1.4.44:** corrigida a orientação fixa do transmissor para evitar imagem **de cabeça para baixo** quando o celular está no **outro lado da horizontal**. Agora os modos **Vertical fixo** e **Horizontal fixo** preservam o grupo retrato/paisagem, mas escolhem automaticamente o lado físico correto (0/180 ou 90/270) com base na posição real do aparelho. A leitura do sensor de orientação também permanece ativa nos modos fixos para manter esse ajuste. **Sem APK compilado/testado no aparelho nesta entrega.**
 

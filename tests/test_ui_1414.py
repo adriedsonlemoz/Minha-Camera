@@ -16,7 +16,7 @@ main_ids={node.get(a+'id') for node in main.iter()}
 phone_ids={node.get(a+'id') for node in phone.iter()}
 for id in ('mainMore','mainMedia','list','empty','mainScan','mainAdd','roleTransmit','roleAssistir','phoneManual'):
     assert f'@+id/{id}' in main_ids,id
-for id in ('phonePreview','phoneStatus','phoneQr','phoneDual','phoneRecord','phoneMore','phoneSwitch','phoneRevoke','previewPlaceholder','phoneDualTop','phoneDualBottom'):
+for id in ('phonePreview','phoneStatus','phoneQr','phoneDual','phoneRecord','phoneOrientation','phoneQualityCard','phoneFpsCard','phoneEcoCard','phoneBackgroundCard','phoneSwitch','phoneRevoke','previewPlaceholder','phoneDualTop','phoneDualBottom'):
     assert f'@+id/{id}' in phone_ids,id
 assert '@+id/dialogQr' in {e.get(a+'id') for e in qr.iter()}
 assert '@+id/phoneScanner' in {e.get(a+'id') for e in scan.iter()}
@@ -28,7 +28,8 @@ assert 'findViewById<View>(R.id.mainMore).setOnClickListener' in main_kt
 assert 'showTab(false)' not in main_kt and 'mainMedia' in main_kt
 assert 'R.layout.dialog_phone_scan' in main_kt and 'R.layout.dialog_phone_qr' in phone_kt
 assert 'android:screenOrientation="portrait"' in (root/'app/src/main/AndroidManifest.xml').read_text()
-assert 'findViewById<View>(R.id.phoneMore)' in phone_kt
+assert 'findViewById<View>(R.id.phoneOrientation)' in phone_kt and 'chooseOrientationMode()' in phone_kt
+assert 'findViewById<View>(R.id.phoneEcoCard)' in phone_kt and 'toggleEcoCard()' in phone_kt
 assert 'getString(R.string.ui_link_copy)' in phone_kt and 'getString(R.string.ui_link_share)' in phone_kt
 assert 'PhoneCameraAccess.revoke(this)' in phone_kt
 assert 'session.start()' in phone_kt
