@@ -46,6 +46,41 @@ private fun checkDigestFallback() {
     }
 }
 
+private fun checkDigestReconnect() {
+    ServerSocket(0).use { server ->
+        server.soTimeout = 6000
+        val thread = Thread {
+            // Primeiro socket: a câmera manda 401 e fecha a conexão.
+            server.accept().use { socket ->
+                socket.soTimeout = 2000
+                socket.readRequest()
+                socket.getOutputStream().write((
+                    "RTSP/1.0 401 Unauthorized\r\nCSeq: 1\r\n" +
+                    "WWW-Authenticate: Digest realm=\"lab\", nonce=\"abc\", qop=\"auth\"\r\n" +
+                    "Content-Length: 0\r\n\r\n").toByteArray())
+            }
+            // Segundo socket: autenticado com o desafio anterior, retorna SDP.
+            server.accept().use { socket ->
+                socket.soTimeout = 2000
+                val request = socket.readRequest()
+                check(request.contains("Authorization: Digest")) { "Digest não reenviado em nova conexão" }
+                val sdp = "v=0\r\nm=video 0 RTP/AVP 96\r\na=rtpmap:96 H264/90000\r\n"
+                val body = sdp.toByteArray(Charsets.UTF_8)
+                socket.getOutputStream().write((
+                    "RTSP/1.0 200 OK\r\nCSeq: 3\r\nContent-Length: ${body.size}\r\n\r\n"
+                ).toByteArray() + body)
+            }
+        }
+        thread.start()
+        val result = RtspProbe.probe("127.0.0.1", server.localPort, "admin", "senha", "/onvif1")
+        check(result.status == ProbeStatus.OK && result.videoCodec == "H264") { result }
+        check(!result.debug.contains("senha") && !result.debug.contains("abc"))
+        thread.join(3000)
+        check(!thread.isAlive)
+        println("OK: desafio Digest 401 seguido de reconexão autenticada sem vazar credenciais")
+    }
+}
+
 private fun checkDiscoveryXml() {
     val id = "urn:uuid:teste"
     val xml = """<s:Envelope xmlns:s="http://www.w3.org/2003/05/soap-envelope" xmlns:a="urn:addressing" xmlns:d="urn:discovery">
@@ -169,6 +204,7 @@ fun main() {
     checkRtspSdpProbe()
     checkSubnets()
     checkDigestFallback()
+    checkDigestReconnect()
     checkDiscoveryXml()
     checkOnvifAdvertisedEndpoint()
     println("Testes simulados de protocolo concluídos")

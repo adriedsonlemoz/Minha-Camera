@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.50 (versionCode 60)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.51 (versionCode 61)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Novo em 1.4.51:** diagnóstico 401/Digest revisado: reconexão quando a câmera fecha o socket após desafiar o login, tentativa controlada de Digest em URI-base para firmware antigo e repasse explícito das credenciais decodificadas ao LibVLC. O relatório informa se há credenciais configuradas, os esquemas anunciados e códigos das respostas, sem exportar usuário, senha ou nonce. O envio de autenticação não substitui o cadastro. **O OPTIONS 200 da Câmera 209 confirma serviço RTSP, mas o DESCRIBE ainda requer validação física. Sem garantia de vídeo nesta versão.**
 
 **Novo em 1.4.50:** investigação de regressão RTSP sem alterar o cadastro: ao abrir o player, a rota padrão do Android foi restaurada (antes da 1.4.46 o app não vinculava globalmente o processo ao Wi-Fi no visualizador); no menu da câmera existem **Testar outra rota de rede** (alternar entre rota padrão e Wi-Fi vinculado) e **Testar no VLC externo** com confirmação explícita quando a URL contém credenciais. O diagnóstico exportável passa a registrar o estado do VLC, bytes de entrada, demux, quadros decodificados e exibidos, versão do app, transporte TCP/UDP, modo de rede e resposta `OPTIONS` detalhada, diferenciando-a de `DESCRIBE`. Não habilita Media3 1.3.1 que apresentou travamento nativo anterior. **Ainda não há prova de que a câmera 209 voltará a conectar. Teste real necessário.**
 

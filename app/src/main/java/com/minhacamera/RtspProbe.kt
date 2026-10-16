@@ -124,31 +124,44 @@ object RtspProbe {
         return Reply(code, authHeaders, statusLine, body.toString("UTF-8"))
     }
 
-    // Uma tentativa completa em UMA conexão: DESCRIBE sem login -> desafio -> DESCRIBE com login.
-    // Algumas câmeras ligam o "nonce" à conexão e recusam o login em outra conexão.
+    // Primeiro tenta autenticar na conexão do desafio. Alguns firmwares encerram
+    // o socket após 401; nesses casos reabre e reaplica o desafio recebido.
     private fun attempt(
         host: String, port: Int, uri: String, user: String, pass: String, variant: Int
     ): Pair<Reply?, Reply?> {
         var first: Reply? = null
         var second: Reply? = null
+        var header: String? = null
         try {
-            Socket().use { s ->
-                s.connect(InetSocketAddress(host, port), 3000)
-                s.soTimeout = 4000
-                val out = s.getOutputStream()
-                val input = s.getInputStream()
+            Socket().use { socket ->
+                socket.connect(InetSocketAddress(host, port), 2500)
+                socket.soTimeout = 3000
+                val out = socket.getOutputStream()
+                val input = socket.getInputStream()
                 send(out, uri, 1, null)
-                val r1 = readReply(input)
-                first = r1
-                if (r1 != null && r1.code == 401) {
-                    val header = buildAuth(r1.authHeaders, user, pass, uri, variant)
-                    if (header != null) {
-                        send(out, uri, 2, header)
+                first = readReply(input)
+                val initial = first
+                if (initial != null && initial.code == 401) {
+                    header = buildAuth(initial.authHeaders, user, pass, uri, variant)
+                    header?.let { auth ->
+                        send(out, uri, 2, auth)
                         second = readReply(input)
                     }
                 }
             }
-        } catch (_: Exception) {
+        } catch (_: Exception) { /* servidor pode fechar a conexão após o 401 */ }
+        // Não reutilizar nonce entre hosts; apenas repetir para o MESMO servidor.
+        // Muitas câmeras legadas aceitam autenticação somente em um socket novo.
+        if (first?.code == 401 && second == null && header != null) {
+            try {
+                Socket().use { socket ->
+                    socket.connect(InetSocketAddress(host, port), 2500)
+                    socket.soTimeout = 3000
+                    val out = socket.getOutputStream()
+                    send(out, uri, 3, header)
+                    second = readReply(socket.getInputStream())
+                }
+            } catch (_: Exception) { }
         }
         return Pair(first, second)
     }
@@ -158,44 +171,57 @@ object RtspProbe {
         val dbg = StringBuilder()
         var loginRefused = false
         var hadChallenge = false
+        var challengeWithoutResponse = false
         var lastCode = -1
+        var supportedAuth = false
 
-        // Tenta Digest com qop, Digest legado e Basic (somente quando anunciado).
-        // Respostas 401 de uma variante não impedem tentar outra compatível.
-        for (variant in 0..2) {
+        // Digest qop e legado; fallback URI-base para firmwares RTSP antigos;
+        // Basic somente quando o próprio servidor oferece esse esquema.
+        for (variant in 0..3) {
             val (r1, r2) = attempt(host, port, uri, user, pass, variant)
             if (r1 == null) {
-                if (variant == 0) return ProbeResult(ProbeStatus.ERROR, "sem resposta")
+                if (variant == 0) return ProbeResult(ProbeStatus.ERROR, "sem resposta ao DESCRIBE")
                 continue
             }
             if (variant == 0) {
-                dbg.append("desafio: ")
-                    .append(r1.authHeaders.joinToString(" + ") { it.substringBefore(' ') }.ifEmpty { "não enviado" })
+                dbg.append("autenticação anunciada: ")
+                    .append(r1.authHeaders.joinToString(" + ") { it.substringBefore(' ') }.ifEmpty { "não anunciada" })
                     .append('\n')
             }
             when (r1.code) {
-                200 -> return ProbeResult(ProbeStatus.OK, "OK", videoCodec = RtspCodec.videoCodec(r1.sdp))
-                404, 454 -> return ProbeResult(ProbeStatus.NOT_FOUND, "não existe (${r1.code})", dbg.toString())
+                200 -> return ProbeResult(ProbeStatus.OK, "DESCRIBE 200; SDP recebido", dbg.toString(), RtspCodec.videoCodec(r1.sdp))
+                404, 454 -> return ProbeResult(ProbeStatus.NOT_FOUND, "caminho recusado (${r1.code})", dbg.toString())
                 401 -> hadChallenge = true
                 403 -> return ProbeResult(ProbeStatus.AUTH_FAIL, "acesso proibido (403)", dbg.toString())
-                else -> return ProbeResult(ProbeStatus.ERROR, "resposta ${r1.code}", dbg.toString())
+                else -> return ProbeResult(ProbeStatus.ERROR, "resposta DESCRIBE ${r1.code}", dbg.toString())
             }
+            val auth = buildAuth(r1.authHeaders, user, pass, uri, variant)
+            if (auth != null) supportedAuth = true
             if (r2 == null) {
-                dbg.append("v$variant: autenticação indisponível ou sem resposta\n")
+                if (auth != null) challengeWithoutResponse = true
                 continue
             }
-            dbg.append("v$variant → ").append(r2.raw.take(100)).append('\n')
+            dbg.append("tentativa ${variant+1}: DESCRIBE ").append(r2.code).append('\n')
             when (r2.code) {
-                200 -> return ProbeResult(ProbeStatus.OK, "OK", videoCodec = RtspCodec.videoCodec(r2.sdp))
+                200 -> return ProbeResult(ProbeStatus.OK,
+                    "DESCRIBE 200 autenticado (tentativa ${variant+1})", dbg.toString(), RtspCodec.videoCodec(r2.sdp))
                 401, 403 -> loginRefused = true
-                404, 454 -> return ProbeResult(ProbeStatus.NOT_FOUND, "não existe (${r2.code})", dbg.toString())
+                404, 454 -> return ProbeResult(ProbeStatus.NOT_FOUND,
+                    "caminho recusado após autenticação (${r2.code})", dbg.toString())
                 else -> lastCode = r2.code
             }
         }
         return when {
-            loginRefused -> ProbeResult(ProbeStatus.AUTH_FAIL, "login recusado", dbg.toString())
-            hadChallenge -> ProbeResult(ProbeStatus.ERROR, "desafio de autenticação sem resposta compatível", dbg.toString())
-            else -> ProbeResult(ProbeStatus.ERROR, if (lastCode == -1) "sem resposta" else "resposta $lastCode", dbg.toString())
+            loginRefused -> ProbeResult(ProbeStatus.AUTH_FAIL,
+                "credenciais rejeitadas pelo servidor (401/403)", dbg.toString())
+            hadChallenge && !supportedAuth -> ProbeResult(ProbeStatus.ERROR,
+                "servidor exige autenticação incompatível com os esquemas anunciados", dbg.toString())
+            challengeWithoutResponse -> ProbeResult(ProbeStatus.ERROR,
+                "servidor enviou desafio, mas não respondeu ao login (mesmo após reconexão)", dbg.toString())
+            hadChallenge -> ProbeResult(ProbeStatus.ERROR,
+                "desafio de autenticação sem confirmação", dbg.toString())
+            else -> ProbeResult(ProbeStatus.ERROR,
+                if (lastCode == -1) "sem resposta" else "resposta DESCRIBE $lastCode", dbg.toString())
         }
     }
 
@@ -211,11 +237,16 @@ object RtspProbe {
             val p = parseParams(digest.substring(6))
             val realm = p["realm"] ?: return null
             val nonce = p["nonce"] ?: return null
+            // Não calcular MD5 quando o servidor anuncia exclusivamente SHA-256.
+            if (p["algorithm"]?.uppercase() !in listOf(null, "MD5")) return null
             val qopOffered = p["qop"]?.split(",")?.map { it.trim() }?.contains("auth") == true
             val ha1 = md5("$user:$realm:$pass")
-            val ha2 = md5("DESCRIBE:$uri")
+            // Alguns firmwares antigos calculam o Digest apenas com a autoridade.
+            // Só experimentar isso depois de falhar com URI completo.
+            val digestUri = if (variant == 3) "rtsp://" + uri.substringAfter("://").substringBefore('/') else uri
+            val ha2 = md5("DESCRIBE:$digestUri")
             val sb = StringBuilder(
-                "Digest username=\"$user\", realm=\"$realm\", nonce=\"$nonce\", uri=\"$uri\""
+                "Digest username=\"$user\", realm=\"$realm\", nonce=\"$nonce\", uri=\"$digestUri\""
             )
             if (qopOffered && variant == 0) {
                 val nc = "00000001"

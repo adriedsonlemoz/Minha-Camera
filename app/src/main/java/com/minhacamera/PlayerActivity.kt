@@ -621,7 +621,19 @@ class PlayerActivity : AppCompatActivity() {
                 }
             }
             next.attachViews(vlcView, null, false, false)
-            val media = Media(core, Uri.parse(url))
+            val parsedRtsp = Uri.parse(url)
+            val media = Media(core, parsedRtsp)
+            // Live555 aceita rtsp-user/rtsp-pwd. Repassar as credenciais decodificadas
+            // evita incompatibilidade com senhas que contêm caracteres reservados.
+            // Nunca incluir os valores no relatório ou em logs.
+            parsedRtsp.encodedUserInfo?.takeIf { it.isNotBlank() }?.let { info ->
+                val user = Uri.decode(info.substringBefore(':'))
+                val pass = Uri.decode(info.substringAfter(':', ""))
+                if (user.isNotBlank()) {
+                    media.addOption(":rtsp-user=$user")
+                    media.addOption(":rtsp-pwd=$pass")
+                }
+            }
             if (rtspTransport == RtspTransport.TCP) media.addOption(":rtsp-tcp")
             media.addOption(":network-caching=500")
             next.setMedia(media); media.release(); next.play(); applyDisplayMode()
@@ -787,13 +799,17 @@ class PlayerActivity : AppCompatActivity() {
                         val probe = RtspProbe.probe(host, port, user, password, path)
                         val resultDetail = when (probe.status) {
                             ProbeStatus.OK -> getString(R.string.rtsp_diagnostic_describe_ok,
-                                probe.videoCodec ?: "codec não identificado")
-                            ProbeStatus.AUTH_FAIL -> getString(R.string.rtsp_diagnostic_auth)
+                                probe.videoCodec ?: "codec não identificado") + " (${probe.detail})"
+                            ProbeStatus.AUTH_FAIL -> getString(R.string.rtsp_diagnostic_auth) + " (${probe.detail})"
                             ProbeStatus.NOT_FOUND -> getString(R.string.rtsp_diagnostic_path)
-                            ProbeStatus.ERROR -> "DESCRIBE sem confirmação: ${probe.detail}. " +
+                            ProbeStatus.ERROR -> "DESCRIBE: ${probe.detail}. " +
                                 getString(R.string.rtsp_diagnostic_no_describe)
                         }
-                        "${service.detail}; $resultDetail"
+                        val authPresent = if (auth.isNotBlank()) "sim" else "não"
+                        // 'debug' inclui apenas esquema anunciado e códigos RTSP, nunca nonce/login/senha.
+                        val safeStages = probe.debug.trim().replace('\n', ' ')
+                        "${service.detail}; Credenciais cadastradas: $authPresent; " +
+                            "$resultDetail" + if (safeStages.isBlank()) "" else "; $safeStages"
                         }
                     }
                 } catch (_: Exception) {

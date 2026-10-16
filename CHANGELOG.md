@@ -1,3 +1,11 @@
+## 1.4.51+61 — 2026-10-16
+- Evidência da câmera 209: OPTIONS 200 confirma um servidor RTSP; DESCRIBE retorna desafio de autenticação sem conclusão; VLC não recebe quadros.
+- RtspProbe agora tenta reaproveitar desafio Digest após fechamento do socket (reconexão no mesmo host) e considera URI-base nos firmwares legados, sem inventar senhas ou alterar endereços.
+- LibVLC recebe opções `rtsp-user` e `rtsp-pwd` a partir das credenciais decodificadas que já estavam salvas na URL. Nenhum segredo é incluído no relatório.
+- Diagnóstico diferencia credenciais presentes, método anunciado e códigos RTSP; não confunde OPTIONS 200 com vídeo acessível.
+- Teste Kotlin/JVM simula servidor que fecha após 401 e só aceita a tentativa autenticada na segunda conexão.
+- Build Android e teste com a câmera física continuam pendentes.
+
 ## 1.4.50+60 — 2026-10-16
 - Novo teste de regressão RTSP: rota padrão do Android como comportamento inicial, com troca manual opcional para Wi-Fi vinculado no menu.
 - Ação "Testar no VLC externo" solicita confirmação antes de enviar a URL RTSP (inclusive credenciais, quando presentes) ao app independente VLC.

@@ -1,3 +1,10 @@
+# Minha Câmera 1.4.51 (versionCode 61)
+
+- Análise de autenticação RTSP após retorno 200 ao OPTIONS da câmera 209.
+- Correção de probe para câmeras que fecham a conexão depois do primeiro desafio 401, com Digest por reconexão e compatibilidade opcional com URI-base.
+- Credenciais salvas passam a ser oferecidas explicitamente ao LibVLC; diagnóstico mostra etapas e códigos sem exportar segredos.
+- Nenhuma URL/cadastro é substituída automaticamente. A reprodução real ainda precisa ser comprovada pelo APK e pela câmera.
+
 # Minha Câmera 1.4.50 (versionCode 60)
 
 - Testes alternativos de RTSP: rota padrão do Android e rede Wi-Fi vinculada (seleção manual), comparação no VLC externo com consentimento antes de compartilhar eventuais credenciais embutidas.
