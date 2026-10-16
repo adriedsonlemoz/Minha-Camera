@@ -31,3 +31,6 @@ kotlinc \
   "$ROOT/tests/PhoneEcoPolicySmoke.kt" \
   -include-runtime -d "$BUILD/tests.jar"
 java -jar "$BUILD/tests.jar"
+kotlinc "$ROOT/app/src/main/java/com/minhacamera/RtspPlaybackPolicy.kt" \
+  "$ROOT/tests/RtspPlaybackSmoke.kt" -include-runtime -d "$BUILD/rtsp-retry.jar"
+java -jar "$BUILD/rtsp-retry.jar"

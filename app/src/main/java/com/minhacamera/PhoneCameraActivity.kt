@@ -363,12 +363,13 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     override fun onResume() {
         super.onResume()
         visible = true
-        physicalDegrees = when (windowManager.defaultDisplay.rotation) {
-            android.view.Surface.ROTATION_90 -> 90
-            android.view.Surface.ROTATION_180 -> 180
-            android.view.Surface.ROTATION_270 -> 270
-            else -> 0
-        }
+        physicalDegrees = PhoneOrientationMode.fromDisplayDegrees(
+            when (windowManager.defaultDisplay.rotation) {
+                android.view.Surface.ROTATION_90 -> 90
+                android.view.Surface.ROTATION_180 -> 180
+                android.view.Surface.ROTATION_270 -> 270
+                else -> 0
+            })
         if (orientationSensor.canDetectOrientation()) orientationSensor.enable()
         else orientationSensor.disable()
         backgroundMode = PhoneCameraBackgroundService.running || backgroundMode

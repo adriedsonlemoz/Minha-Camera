@@ -28,6 +28,8 @@ import android.widget.Toast
 import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import java.io.BufferedInputStream
 import java.io.IOException
 import java.net.HttpURLConnection
@@ -149,6 +151,9 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     private var fillMode = false
     private var mirrorMode = false
     private var focusMode = false
+    // Tela cheia automática apenas em paisagem com a orientação do receptor em Automático.
+    private var landscapeFullscreen = false
+    private var landscapeDismissedByUser = false
     private var lastTelemetryText: String? = null
     private var showTelemetry = true
     private var showBatteryLevel = true
@@ -259,6 +264,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         refreshFitModeUi()
         refreshMirrorModeUi()
         refreshFocusModeUi()
+        syncLandscapeFullscreen()
         applyTelemetry(null)
         refreshRecordingUi()
         updateEcoUi()
@@ -288,6 +294,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                 dialog.dismiss()
                 prefs.edit().putString("orientation_mode", modes[index]).apply()
                 applyViewerOrientation()
+                syncLandscapeFullscreen()
             }.setNegativeButton(R.string.cancelar, null).show()
     }
 
@@ -295,6 +302,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         super.onConfigurationChanged(newConfig)
         refreshPreviewOrientation()
         if (::controls.isInitialized) controls.post { adaptControlColumns() }
+        syncLandscapeFullscreen()
     }
 
     private fun refreshPreviewOrientation() {
@@ -307,13 +315,21 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     }
 
     // onPause acontece ao entrar no PiP: manter a leitura MJPEG enquanto a janela está visível.
-    override fun onResume() { super.onResume(); if (!active) start() }
+    override fun onResume() {
+        super.onResume()
+        if (!active) start()
+        syncLandscapeFullscreen()
+    }
     override fun onStop() { if (!(android.os.Build.VERSION.SDK_INT >= 26 && isInPictureInPictureMode)) stop(); super.onStop() }
     override fun onDestroy() { stop(); super.onDestroy() }
 
     override fun onPictureInPictureModeChanged(inPictureInPictureMode: Boolean, newConfig: Configuration) {
         super.onPictureInPictureModeChanged(inPictureInPictureMode, newConfig)
         switchPipLayout(inPictureInPictureMode)
+        if (!inPictureInPictureMode) {
+            landscapeDismissedByUser = false
+            syncLandscapeFullscreen()
+        }
         if (!inPictureInPictureMode && !active && !isFinishing && !isDestroyed) start()
     }
 
@@ -386,8 +402,36 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         findViewById<View>(R.id.phoneViewerMirror).contentDescription = getString(actionLabel)
     }
 
+    private fun isAutomaticViewerRotation(): Boolean =
+        PhoneOrientationMode.normalize(getSharedPreferences("phone_viewer", MODE_PRIVATE)
+            .getString("orientation_mode", PhoneOrientationMode.AUTO)) == PhoneOrientationMode.AUTO
+
+    /** Mantém a mesma ImageView/stream; só realoca a prévia, sem reconectar nem gravar. */
+    private fun syncLandscapeFullscreen() {
+        if (!::fullscreenHost.isInitialized || isPipLayout) return
+        val automaticLandscape = isAutomaticViewerRotation() &&
+            resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        if (!automaticLandscape) {
+            landscapeDismissedByUser = false
+            if (landscapeFullscreen && focusMode) {
+                focusMode = false
+                refreshFocusModeUi()
+            }
+            landscapeFullscreen = false
+        } else if (!landscapeDismissedByUser) {
+            if (!focusMode) {
+                focusMode = true
+                refreshFocusModeUi()
+            }
+            // Voltar ao retrato sempre restaura os controles completos.
+            landscapeFullscreen = true
+        }
+    }
+
     private fun toggleFocusMode() {
         if (isPipLayout) return
+        if (focusMode && landscapeFullscreen) landscapeDismissedByUser = true
+        landscapeFullscreen = false
         focusMode = !focusMode
         refreshFocusModeUi()
         if (focusMode) Toast.makeText(this, R.string.viewer_fullscreen_hint, Toast.LENGTH_SHORT).show()
@@ -405,6 +449,10 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             fullControls.visibility = View.VISIBLE
             supportActionBar?.hide()
             window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            WindowInsetsControllerCompat(window, window.decorView).apply {
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                hide(WindowInsetsCompat.Type.systemBars())
+            }
         } else {
             fullscreenHost.visibility = View.GONE
             normalPreviewParent.addView(previewContainer, previewIndex,
@@ -412,6 +460,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             scrollContent.visibility = View.VISIBLE
             supportActionBar?.show()
             window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            WindowInsetsControllerCompat(window, window.decorView)
+                .show(WindowInsetsCompat.Type.systemBars())
         }
         applyTelemetry(lastBattery)
     }

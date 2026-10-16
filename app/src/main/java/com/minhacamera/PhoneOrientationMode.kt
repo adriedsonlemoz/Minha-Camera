@@ -29,9 +29,18 @@ object PhoneOrientationMode {
         LANDSCAPE -> nearest(lastSensorDegrees, 90, 270)
         else -> lastSensorDegrees.takeIf { it in listOf(0, 90, 180, 270) } ?: 0
     }
+    /** Display.getRotation() é anti-horário; OrientationEventListener é horário. */
+    fun fromDisplayDegrees(displayDegrees: Int): Int =
+        (360 - (displayDegrees % 360) + 360) % 360
+
+    /**
+     * O OrientationEventListener fornece graus HORÁRIOS. Para girar os bytes NV21
+     * (e não apenas a TextureView), somar na câmera traseira e subtrair na frontal.
+     * Baseado no cálculo de Camera.Parameters.setRotation() do Android.
+     */
     fun frameDegrees(sensorMount: Int, frontFacing: Boolean, deviceDegrees: Int): Int =
-        if (frontFacing) (sensorMount + deviceDegrees) % 360 else
-            (sensorMount - deviceDegrees + 360) % 360
+        if (frontFacing) (sensorMount - deviceDegrees + 360) % 360 else
+            (sensorMount + deviceDegrees) % 360
 }
 
 /** Ignora oscilações de curta duração e mantém a última orientação em inclinações. */

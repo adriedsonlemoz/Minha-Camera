@@ -1,3 +1,19 @@
+# Minha Câmera 1.4.47 (versionCode 57)
+
+- O visualizador agora abre a imagem automaticamente em tela cheia na horizontal, quando a orientação está configurada para seguir a rotação do Android. Mostra somente Voltar, Gravar, Foto, Girar e PiP em fundo semitransparente.
+- Voltar à vertical restaura os 19 cartões de controle, sem reconectar o fluxo. Continua possível sair da tela cheia manualmente no horizontal.
+- A câmera transmissora teve corrigida a conta da rotação dos quadros NV21. No sensor do Android, o sinal da rotação para a câmera traseira difere do que estava implementado; agora acompanha a referência oficial do Android. Inclui serviço com tela apagada.
+- Mantidos os modos de orientação fixa, MP4 sem troca de dimensões durante gravação, RTSP, MJPEG e H.264 experimental.
+- Necessário validar no APK compilado e em aparelhos reais, particularmente tela automática em paisagem, câmera traseira/frontal e tela apagada.
+
+# Minha Câmera 1.4.46 (versionCode 56)
+
+- LibVLC agora tenta **TCP e UDP para cada URL RTSP** antes de apresentar falha, sem reativar o Media3 RTSP.
+- Redes Wi-Fi locais podem ser selecionadas mesmo quando não oferecem acesso à Internet.
+- Mensagem de erro complementada por diagnóstico `DESCRIBE`: porta indisponível, autenticação recusada, caminho inexistente ou SDP recebido sem reprodução. O usuário pode copiar o relatório sem URL/senha.
+- Testes novos cobrem as transições TCP/UDP; recursos existentes de gravação, PiP e transmissão entre celulares mantidos.
+- Acesso real à câmera RTSP ainda requer URL, autenticação e servidor RTSP válidos. Build Android completo e teste físico pendentes.
+
 # Minha Câmera 1.4.45 (versionCode 55)
 
 - Corrige erro sintático do Build APK 45 em `MainActivity.kt`, causado por quebras de linha literais em strings de relatório RTSP.

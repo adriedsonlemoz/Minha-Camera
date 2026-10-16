@@ -1,3 +1,17 @@
+## 1.4.47+57 — 2026-10-16
+- Visualizador: orientação automática (Seguir rotação do Android) entra em tela cheia em paisagem, com apenas cinco ações num painel semitransparente sobre o vídeo. Em retrato restaura o painel completo de 19 cards. Sem reiniciar a conexão ou a gravação.
+- Mantém saída manual da tela cheia no horizontal; rotação fixa vertical/horizontal não aciona esta passagem automática. Preservados foto, gravação, PiP e o botão Girar para ajuste manual.
+- Transmissor: corrigido sinal da rotação dos bytes NV21 frente ao `OrientationEventListener`: câmera traseira soma ângulo horário, frontal subtrai. Convertido `Display.rotation` anti-horário para o referencial do sensor no início da captura tanto na Activity como no serviço de tela apagada.
+- Verificação Kotlin/JVM dos quatro ângulos e ambas as câmeras; testes estáticos da transição de tela cheia. APK Android e teste real ainda pendentes.
+
+## 1.4.46+56 — 2026-10-16
+- Receptor de câmeras RTSP passa a testar LibVLC com TCP e UDP para cada URL principal/alternativa antes de concluir falha de reprodução.
+- Player conecta explicitamente pela rede Wi-Fi local quando disponível, útil para câmeras sem Internet.
+- Após esgotar os fluxos, roda diagnóstico RTSP `DESCRIBE` sem expor URLs/senhas: alcance da porta, autenticação, caminho e SDP/codec informados pelo servidor.
+- Botão **Copiar diagnóstico RTSP** na tela de erro e política de fallback testável em Kotlin/JVM.
+- Mantido o bloqueio de Media3 RTSP e preservadas gravação, PiP, orientação e outras telas.
+- Build Android e validação em câmera física permanecem pendentes.
+
 ## 1.4.45+55 — 2026-10-16
 - Corrigida a falha do Build APK 45 em `:app:compileReleaseKotlin`: quebras de linha reais dentro de strings de relatório em `MainActivity.kt` (linhas 483–519).
 - O relatório **Analisar e aplicar** volta a usar sequências escapadas `\n` / `\n\n`; mantidas as funcionalidades RTSP e orientação de câmera.

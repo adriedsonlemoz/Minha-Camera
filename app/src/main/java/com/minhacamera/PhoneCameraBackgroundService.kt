@@ -242,12 +242,13 @@ class PhoneCameraBackgroundService : Service() {
                     currentOrientationMode = PhoneOrientationMode.normalize(
                         getSharedPreferences("phone_video", MODE_PRIVATE)
                             .getString(PhoneOrientationMode.PREF_KEY, null))
-                    physicalDegrees = when ((getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation) {
-                        Surface.ROTATION_90 -> 90
-                        Surface.ROTATION_180 -> 180
-                        Surface.ROTATION_270 -> 270
-                        else -> 0
-                    }
+                    physicalDegrees = PhoneOrientationMode.fromDisplayDegrees(
+                        when ((getSystemService(Context.WINDOW_SERVICE) as WindowManager).defaultDisplay.rotation) {
+                            Surface.ROTATION_90 -> 90
+                            Surface.ROTATION_180 -> 180
+                            Surface.ROTATION_270 -> 270
+                            else -> 0
+                        })
                     PhoneStreamDiagnostics.add("Solicitada captura em segundo plano: $liveCodec")
                     val facing = intent.getIntExtra(EXTRA_FACING, Camera.CameraInfo.CAMERA_FACING_BACK)
                     startCapture(facing)

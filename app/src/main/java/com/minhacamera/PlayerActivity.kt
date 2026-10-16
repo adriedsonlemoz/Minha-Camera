@@ -69,6 +69,7 @@ class PlayerActivity : AppCompatActivity() {
     private var urls: List<String> = emptyList()
     private var index = 0
     private var engine = Engine.VLC
+    private var rtspTransport = RtspTransport.TCP
     private var generation = 0
     private var active = false
     private var hevcSeen = false
@@ -94,6 +95,8 @@ class PlayerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_player)
+        // Redes locais sem Internet podem não ser a rede padrão escolhida pelo Android.
+        NetUtil.bindToWifi(applicationContext)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         toolbar = findViewById(R.id.playerToolbar)
         setSupportActionBar(toolbar)
@@ -119,6 +122,12 @@ class PlayerActivity : AppCompatActivity() {
         displayMode = (savedInstanceState?.getInt("displayMode") ?: 0).coerceIn(0, 2)
         fullscreen = savedInstanceState?.getBoolean("fullscreen") ?: false
         findViewById<View>(R.id.btnRetry).setOnClickListener { resetAndPlay(Engine.VLC) }
+        findViewById<View>(R.id.btnCopyRtspDiagnostic).setOnClickListener {
+            val text = (errorText.text.toString() + "\n" + errorDetail.text.toString()).trim()
+            val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Diagnóstico RTSP Minha Câmera", text))
+            Toast.makeText(this, R.string.rtsp_diagnostic_copied, Toast.LENGTH_SHORT).show()
+        }
         recordButton.setOnClickListener { onRecordClick() }
         findViewById<View>(R.id.btnRecordings).setOnClickListener { startActivity(Intent(this, RecordingsActivity::class.java)) }
         findViewById<View>(R.id.btnDisplay).setOnClickListener {
@@ -284,7 +293,7 @@ class PlayerActivity : AppCompatActivity() {
         }.also { it.start() }
     }
     private fun resetAndPlay(startEngine: Engine) {
-        recordPending = false; index = 0
+        recordPending = false; index = 0; rtspTransport = RtspTransport.TCP
         // Centraliza a política: nenhum botão/tentativa inicia Media3 RTSP nesta release.
         engine = if (media3RtspEnabled) startEngine else Engine.VLC
         failures.clear(); hevcSeen = false
@@ -361,7 +370,10 @@ class PlayerActivity : AppCompatActivity() {
     }
     private fun startVlc(url: String, current: Int) {
         try {
-            val core = LibVLC(this, arrayListOf("--rtsp-tcp", "--network-caching=500", "--stats")); vlcCore = core
+            // TCP é a primeira tentativa; UDP é a segunda, sem forçar rtsp-tcp.
+            val coreOptions = arrayListOf("--network-caching=500", "--stats")
+            if (rtspTransport == RtspTransport.TCP) coreOptions.add("--rtsp-tcp")
+            val core = LibVLC(this, coreOptions); vlcCore = core
             val next = VlcMediaPlayer(core); vlcPlayer = next
             next.setEventListener { event ->
                 // Recording close events must be handled even while leaving the screen.
@@ -388,7 +400,9 @@ class PlayerActivity : AppCompatActivity() {
                 }
             }
             next.attachViews(vlcView, null, false, false)
-            val media = Media(core, Uri.parse(url)); media.addOption(":rtsp-tcp"); media.addOption(":network-caching=500")
+            val media = Media(core, Uri.parse(url))
+            if (rtspTransport == RtspTransport.TCP) media.addOption(":rtsp-tcp")
+            media.addOption(":network-caching=500")
             next.setMedia(media); media.release(); next.play(); applyDisplayMode()
             // Playing means input is running; actual displayed pictures gate the loading screen.
             fun awaitPicture() {
@@ -490,19 +504,71 @@ class PlayerActivity : AppCompatActivity() {
     private fun onAttemptFailed(from: String, detail: String) {
         if (!active || failedGeneration == generation) return
         failedGeneration = generation
-        failures.add("$from (fluxo ${index+1}): ${maskCredentials(detail)}")
-        if (index + 1 < urls.size) index++
-        else if (engine == Engine.MEDIA3 && media3RtspEnabled) { engine = Engine.VLC; index = 0 }
-        else { showFailure(); return }
+        val via = if (engine == Engine.VLC) ", ${rtspTransport.name}" else ""
+        failures.add("$from (fluxo ${index+1}$via): ${maskCredentials(detail)}")
+        val next = if (engine == Engine.VLC)
+            RtspPlaybackPolicy.next(RtspAttempt(index, rtspTransport), urls.size) else null
+        when {
+            next != null -> { index = next.urlIndex; rtspTransport = next.transport }
+            engine == Engine.MEDIA3 && media3RtspEnabled -> {
+                engine = Engine.VLC; index = 0; rtspTransport = RtspTransport.TCP
+            }
+            else -> { showFailure(); return }
+        }
         val failed = generation
         vlcView.post { if (active && generation == failed && !isFinishing && !isDestroyed) playCurrent() }
     }
     private fun showFailure() {
-        releasePlayers(); recordPending=false; videoReady=false; loadingBox.visibility=View.GONE
+        releasePlayers(); recordPending = false; videoReady = false; loadingBox.visibility = View.GONE
         engineText.setText(R.string.status_conectando)
         errorText.setText(if (hevcSeen) R.string.erro_h265 else R.string.erro_generico)
-        errorDetail.text = failures.takeLast(8).joinToString("\n").ifBlank { getString(R.string.erro_sem_fluxos) }
-        errorBox.visibility=View.VISIBLE; updateRecordButton()
+        val initial = failures.takeLast(8).joinToString("\n")
+            .ifBlank { getString(R.string.erro_sem_fluxos) }
+        errorDetail.text = initial + "\n" + getString(R.string.rtsp_diagnostic_running)
+        errorBox.visibility = View.VISIBLE; updateRecordButton()
+        diagnoseRtspAsync(generation, initial)
+    }
+
+    /** Diagnóstico DESCRIBE independente do decoder; nunca mostra URL, usuário ou senha. */
+    private fun diagnoseRtspAsync(checkedGeneration: Int, originalMessage: String) {
+        val addresses = urls.take(2)
+        Thread({
+            val lines = addresses.mapIndexed { i, address ->
+                val result = try {
+                    val parsed = Uri.parse(address)
+                    val host = parsed.host
+                    val port = parsed.port.takeIf { it in 1..65535 } ?: 554
+                    if (host.isNullOrBlank()) getString(R.string.rtsp_diagnostic_bad_url)
+                    else if (!RtspProbe.isPortOpen(host, port, 1600))
+                        getString(R.string.rtsp_diagnostic_port_closed, port)
+                    else {
+                        val auth = parsed.encodedUserInfo.orEmpty()
+                        val user = Uri.decode(auth.substringBefore(':'))
+                        val password = Uri.decode(auth.substringAfter(':', ""))
+                        val path = (parsed.encodedPath ?: "/") +
+                            (parsed.encodedQuery?.let { "?$it" } ?: "")
+                        val probe = RtspProbe.probe(host, port, user, password, path)
+                        when (probe.status) {
+                            ProbeStatus.OK -> getString(R.string.rtsp_diagnostic_describe_ok,
+                                probe.videoCodec ?: "codec não identificado")
+                            ProbeStatus.AUTH_FAIL -> getString(R.string.rtsp_diagnostic_auth)
+                            ProbeStatus.NOT_FOUND -> getString(R.string.rtsp_diagnostic_path)
+                            ProbeStatus.ERROR -> getString(R.string.rtsp_diagnostic_no_describe)
+                        }
+                    }
+                } catch (_: Exception) {
+                    getString(R.string.rtsp_diagnostic_no_describe)
+                }
+                getString(R.string.rtsp_diagnostic_stream, i + 1, result)
+            }
+            runOnUiThread {
+                if (active && generation == checkedGeneration &&
+                    !isFinishing && !isDestroyed && errorBox.visibility == View.VISIBLE) {
+                    errorDetail.text = originalMessage + "\n\n" +
+                        getString(R.string.rtsp_diagnostic_title) + "\n" + lines.joinToString("\n")
+                }
+            }
+        }, "rtsp-diagnostic").apply { isDaemon = true; start() }
     }
     private fun causeSummary(error: Throwable): String = generateSequence(error) { it.cause }.take(6)
         .joinToString("; ") { "${it.javaClass.simpleName}: ${it.message.orEmpty()}" }

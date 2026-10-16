@@ -40,14 +40,14 @@ class AboutActivity : AppCompatActivity() {
         content.addView(TextView(this).apply { text = "Minha Câmera $version"; textSize = 25f; setTextColor(getColor(R.color.app_text)); setPadding(0, 0, 0, dp(4)) })
         content.addView(TextView(this).apply { text = "Transmissão e visualização de câmera por rede local, sem nuvem obrigatória."; textSize = 14f; setTextColor(getColor(R.color.ui_muted)); setPadding(0, 0, 0, dp(16)) })
         addBlock(content, "O que é o app", "Projeto auxiliar do Vigia IA voltado para transmissão local entre celulares, MJPEG/H.264 experimental, modo de tela apagada, gravação opcional e acesso remoto à multimídia.")
-        addBlock(content, "Últimas versões", """1.4.45+55
-• Corrige compilação do relatório RTSP e adiciona teste preventivo para strings Kotlin inválidas.
+        addBlock(content, "Últimas versões", """1.4.47+57
+• Tela cheia automática ao girar o visualizador em orientação automática; correção matemática da rotação da câmera transmissora.
 
-1.4.44+54
-• Corrige imagem de cabeça para baixo nos modos de orientação fixa, respeitando o lado físico correto do aparelho.
+1.4.46+56
+• Compatibilidade RTSP: tentativas TCP e UDP por fluxo e diagnóstico de conexão sem senha.
 
-1.4.43+53
-• Transmissor com controles visíveis em grade na própria tela e nova opção Analisar e aplicar para câmeras RTSP cadastradas.""".trimIndent())
+1.4.45+55
+• Corrige compilação do relatório RTSP e adiciona teste preventivo para strings Kotlin inválidas.""".trimIndent())
         addBlock(content, "Privacidade e rede", "O foco permanece em rede local. O app não depende de envio obrigatório à nuvem para transmitir, assistir ou consultar a biblioteca do outro celular.")
         content.addView(MaterialButton(this).apply {
             text = getString(R.string.novidades)
