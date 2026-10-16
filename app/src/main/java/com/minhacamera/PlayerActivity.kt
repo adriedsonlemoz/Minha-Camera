@@ -622,6 +622,18 @@ class PlayerActivity : AppCompatActivity() {
         try {
             // TCP é a primeira tentativa; UDP é a segunda, sem forçar rtsp-tcp.
             val coreOptions = arrayListOf("--network-caching=500", "--stats")
+            val parsedRtsp = Uri.parse(url)
+            val encodedInfo = if (CameraStreamProtocol.isRtsp(url)) parsedRtsp.encodedUserInfo else null
+            // VLC live555 inherits rtsp-user/rtsp-pwd from the core if media-local
+            // options are not honored by this Android build. Never export these values.
+            if (rtspOptionsOnly && !encodedInfo.isNullOrBlank()) {
+                val user = Uri.decode(encodedInfo.substringBefore(':'))
+                val pass = Uri.decode(encodedInfo.substringAfter(':', ""))
+                if (user.isNotBlank()) {
+                    coreOptions.add("--rtsp-user=$user")
+                    coreOptions.add("--rtsp-pwd=$pass")
+                }
+            }
             if (CameraStreamProtocol.isRtsp(url) && rtspTransport == RtspTransport.TCP)
                 coreOptions.add("--rtsp-tcp")
             val core = LibVLC(this, coreOptions); vlcCore = core
@@ -662,8 +674,6 @@ class PlayerActivity : AppCompatActivity() {
                 }
             }
             next.attachViews(vlcView, null, false, false)
-            val parsedRtsp = Uri.parse(url)
-            val encodedInfo = if (CameraStreamProtocol.isRtsp(url)) parsedRtsp.encodedUserInfo else null
             // Live555 prefere as credenciais da URL quando há user-info. Alguns firmwares
             // falham nessa negociação: na segunda tentativa, remova APENAS o user-info
             // da URL passada ao player e informe o login via opções RTSP nativas.

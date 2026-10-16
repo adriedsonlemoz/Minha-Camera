@@ -1,3 +1,10 @@
+# Minha Câmera 1.4.54 (versionCode 64)
+
+- Diagnóstico RTSP Digest correto para `DESCRIBE`, `SETUP` e `PLAY`, sem expor credenciais, nonce ou identificador de sessão.
+- Sondagem SETUP/PLAY preserva conexão após 401 quando disponível e repete autenticação em socket novo só se a câmera encerrou a anterior.
+- Alternativa de autenticação LibVLC reforçada com opções `--rtsp-user`/`--rtsp-pwd` no núcleo VLC, mantendo URLs e cadastros originais.
+- 4 testes de protocolo com servidores simulados, além dos testes de regressão do projeto. Compilação de APK e validação da Jortan física pendentes.
+
 # Minha Câmera 1.4.53 (versionCode 63)
 
 - Nova alternativa RTSP no LibVLC: primeiro tenta a URL original e, se falhar, tenta a URL sem credenciais embutidas e entrega a autenticação pelas opções nativas, mantendo os dados originais intactos.

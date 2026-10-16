@@ -41,7 +41,7 @@ class WelcomeActivity : AppCompatActivity() {
             addView(content)
         }
         setContentView(scroll)
-        val version = packageManager.getPackageInfo(packageName, 0).versionName ?: "1.4.53"
+        val version = packageManager.getPackageInfo(packageName, 0).versionName ?: "1.4.54"
         content.addView(TextView(this).apply {
             text = "Novidades $version"
             textSize = 27f

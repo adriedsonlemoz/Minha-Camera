@@ -11,8 +11,8 @@ class SessionDiagnosis1453(unittest.TestCase):
                      'result.code == 461' if False else 'setup.code == 461'):
             self.assertIn(item,Q)
     def test_local_socket_cases(self):
-        for item in ('ServerSocket(0)', 'runScenario(200)', 'runScenario(461)', 'Authorization: Digest',
-                     'secret-session-id'):
+        for item in ('ServerSocket(0)', 'scenario(200, reconnect)', 'scenario(461, reconnect)', 'Authorization: Digest',
+                     'random-session'):
             self.assertIn(item,T)
     def test_player_auth_fallback_preserves_original_url(self):
         for text in ('private var rtspOptionsOnly = false',

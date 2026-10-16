@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.53 (versionCode 63)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.54 (versionCode 64)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Novo em 1.4.54:** a câmera 209 confirma `DESCRIBE 200` autenticado e anúncio H.265, mas o LibVLC ainda falha antes de entregar bytes. A sondagem de `SETUP/PLAY` anterior podia gerar erros por usar Digest de `DESCRIBE` nas demais etapas e por reiniciar o socket depois do desafio `401`. Agora calcula Digest especificamente para cada método, reaproveita o socket do desafio quando possível e testa reconexão após `401` apenas quando necessário. A alternativa do LibVLC fornece `rtsp-user`/`rtsp-pwd` também nas opções do núcleo, pois builds VLC podem não herdar todas as opções de mídia. Nenhuma câmera ou senha salva é modificada. **Não há garantia de correção do player até teste na câmera física.**
 
 **Novo em 1.4.53:** o diagnóstico da Jortan 209 confirmou `DESCRIBE 200` autenticado no caminho `/`, com vídeo H.265 anunciado. O LibVLC ainda não recebeu quadros, portanto o player agora tenta, sem alterar o cadastro, duas estratégias de autenticação: URL com credenciais ou URL sem login mais opções nativas `rtsp-user`/`rtsp-pwd`, para cada transporte TCP/UDP. A análise RTSP passa a tentar `SETUP`/`PLAY` e observar RTP/TCP depois do SDP, informando em qual etapa a negociação falhou sem incluir senhas, nonce ou identificador da sessão. **Sem comprovação de imagem na Jortan JT-9686 ou build Android completo local.**
 

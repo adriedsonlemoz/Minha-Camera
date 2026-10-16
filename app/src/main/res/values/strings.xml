@@ -143,19 +143,10 @@ Experimente habilitar H.264 ou outro perfil na câmera e refazer a busca.</strin
     <string name="phone_delay_unavailable">atraso --</string>
     <string name="phone_reconnecting">Sinal perdido. Reconectando…</string>
     <string name="phone_access_denied">Acesso negado. Escaneie o novo QR.</string>
-    <string name="novidades_text">Versão 1.4.53 (código 63)
-• Fallback de autenticação RTSP: URL original e opções nativas do LibVLC sem senha embutida na URL de reprodução.
-• Diagnóstico avançado DESCRIBE/SETUP/PLAY e tentativa controlada de receber RTP/TCP.
-• Câmeras cadastradas preservadas e credenciais ocultas dos relatórios.
-
-Versão 1.4.52 (código 62)
-• Cadastro de URLs de câmera IP RTSP, HTTP/MJPEG, HLS, DASH, RTMP e RTP experimentais.
-• ONVIF continua utilizado para localizar serviços e endereços, sem simular P2P proprietário ou WebRTC.
-• O diagnóstico RTSP valida presença de vídeo no SDP e orienta sobre acesso NVR/RTSP.
-• Pesquisa local de serviços HTTP e ONVIF ampliada.
-
-Versão 1.4.51 (código 61)
-• Reconexão de autenticação Digest 401 e envio de credenciais cadastradas ao VLC.</string>
+    <string name="novidades_text">Versão 1.4.54 (código 64)
+• Corrigida a autenticação Digest de SETUP e PLAY e a negociação no mesmo socket RTSP após desafio 401.
+• Opção de login do LibVLC reforçada também no núcleo para câmeras com autenticação especial.
+• Câmeras cadastradas e modo retrovisor preservados. A reprodução física ainda precisa ser confirmada.</string>
     <string name="carregando_imagem">Carregando sua imagem…</string>
     <string name="aguarde_imagem">Aguarde, conectando à câmera.</string>
     <string name="conexao_alternativa">Aguarde, testando outro fluxo compatível.</string>

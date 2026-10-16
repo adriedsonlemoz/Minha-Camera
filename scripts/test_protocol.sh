@@ -44,7 +44,14 @@ kotlinc "$RETRY_SOURCE" \
   "$ROOT/tests/CameraStreamProtocolSmoke.kt" -include-runtime -d "$BUILD/camera-protocols.jar"
 java -jar "$BUILD/camera-protocols.jar"
 
-# SETUP/PLAY real em socket local simulado (401 Digest, RTP e 461).
-kotlinc -classpath "$BUILD/tests.jar" "$ROOT/tests/RtspSessionSmoke.kt" \
+# SETUP/PLAY com desafios Digest simulados em sockets de loopback.
+# Compilação isolada impede incompatibilidade de classpath após o JAR maior.
+CODEC_NAME=RtspCodec
+PROBE_NAME=RtspProbe
+kotlinc \
+  "$ROOT/tests/protocol-stubs/AndroidStubs.kt" \
+  "$ROOT/app/src/main/java/com/minhacamera/${CODEC_NAME}.kt" \
+  "$ROOT/app/src/main/java/com/minhacamera/${PROBE_NAME}.kt" \
+  "$ROOT/tests/RtspSessionSmoke.kt" \
   -include-runtime -d "$BUILD/rtsp-session.jar"
-java -cp "$BUILD/tests.jar:$BUILD/rtsp-session.jar" com.minhacamera.RtspSessionSmokeKt
+java -jar "$BUILD/rtsp-session.jar"

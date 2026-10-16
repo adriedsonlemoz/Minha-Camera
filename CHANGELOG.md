@@ -1,3 +1,10 @@
+## 1.4.54+64 — 2026-10-16
+- Relatórios da Jortan JT-9686 na 1.4.53 mostram autenticação Digest e DESCRIBE 200 com H.265 no caminho `/`, mas SETUP/PLAY não confirmados e LibVLC sem bytes ou quadros.
+- Corrigido o diagnóstico TCP RTSP: usa `HA2=MD5(MÉTODO:URI)` para cada comando, contador `nc` incremental para qop=auth, `cnonce` estável por sessão e o mesmo socket depois do desafio 401, com fallback de reconexão somente quando a câmera o fecha.
+- LibVLC recebe login alternativo também nas opções do núcleo VLC, além das opções locais de mídia, sem alterar credenciais/URL cadastradas.
+- Ampliado o teste simulado de sessão para desafios Digest no mesmo socket e conexão encerrada, validando assinaturas de DESCRIBE, SETUP e PLAY e RTP/461.
+- O resultado real da câmera e o build Android assinado continuam pendentes. Não afirmar que o H.265 foi decodificado.
+
 ## 1.4.53+63 — 2026-10-16
 - Evidência da Jortan JT-9686 no relatório 1.4.52: caminho `/` devolveu DESCRIBE 200 autenticado com SDP H.265, mas LibVLC exibiu zero bytes e zero quadros nas duas rotas RTSP; a falha de reprodução não está confirmada como problema de codec.
 - LibVLC tenta URL RTSP com login (comportamento anterior) e, em caso de falha, repete a mesma combinação de caminho/transporte com URL sem user-info e credenciais entregues em opções `rtsp-user` e `rtsp-pwd`. Não modifica URLs nem senhas gravadas.
