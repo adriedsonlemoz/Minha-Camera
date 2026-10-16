@@ -1,241 +1,133 @@
-<?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="@color/app_background" android:fillViewport="true">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp">
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal"
-            android:layout_marginBottom="12dp">
-            <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
-                android:text="@string/ui_live" android:textColor="@color/app_text" android:textSize="23sp" android:textStyle="bold"/>
+<?xml version='1.0' encoding='utf-8'?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/app_background" android:fillViewport="true">
+  <ScrollView android:layout_width="match_parent" android:layout_height="match_parent" android:fillViewport="true" android:id="@+id/phoneTxScroll">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="16dp" android:id="@+id/phoneTxContent">
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal" android:layout_marginBottom="12dp">
+            <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="@string/ui_live" android:textColor="@color/app_text" android:textSize="23sp" android:textStyle="bold"/>
             <View android:layout_width="8dp" android:layout_height="8dp" android:background="@drawable/bg_ui_live"/>
-            <TextView android:id="@+id/phoneCodecTop"
-                android:layout_width="wrap_content" android:layout_height="40dp"
-                android:minWidth="64dp" android:layout_marginStart="10dp" android:layout_marginEnd="4dp" android:paddingHorizontal="8dp"
-                android:gravity="center" android:background="@drawable/bg_ui_card"
-                android:text="MJPEG" android:textStyle="bold" android:textSize="11sp" android:textColor="@color/brand_primary"
-                android:clickable="true" android:focusable="true" android:contentDescription="@string/phone_codec_title"/>
-            <ImageView android:id="@+id/phoneDiagnosticTop"
-                android:layout_width="40dp" android:layout_height="40dp"
-                android:padding="10dp" android:layout_marginEnd="2dp"
-                android:src="@drawable/ic_ui_bug" android:background="?attr/selectableItemBackgroundBorderless"
-                android:clickable="true" android:focusable="true" android:contentDescription="@string/phone_diagnostic_title"/>
-            <ImageView android:id="@+id/phoneNetworkTop"
-                android:layout_width="40dp" android:layout_height="40dp"
-                android:padding="10dp" android:layout_marginStart="1dp"
-                android:src="@drawable/ic_ui_tower" android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="@string/phone_waiting"/>
-            <TextView android:id="@+id/phoneStatus" android:layout_width="1dp" android:layout_height="1dp"
-                android:visibility="gone" android:text="@string/phone_waiting" android:textColor="@color/brand_secondary" android:textSize="13sp"/>
+            <TextView android:id="@+id/phoneCodecTop" android:layout_width="wrap_content" android:layout_height="40dp" android:minWidth="64dp" android:layout_marginStart="10dp" android:layout_marginEnd="4dp" android:paddingHorizontal="8dp" android:gravity="center" android:background="@drawable/bg_ui_card" android:text="MJPEG" android:textStyle="bold" android:textSize="11sp" android:textColor="@color/brand_primary" android:clickable="true" android:focusable="true" android:contentDescription="@string/phone_codec_title"/>
+            <ImageView android:id="@+id/phoneDiagnosticTop" android:layout_width="40dp" android:layout_height="40dp" android:padding="10dp" android:layout_marginEnd="2dp" android:src="@drawable/ic_ui_bug" android:background="?attr/selectableItemBackgroundBorderless" android:clickable="true" android:focusable="true" android:contentDescription="@string/phone_diagnostic_title"/>
+            <ImageView android:id="@+id/phoneNetworkTop" android:layout_width="40dp" android:layout_height="40dp" android:padding="10dp" android:layout_marginStart="1dp" android:src="@drawable/ic_ui_tower" android:background="?attr/selectableItemBackgroundBorderless" android:contentDescription="@string/phone_waiting"/>
+            <TextView android:id="@+id/phoneStatus" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone" android:text="@string/phone_waiting" android:textColor="@color/brand_secondary" android:textSize="13sp"/>
         </LinearLayout>
 
-        <FrameLayout android:id="@+id/phoneSinglePreview" android:layout_width="match_parent" android:layout_height="250dp"
-            android:background="@drawable/bg_ui_preview" android:clipToOutline="true">
+        <FrameLayout android:id="@+id/phoneVideoBox" android:layout_width="match_parent" android:layout_height="250dp"><FrameLayout android:id="@+id/phoneSinglePreview" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/bg_ui_preview" android:clipToOutline="true">
             <TextureView android:id="@+id/phonePreview" android:layout_width="match_parent" android:layout_height="match_parent"/>
-            <ImageView android:id="@+id/phoneBackgroundPreview"
-                android:layout_width="match_parent" android:layout_height="match_parent"
-                android:scaleType="fitCenter" android:background="#000000"
-                android:visibility="gone" android:contentDescription="@string/phone_camera" />
-            <TextView android:id="@+id/phoneTelemetryPreview"
-                android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:layout_gravity="top|start" android:layout_margin="10dp"
-                android:background="@drawable/bg_phone_telemetry" android:paddingStart="9dp"
-                android:paddingEnd="9dp" android:paddingTop="6dp" android:paddingBottom="6dp"
-                android:textSize="12sp" android:textStyle="bold" android:textColor="#FFFFFFFF"
-                android:visibility="gone" android:contentDescription="@string/phone_battery_overlay_description" />
-            <TextView android:id="@+id/previewPlaceholder" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                android:layout_gravity="center" android:text="@string/ui_preview_loading" android:textColor="#C4CCD7" android:textSize="14sp"/>
+            <ImageView android:id="@+id/phoneBackgroundPreview" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitCenter" android:background="#000000" android:visibility="gone" android:contentDescription="@string/phone_camera"/>
+            <TextView android:id="@+id/phoneTelemetryPreview" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="top|start" android:layout_margin="10dp" android:background="@drawable/bg_phone_telemetry" android:paddingStart="9dp" android:paddingEnd="9dp" android:paddingTop="6dp" android:paddingBottom="6dp" android:textSize="12sp" android:textStyle="bold" android:textColor="#FFFFFFFF" android:visibility="gone" android:contentDescription="@string/phone_battery_overlay_description"/>
+            <TextView android:id="@+id/previewPlaceholder" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center" android:text="@string/ui_preview_loading" android:textColor="#C4CCD7" android:textSize="14sp"/>
         </FrameLayout>
 
-        <LinearLayout android:id="@+id/phoneDualPreview" android:layout_width="match_parent"
-            android:layout_height="wrap_content" android:orientation="vertical" android:visibility="gone"
-            android:background="@drawable/bg_ui_preview" android:padding="5dp">
-            <ImageView android:id="@+id/phoneDualTop" android:layout_width="match_parent"
-                android:layout_height="200dp" android:scaleType="fitCenter" android:background="#2B4756"
-                android:contentDescription="@string/phone_back_camera" />
-            <ImageView android:id="@+id/phoneDualBottom" android:layout_width="match_parent"
-                android:layout_height="200dp" android:layout_marginTop="5dp" android:scaleType="fitCenter"
-                android:background="#4B4255" android:contentDescription="@string/phone_front_camera" />
+        <LinearLayout android:id="@+id/phoneDualPreview" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:visibility="gone" android:background="@drawable/bg_ui_preview" android:padding="5dp">
+            <ImageView android:id="@+id/phoneDualTop" android:layout_width="match_parent" android:layout_height="200dp" android:scaleType="fitCenter" android:background="#2B4756" android:contentDescription="@string/phone_back_camera"/>
+            <ImageView android:id="@+id/phoneDualBottom" android:layout_width="match_parent" android:layout_height="200dp" android:layout_marginTop="5dp" android:scaleType="fitCenter" android:background="#4B4255" android:contentDescription="@string/phone_front_camera"/>
         </LinearLayout>
 
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="12dp" android:background="@drawable/bg_ui_panel_dark"
-            android:orientation="vertical" android:padding="14dp">
-            <TextView android:id="@+id/phoneTransmissionToggle"
-                android:layout_width="match_parent" android:layout_height="50dp"
-                android:background="@drawable/bg_ui_chip_light" android:clickable="true" android:focusable="true"
-                android:gravity="center" android:text="@string/phone_transmit_start" android:textColor="@color/player_text"
-                android:textStyle="bold" android:textSize="16sp" />
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:orientation="horizontal" android:layout_marginTop="12dp" android:gravity="center_vertical">
-                <TextView android:id="@+id/phoneTransmissionClock"
-                    android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:background="@drawable/bg_ui_chip_light" android:paddingStart="12dp" android:paddingEnd="12dp"
-                    android:paddingTop="8dp" android:paddingBottom="8dp"
-                    android:text="@string/phone_clock_idle" android:textColor="@color/player_text"
-                    android:textStyle="bold" android:textSize="14sp"/>
-                <TextView android:id="@+id/phoneTxPerformance"
-                    android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp" android:background="@drawable/bg_ui_chip_light"
-                    android:paddingStart="12dp" android:paddingEnd="12dp" android:paddingTop="8dp" android:paddingBottom="8dp"
-                    android:text="@string/phone_performance_waiting" android:textColor="@color/player_text" android:textSize="12sp" />
-            </LinearLayout>
-            <TextView android:id="@+id/phoneThermalWarning"
-                android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:layout_marginTop="12dp" android:padding="9dp"
-                android:background="@drawable/bg_phone_telemetry"
-                android:textColor="#FFFFFFFF" android:textSize="12sp"
-                android:visibility="gone" android:accessibilityLiveRegion="polite" />
-        </LinearLayout>
+        <LinearLayout android:id="@+id/phoneTxVideoActions" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="top|end" android:layout_marginTop="8dp" android:layout_marginEnd="8dp" android:orientation="vertical" android:gravity="end" android:padding="0dp"><LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical"><TextView android:id="@+id/phoneTransmissionToggle" android:layout_width="wrap_content" android:layout_height="40dp" android:background="@drawable/bg_phone_telemetry" android:clickable="true" android:focusable="true" android:gravity="center" android:text="@string/phone_transmit_start" android:textColor="#FFFFFFFF" android:textStyle="bold" android:textSize="12sp" android:minWidth="98dp" android:paddingHorizontal="10dp"/>
+            <TextView android:id="@+id/phoneTransmissionPause" android:layout_width="85dp" android:layout_height="40dp" android:gravity="center" android:padding="3dp" android:text="Ⅱ Pausar" android:textColor="#FFFFFF" android:textSize="12sp" android:background="@drawable/bg_phone_telemetry" android:clickable="true" android:focusable="true" android:contentDescription="Ⅱ Pausar" android:layout_marginStart="5dp" android:visibility="gone"/></LinearLayout><LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="end" android:layout_marginTop="5dp"><TextView android:id="@+id/phoneTxPerformance" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginStart="0dp" android:background="@drawable/bg_phone_telemetry" android:paddingStart="12dp" android:paddingEnd="12dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:text="@string/phone_performance_waiting" android:textColor="#FFFFFFFF" android:textSize="11sp" android:padding="5dp"/>
+            <TextView android:id="@+id/phoneTransmissionClock" android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="@drawable/bg_phone_telemetry" android:paddingStart="12dp" android:paddingEnd="12dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:text="@string/phone_clock_idle" android:textColor="#FFFFFFFF" android:textStyle="bold" android:textSize="11sp" android:layout_marginStart="5dp" android:padding="5dp"/>
+                </LinearLayout></LinearLayout></FrameLayout><TextView android:id="@+id/phoneThermalWarning" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:padding="9dp" android:background="@drawable/bg_phone_telemetry" android:textColor="#FFFFFFFF" android:textSize="12sp" android:visibility="gone" android:accessibilityLiveRegion="polite"/>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="Controles e ajustes" android:textColor="@color/app_text" android:textStyle="bold" android:textSize="18sp"/>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="Tudo visível na tela para usar como retrovisor ou câmera de monitoramento." android:textColor="@color/ui_muted" android:textSize="13sp"/>
 
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="16dp" android:text="Controles e ajustes"
-            android:textColor="@color/app_text" android:textStyle="bold" android:textSize="18sp"/>
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="4dp" android:text="Tudo visível na tela para usar como retrovisor ou câmera de monitoramento."
-            android:textColor="@color/ui_muted" android:textSize="13sp"/>
-
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="12dp" android:orientation="horizontal" android:baselineAligned="false">
-            <LinearLayout android:id="@+id/phoneSwitch" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="92dp" android:layout_marginEnd="3dp" android:padding="6dp" android:gravity="center"
-                android:background="@drawable/bg_ui_card" android:orientation="vertical" android:clickable="true"
-                android:focusable="true" android:contentDescription="@string/ui_flip">
-                <ImageView android:id="@+id/iconphoneSwitch" android:layout_width="24dp" android:layout_height="24dp"
-                    android:src="@drawable/ic_ui_flip" android:contentDescription="@null"/>
-                <TextView android:id="@+id/labelphoneSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp" android:text="@string/ui_flip" android:textColor="@color/app_text" android:textSize="11sp"/>
-                <TextView android:id="@+id/valuePhoneSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp" android:text="Traseira" android:textColor="@color/brand_primary" android:textSize="10sp"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:orientation="horizontal" android:baselineAligned="false">
+            <LinearLayout android:id="@+id/phoneSwitch" android:layout_width="0dp" android:layout_weight="1" android:layout_height="66dp" android:layout_marginEnd="3dp" android:padding="3dp" android:gravity="center" android:background="@drawable/bg_tx_tile_compact" android:orientation="vertical" android:clickable="true" android:focusable="true" android:contentDescription="@string/ui_flip">
+                <ImageView android:id="@+id/iconphoneSwitch" android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_ui_flip" android:contentDescription="@null"/>
+                <TextView android:id="@+id/labelphoneSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/ui_flip" android:textColor="@color/app_text" android:textSize="10sp"/>
+                <TextView android:id="@+id/valuePhoneSwitch" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Traseira" android:textColor="@color/brand_primary" android:textSize="10sp"/>
             </LinearLayout>
-            <LinearLayout android:id="@+id/phoneDual" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="92dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="6dp" android:gravity="center"
-                android:background="@drawable/bg_ui_card" android:orientation="vertical" android:clickable="true"
-                android:focusable="true" android:contentDescription="@string/ui_dual">
-                <ImageView android:id="@+id/iconphoneDual" android:layout_width="24dp" android:layout_height="24dp"
-                    android:src="@drawable/ic_ui_dual" android:contentDescription="@null"/>
-                <TextView android:id="@+id/labelphoneDual" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp" android:text="@string/ui_dual" android:textColor="@color/app_text" android:textSize="11sp"/>
-                <TextView android:id="@+id/valuePhoneDual" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp" android:text="Uma" android:textColor="@color/brand_primary" android:textSize="10sp"/>
+            <LinearLayout android:id="@+id/phoneDual" android:layout_width="0dp" android:layout_weight="1" android:layout_height="66dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="3dp" android:gravity="center" android:background="@drawable/bg_tx_tile_compact" android:orientation="vertical" android:clickable="true" android:focusable="true" android:contentDescription="@string/ui_dual">
+                <ImageView android:id="@+id/iconphoneDual" android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_ui_dual" android:contentDescription="@null"/>
+                <TextView android:id="@+id/labelphoneDual" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/ui_dual" android:textColor="@color/app_text" android:textSize="10sp"/>
+                <TextView android:id="@+id/valuePhoneDual" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Uma" android:textColor="@color/brand_primary" android:textSize="10sp"/>
             </LinearLayout>
-            <LinearLayout android:id="@+id/phoneQr" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="92dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="6dp" android:gravity="center"
-                android:background="@drawable/bg_ui_card" android:orientation="vertical" android:clickable="true"
-                android:focusable="true" android:contentDescription="@string/ui_qr">
-                <ImageView android:id="@+id/iconphoneQr" android:layout_width="24dp" android:layout_height="24dp"
-                    android:src="@drawable/ic_ui_qr" android:contentDescription="@null"/>
-                <TextView android:id="@+id/labelphoneQr" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp" android:text="@string/ui_qr" android:textColor="@color/app_text" android:textSize="11sp"/>
-                <TextView android:id="@+id/valuePhoneQr" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp" android:text="Abrir" android:textColor="@color/brand_primary" android:textSize="10sp"/>
+            <LinearLayout android:id="@+id/phoneQr" android:layout_width="0dp" android:layout_weight="1" android:layout_height="66dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="3dp" android:gravity="center" android:background="@drawable/bg_tx_tile_compact" android:orientation="vertical" android:clickable="true" android:focusable="true" android:contentDescription="@string/ui_qr">
+                <ImageView android:id="@+id/iconphoneQr" android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_ui_qr" android:contentDescription="@null"/>
+                <TextView android:id="@+id/labelphoneQr" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/ui_qr" android:textColor="@color/app_text" android:textSize="10sp"/>
+                <TextView android:id="@+id/valuePhoneQr" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Abrir" android:textColor="@color/brand_primary" android:textSize="10sp"/>
             </LinearLayout>
-            <LinearLayout android:id="@+id/phoneRecord" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="92dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="6dp" android:gravity="center"
-                android:background="@drawable/bg_ui_card" android:orientation="vertical" android:clickable="true"
-                android:focusable="true" android:contentDescription="@string/ui_record">
-                <ImageView android:id="@+id/phoneRecordIcon" android:layout_width="24dp" android:layout_height="24dp"
-                    android:src="@drawable/ic_ui_record" android:contentDescription="@null"/>
-                <TextView android:id="@+id/phoneRecordLabel" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp" android:text="@string/ui_record" android:textColor="@color/app_text" android:textSize="11sp"/>
-                <TextView android:id="@+id/valuePhoneRecord" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp" android:text="MP4" android:textColor="@color/brand_primary" android:textSize="10sp"/>
+            <LinearLayout android:id="@+id/phoneRecord" android:layout_width="0dp" android:layout_weight="1" android:layout_height="66dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="3dp" android:gravity="center" android:background="@drawable/bg_tx_tile_compact" android:orientation="vertical" android:clickable="true" android:focusable="true" android:contentDescription="@string/ui_record">
+                <ImageView android:id="@+id/phoneRecordIcon" android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_ui_record" android:contentDescription="@null"/>
+                <TextView android:id="@+id/phoneRecordLabel" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/ui_record" android:textColor="@color/app_text" android:textSize="10sp"/>
+                <TextView android:id="@+id/valuePhoneRecord" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="MP4" android:textColor="@color/brand_primary" android:textSize="10sp"/>
             </LinearLayout>
-            <LinearLayout android:id="@+id/phoneLink" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="92dp" android:layout_marginStart="3dp" android:padding="6dp" android:gravity="center"
-                android:background="@drawable/bg_ui_card" android:orientation="vertical" android:clickable="true"
-                android:focusable="true" android:contentDescription="@string/ui_link">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp"
-                    android:src="@drawable/ic_ui_link" android:contentDescription="@null"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:layout_marginTop="6dp" android:text="@string/ui_link" android:textColor="@color/app_text" android:textSize="11sp"/>
-                <TextView android:id="@+id/valuePhoneLink" android:layout_width="wrap_content" android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp" android:text="Copiar" android:textColor="@color/brand_primary" android:textSize="10sp"/>
+            <LinearLayout android:id="@+id/phoneLink" android:layout_width="0dp" android:layout_weight="1" android:layout_height="66dp" android:layout_marginStart="3dp" android:padding="3dp" android:gravity="center" android:background="@drawable/bg_tx_tile_compact" android:orientation="vertical" android:clickable="true" android:focusable="true" android:contentDescription="@string/ui_link">
+                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_ui_link" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/ui_link" android:textColor="@color/app_text" android:textSize="10sp"/>
+                <TextView android:id="@+id/valuePhoneLink" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Copiar" android:textColor="@color/brand_primary" android:textSize="10sp"/>
             </LinearLayout>
         </LinearLayout>
 
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="6dp" android:orientation="horizontal" android:baselineAligned="false">
-            <LinearLayout android:id="@+id/phoneCode" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="92dp" android:layout_marginEnd="3dp" android:padding="6dp" android:gravity="center"
-                android:background="@drawable/bg_ui_card" android:orientation="vertical" android:clickable="true" android:focusable="true">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_ui_key" android:contentDescription="@null"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="@string/ui_code" android:textColor="@color/app_text" android:textSize="11sp"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal" android:baselineAligned="false">
+            <LinearLayout android:id="@+id/phoneCode" android:layout_width="0dp" android:layout_weight="1" android:layout_height="66dp" android:layout_marginEnd="3dp" android:padding="3dp" android:gravity="center" android:background="@drawable/bg_tx_tile_compact" android:orientation="vertical" android:clickable="true" android:focusable="true">
+                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_ui_key" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="@string/ui_code" android:textColor="@color/app_text" android:textSize="10sp"/>
                 <TextView android:id="@+id/valuePhoneCode" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Novo" android:textColor="@color/brand_primary" android:textSize="10sp"/>
             </LinearLayout>
-            <LinearLayout android:id="@+id/phoneOrientation" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="92dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="6dp" android:gravity="center"
-                android:background="@drawable/bg_ui_card" android:orientation="vertical" android:clickable="true" android:focusable="true">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_ui_screen" android:contentDescription="@null"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="Orientação" android:textColor="@color/app_text" android:textSize="11sp"/>
+            <LinearLayout android:id="@+id/phoneOrientation" android:layout_width="0dp" android:layout_weight="1" android:layout_height="66dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="3dp" android:gravity="center" android:background="@drawable/bg_tx_tile_compact" android:orientation="vertical" android:clickable="true" android:focusable="true">
+                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_ui_screen" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Orientação" android:textColor="@color/app_text" android:textSize="10sp"/>
                 <TextView android:id="@+id/valuePhoneOrientation" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Auto" android:textColor="@color/brand_primary" android:textSize="10sp"/>
             </LinearLayout>
-            <LinearLayout android:id="@+id/phoneQualityCard" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="92dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="6dp" android:gravity="center"
-                android:background="@drawable/bg_ui_card" android:orientation="vertical" android:clickable="true" android:focusable="true">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_ui_video" android:contentDescription="@null"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="Resolução" android:textColor="@color/app_text" android:textSize="11sp"/>
+            <LinearLayout android:id="@+id/phoneQualityCard" android:layout_width="0dp" android:layout_weight="1" android:layout_height="66dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="3dp" android:gravity="center" android:background="@drawable/bg_tx_tile_compact" android:orientation="vertical" android:clickable="true" android:focusable="true">
+                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_ui_video" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Resolução" android:textColor="@color/app_text" android:textSize="10sp"/>
                 <TextView android:id="@+id/valuePhoneQuality" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="720p" android:textColor="@color/brand_primary" android:textSize="10sp"/>
             </LinearLayout>
-            <LinearLayout android:id="@+id/phoneFpsCard" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="92dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="6dp" android:gravity="center"
-                android:background="@drawable/bg_ui_card" android:orientation="vertical" android:clickable="true" android:focusable="true">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_ui_scan" android:contentDescription="@null"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="FPS" android:textColor="@color/app_text" android:textSize="11sp"/>
+            <LinearLayout android:id="@+id/phoneFpsCard" android:layout_width="0dp" android:layout_weight="1" android:layout_height="66dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="3dp" android:gravity="center" android:background="@drawable/bg_tx_tile_compact" android:orientation="vertical" android:clickable="true" android:focusable="true">
+                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_ui_scan" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="FPS" android:textColor="@color/app_text" android:textSize="10sp"/>
                 <TextView android:id="@+id/valuePhoneFps" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="10 FPS" android:textColor="@color/brand_primary" android:textSize="10sp"/>
             </LinearLayout>
-            <LinearLayout android:id="@+id/phoneCodecCard" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="92dp" android:layout_marginStart="3dp" android:padding="6dp" android:gravity="center"
-                android:background="@drawable/bg_ui_card" android:orientation="vertical" android:clickable="true" android:focusable="true">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_ui_cctv" android:contentDescription="@null"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="Codec" android:textColor="@color/app_text" android:textSize="11sp"/>
+            <LinearLayout android:id="@+id/phoneCodecCard" android:layout_width="0dp" android:layout_weight="1" android:layout_height="66dp" android:layout_marginStart="3dp" android:padding="3dp" android:gravity="center" android:background="@drawable/bg_tx_tile_compact" android:orientation="vertical" android:clickable="true" android:focusable="true">
+                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_ui_cctv" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Codec" android:textColor="@color/app_text" android:textSize="10sp"/>
                 <TextView android:id="@+id/valuePhoneCodec" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="MJPEG" android:textColor="@color/brand_primary" android:textSize="10sp"/>
             </LinearLayout>
         </LinearLayout>
 
-        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="6dp" android:orientation="horizontal" android:baselineAligned="false">
-            <LinearLayout android:id="@+id/phoneOverlay" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="92dp" android:layout_marginEnd="3dp" android:padding="6dp" android:gravity="center"
-                android:background="@drawable/bg_ui_card" android:orientation="vertical" android:clickable="true" android:focusable="true">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_ui_battery" android:contentDescription="@null"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="Bateria" android:textColor="@color/app_text" android:textSize="11sp"/>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="horizontal" android:baselineAligned="false">
+            <LinearLayout android:id="@+id/phoneOverlay" android:layout_width="0dp" android:layout_weight="1" android:layout_height="66dp" android:layout_marginEnd="3dp" android:padding="3dp" android:gravity="center" android:background="@drawable/bg_tx_tile_compact" android:orientation="vertical" android:clickable="true" android:focusable="true">
+                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_ui_battery" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Bateria" android:textColor="@color/app_text" android:textSize="10sp"/>
                 <TextView android:id="@+id/valuePhoneOverlay" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Ligado" android:textColor="@color/brand_primary" android:textSize="10sp"/>
             </LinearLayout>
-            <LinearLayout android:id="@+id/phoneEcoCard" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="92dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="6dp" android:gravity="center"
-                android:background="@drawable/bg_ui_card" android:orientation="vertical" android:clickable="true" android:focusable="true">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_ui_leaf" android:contentDescription="@null"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="Eco" android:textColor="@color/app_text" android:textSize="11sp"/>
+            <LinearLayout android:id="@+id/phoneEcoCard" android:layout_width="0dp" android:layout_weight="1" android:layout_height="66dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="3dp" android:gravity="center" android:background="@drawable/bg_tx_tile_compact" android:orientation="vertical" android:clickable="true" android:focusable="true">
+                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_ui_leaf" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Eco" android:textColor="@color/app_text" android:textSize="10sp"/>
                 <TextView android:id="@+id/valuePhoneEco" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Desligado" android:textColor="@color/brand_primary" android:textSize="10sp"/>
             </LinearLayout>
-            <LinearLayout android:id="@+id/phoneBackgroundCard" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="92dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="6dp" android:gravity="center"
-                android:background="@drawable/bg_ui_card" android:orientation="vertical" android:clickable="true" android:focusable="true">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_ui_screen" android:contentDescription="@null"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="Tela apagada" android:textColor="@color/app_text" android:textSize="11sp"/>
+            <LinearLayout android:id="@+id/phoneBackgroundCard" android:layout_width="0dp" android:layout_weight="1" android:layout_height="66dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="3dp" android:gravity="center" android:background="@drawable/bg_tx_tile_compact" android:orientation="vertical" android:clickable="true" android:focusable="true">
+                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_ui_screen" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Tela apagada" android:textColor="@color/app_text" android:textSize="10sp"/>
                 <TextView android:id="@+id/valuePhoneBackground" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Desligado" android:textColor="@color/brand_primary" android:textSize="10sp"/>
             </LinearLayout>
-            <LinearLayout android:id="@+id/phoneStorage" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="92dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="6dp" android:gravity="center"
-                android:background="@drawable/bg_ui_card" android:orientation="vertical" android:clickable="true" android:focusable="true">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_ui_folder" android:contentDescription="@null"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="MP4" android:textColor="@color/app_text" android:textSize="11sp"/>
+            <LinearLayout android:id="@+id/phoneStorage" android:layout_width="0dp" android:layout_weight="1" android:layout_height="66dp" android:layout_marginStart="3dp" android:layout_marginEnd="3dp" android:padding="3dp" android:gravity="center" android:background="@drawable/bg_tx_tile_compact" android:orientation="vertical" android:clickable="true" android:focusable="true">
+                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_ui_folder" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="MP4" android:textColor="@color/app_text" android:textSize="10sp"/>
                 <TextView android:id="@+id/valuePhoneStorage" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="15 FPS" android:textColor="@color/brand_primary" android:textSize="10sp"/>
             </LinearLayout>
-            <LinearLayout android:id="@+id/phoneDiagnosticCard" android:layout_width="0dp" android:layout_weight="1"
-                android:layout_height="92dp" android:layout_marginStart="3dp" android:padding="6dp" android:gravity="center"
-                android:background="@drawable/bg_ui_card" android:orientation="vertical" android:clickable="true" android:focusable="true">
-                <ImageView android:layout_width="24dp" android:layout_height="24dp" android:src="@drawable/ic_ui_bug" android:contentDescription="@null"/>
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="Diagnóstico" android:textColor="@color/app_text" android:textSize="11sp"/>
+            <LinearLayout android:id="@+id/phoneDiagnosticCard" android:layout_width="0dp" android:layout_weight="1" android:layout_height="66dp" android:layout_marginStart="3dp" android:padding="3dp" android:gravity="center" android:background="@drawable/bg_tx_tile_compact" android:orientation="vertical" android:clickable="true" android:focusable="true">
+                <ImageView android:layout_width="20dp" android:layout_height="20dp" android:src="@drawable/ic_ui_bug" android:contentDescription="@null"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Diagnóstico" android:textColor="@color/app_text" android:textSize="10sp"/>
                 <TextView android:id="@+id/valuePhoneDiagnostic" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:text="Abrir" android:textColor="@color/brand_primary" android:textSize="10sp"/>
             </LinearLayout>
         </LinearLayout>
 
         <View android:id="@+id/phoneRevoke" android:layout_width="1dp" android:layout_height="1dp" android:visibility="gone"/>
-        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp"
-            android:padding="14dp" android:background="@drawable/bg_ui_card"
-            android:text="@string/ui_stream_instructions" android:textColor="@color/ui_muted" android:textSize="13sp"/>
-        <TextView android:id="@+id/phoneAddress" android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:visibility="gone" android:text="@string/phone_no_address"/>
+        <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:padding="14dp" android:background="@drawable/bg_ui_card" android:text="@string/ui_stream_instructions" android:textColor="@color/ui_muted" android:textSize="13sp"/>
+        <TextView android:id="@+id/phoneAddress" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone" android:text="@string/phone_no_address"/>
     </LinearLayout>
 </ScrollView>
+  <LinearLayout android:id="@+id/phoneTxFullscreenControls" android:layout_width="wrap_content" android:layout_height="52dp" android:layout_gravity="bottom|center_horizontal" android:layout_marginBottom="12dp" android:orientation="horizontal" android:gravity="center" android:paddingHorizontal="6dp" android:background="@drawable/bg_viewer_full_controls" android:visibility="gone">
+    <TextView android:id="@+id/phoneTxFullBack" android:layout_width="44dp" android:layout_height="48dp" android:gravity="center" android:padding="3dp" android:text="✕" android:textColor="#FFFFFF" android:textSize="18sp" android:background="?attr/selectableItemBackgroundBorderless" android:clickable="true" android:focusable="true" android:contentDescription="✕"/>
+    <TextView android:id="@+id/phoneTxFullToggle" android:layout_width="44dp" android:layout_height="48dp" android:gravity="center" android:padding="3dp" android:text="▶" android:textColor="#FFFFFF" android:textSize="18sp" android:background="?attr/selectableItemBackgroundBorderless" android:clickable="true" android:focusable="true" android:contentDescription="▶"/>
+    <TextView android:id="@+id/phoneTxFullPause" android:layout_width="44dp" android:layout_height="48dp" android:gravity="center" android:padding="3dp" android:text="Ⅱ" android:textColor="#FFFFFF" android:textSize="18sp" android:background="?attr/selectableItemBackgroundBorderless" android:clickable="true" android:focusable="true" android:contentDescription="Ⅱ"/>
+    <TextView android:id="@+id/phoneTxFullRecord" android:layout_width="44dp" android:layout_height="48dp" android:gravity="center" android:padding="3dp" android:text="●" android:textColor="#FFFFFF" android:textSize="18sp" android:background="?attr/selectableItemBackgroundBorderless" android:clickable="true" android:focusable="true" android:contentDescription="●"/>
+    <TextView android:id="@+id/phoneTxFullSwitch" android:layout_width="44dp" android:layout_height="48dp" android:gravity="center" android:padding="3dp" android:text="⇄" android:textColor="#FFFFFF" android:textSize="18sp" android:background="?attr/selectableItemBackgroundBorderless" android:clickable="true" android:focusable="true" android:contentDescription="⇄"/>
+    <TextView android:id="@+id/phoneTxFullEco" android:layout_width="44dp" android:layout_height="48dp" android:gravity="center" android:padding="3dp" android:text="♧" android:textColor="#FFFFFF" android:textSize="18sp" android:background="?attr/selectableItemBackgroundBorderless" android:clickable="true" android:focusable="true" android:contentDescription="♧"/>
+    <TextView android:id="@+id/phoneTxFullSettings" android:layout_width="44dp" android:layout_height="48dp" android:gravity="center" android:padding="3dp" android:text="⚙" android:textColor="#FFFFFF" android:textSize="18sp" android:background="?attr/selectableItemBackgroundBorderless" android:clickable="true" android:focusable="true" android:contentDescription="⚙"/>
+    <TextView android:id="@+id/phoneTxFullLock" android:layout_width="44dp" android:layout_height="48dp" android:gravity="center" android:padding="3dp" android:text="🔒" android:textColor="#FFFFFF" android:textSize="18sp" android:background="?attr/selectableItemBackgroundBorderless" android:clickable="true" android:focusable="true" android:contentDescription="🔒"/>
+  </LinearLayout>
+  <TextView android:id="@+id/phoneTxFullscreenUnlock" android:layout_width="115dp" android:layout_height="48dp" android:gravity="center" android:padding="3dp" android:text="🔒 Segure 2s" android:textColor="#FFFFFF" android:textSize="12sp" android:background="@drawable/bg_viewer_full_controls" android:clickable="true" android:focusable="true" android:contentDescription="🔒 Segure 2s" android:layout_gravity="bottom|center_horizontal" android:layout_marginBottom="12dp" android:visibility="gone"/>
+</FrameLayout>

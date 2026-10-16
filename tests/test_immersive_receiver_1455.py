@@ -18,10 +18,11 @@ class ReceiverUi1455(unittest.TestCase):
         self.assertIn('else minOf(', transform)
         self.assertNotIn('Bitmap.createBitmap(', transform)
 
-    def test_fullscreen_in_both_orientations_and_buttons(self):
+    def test_fullscreen_landscape_only_and_buttons(self):
         viewer = (PKG/'PhoneCameraViewerActivity.kt').read_text()
         self.assertIn('orientation == Configuration.ORIENTATION_LANDSCAPE', viewer)
-        self.assertIn('orientation == Configuration.ORIENTATION_PORTRAIT', viewer)
+        self.assertIn('if (!landscape)', viewer)
+        self.assertNotIn('orientation == Configuration.ORIENTATION_LANDSCAPE ||', viewer)
         self.assertIn('dismissedFullscreenOrientation = resources.configuration.orientation', viewer)
         self.assertIn('previewContainer.post { updateVideoRotation() }', viewer)
         root = ET.parse(P/'app/src/main/res/layout/activity_phone_viewer.xml').getroot()

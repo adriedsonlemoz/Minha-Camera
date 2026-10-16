@@ -17,6 +17,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.util.Locale
 import android.view.View
+import android.view.MotionEvent
 import android.view.WindowManager
 import android.widget.ImageView
 import android.widget.FrameLayout
@@ -166,6 +167,10 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     private var fillMode = false
     private var mirrorMode = false
     private var focusMode = false
+    private var focusManuallyRequested = false
+    private var viewerControlsLocked = false
+    private lateinit var viewerUnlock: View
+
     // A tela cheia automática acompanha a orientação; saída manual é respeitada
     // até que o telefone seja novamente girado (evita reentradas inesperadas).
     private var automaticFullscreenOrientation: Int? = null
@@ -202,6 +207,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         facingLabel = findViewById(R.id.viewerRemoteFacingValue)
         fullscreenHost = findViewById(R.id.phoneViewerFullscreenHost)
         fullControls = findViewById(R.id.viewerFullscreenControls)
+        viewerUnlock = findViewById(R.id.viewerFullUnlock)
         recordLabel = findViewById(R.id.viewerRecordActionLabel)
         recordIcon = findViewById(R.id.viewerRecordActionIcon)
         onlineDot = findViewById(R.id.viewerOnlineDot)
@@ -238,8 +244,9 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         findViewById<View>(R.id.phoneViewerMirror).setOnClickListener { toggleMirrorMode() }
         findViewById<View>(R.id.phoneViewerFocus).setOnClickListener { toggleFocusMode() }
         previewContainer.setOnClickListener {
-            if (focusMode) fullControls.visibility = if (fullControls.visibility == View.VISIBLE) View.INVISIBLE else View.VISIBLE
-            else toggleFocusMode()
+            if (focusMode && !viewerControlsLocked)
+                fullControls.visibility = if (fullControls.visibility == View.VISIBLE) View.INVISIBLE else View.VISIBLE
+            else if (!focusMode) toggleFocusMode()
         }
         findViewById<View>(R.id.viewerPipAction).setOnClickListener { enterPip() }
         findViewById<View>(R.id.viewerRotateAction).setOnClickListener { rotateVideo() }
@@ -252,6 +259,19 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         findViewById<View>(R.id.viewerFullPhoto).setOnClickListener { requestRemotePhoto() }
         findViewById<View>(R.id.viewerFullRotate).setOnClickListener { rotateVideo() }
         findViewById<View>(R.id.viewerFullFit).setOnClickListener { toggleFitMode() }
+        findViewById<View>(R.id.viewerFullMirror).setOnClickListener { toggleMirrorMode() }
+        findViewById<View>(R.id.viewerFullSettings).setOnClickListener { chooseViewerOrientation() }
+        findViewById<View>(R.id.viewerFullLock).setOnClickListener { setViewerLocked(true) }
+        val unlockRunnable = Runnable { setViewerLocked(false) }
+        viewerUnlock.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> { statusHandler.postDelayed(unlockRunnable, 2000L); true }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    statusHandler.removeCallbacks(unlockRunnable); true
+                }
+                else -> true
+            }
+        }
         findViewById<View>(R.id.viewerRecordAction).setOnClickListener { setRemoteRecording(remoteRecording != true) }
         findViewById<View>(R.id.viewerRemoteEco).setOnClickListener {
             if (remoteEco == null) {
@@ -313,6 +333,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        focusManuallyRequested = false
         refreshPreviewOrientation()
         if (::controls.isInitialized) controls.post { adaptControlColumns() }
         syncLandscapeFullscreen()
@@ -420,32 +441,50 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         PhoneOrientationMode.normalize(getSharedPreferences("phone_viewer", MODE_PRIVATE)
             .getString("orientation_mode", PhoneOrientationMode.AUTO)) == PhoneOrientationMode.AUTO
 
-    /** Conserva o player e a conexão; somente move a prévia para a camada imersiva. */
+    /** Auto fullscreen somente na horizontal, mantendo entrada manual independente. */
     private fun syncLandscapeFullscreen() {
         if (!::fullscreenHost.isInitialized || isPipLayout) return
-        val orientation = resources.configuration.orientation
-        val auto = orientation == Configuration.ORIENTATION_LANDSCAPE ||
-            (isAutomaticViewerRotation() && orientation == Configuration.ORIENTATION_PORTRAIT)
-        if (!auto) {
+        val landscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        if (!landscape) {
             dismissedFullscreenOrientation = null
             automaticFullscreenOrientation = null
-            if (focusMode) { focusMode = false; refreshFocusModeUi() }
+            if (focusMode && !focusManuallyRequested) {
+                focusMode = false
+                setViewerLocked(false)
+                refreshFocusModeUi()
+            }
             return
         }
-        if (automaticFullscreenOrientation != orientation) {
-            automaticFullscreenOrientation = orientation
+        if (automaticFullscreenOrientation != Configuration.ORIENTATION_LANDSCAPE) {
+            automaticFullscreenOrientation = Configuration.ORIENTATION_LANDSCAPE
             dismissedFullscreenOrientation = null
         }
-        if (dismissedFullscreenOrientation != orientation && !focusMode) {
+        if (dismissedFullscreenOrientation != Configuration.ORIENTATION_LANDSCAPE && !focusMode) {
+            focusManuallyRequested = false
             focusMode = true
             refreshFocusModeUi()
         }
     }
 
+    private fun setViewerLocked(locked: Boolean) {
+        viewerControlsLocked = locked
+        fullControls.visibility = if (locked) View.GONE else View.VISIBLE
+        viewerUnlock.visibility = if (locked && focusMode) View.VISIBLE else View.GONE
+    }
+
     private fun toggleFocusMode() {
         if (isPipLayout) return
-        if (focusMode) dismissedFullscreenOrientation = resources.configuration.orientation
-        else dismissedFullscreenOrientation = null
+        if (viewerControlsLocked) {
+            Toast.makeText(this, "Segure o cadeado por 2 segundos", Toast.LENGTH_SHORT).show()
+            return
+        }
+        if (focusMode) {
+            dismissedFullscreenOrientation = resources.configuration.orientation
+            focusManuallyRequested = false
+        } else {
+            dismissedFullscreenOrientation = null
+            focusManuallyRequested = true
+        }
         focusMode = !focusMode
         refreshFocusModeUi()
         if (focusMode) Toast.makeText(this, R.string.viewer_fullscreen_hint, Toast.LENGTH_SHORT).show()
@@ -490,7 +529,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             scrollContent.visibility = View.GONE
             fullscreenHost.visibility = View.VISIBLE
             fullscreenHost.addView(previewContainer, 0, FrameLayout.LayoutParams(-1, -1))
-            fullControls.visibility = View.VISIBLE
+            fullControls.visibility = if (viewerControlsLocked) View.GONE else View.VISIBLE
+            viewerUnlock.visibility = if (viewerControlsLocked) View.VISIBLE else View.GONE
             supportActionBar?.hide()
             window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
             WindowInsetsControllerCompat(window, window.decorView).apply {
@@ -498,6 +538,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                 hide(WindowInsetsCompat.Type.systemBars())
             }
         } else {
+            setViewerLocked(false)
             fullscreenHost.visibility = View.GONE
             normalPreviewParent.addView(previewContainer, previewIndex,
                 LinearLayout.LayoutParams(-1, (290f * resources.displayMetrics.density + 0.5f).toInt()))
@@ -513,7 +554,9 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
 
     @Deprecated("Usado apenas para sair do modo imersivo")
     override fun onBackPressed() {
-        if (focusMode) toggleFocusMode() else super.onBackPressed()
+        if (focusMode && viewerControlsLocked)
+            Toast.makeText(this, "Segure o cadeado por 2 segundos", Toast.LENGTH_SHORT).show()
+        else if (focusMode) toggleFocusMode() else super.onBackPressed()
     }
 
     /** Reorganiza os mesmos cards, sem remover controles quando o visor é estreito. */

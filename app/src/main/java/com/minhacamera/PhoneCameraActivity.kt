@@ -22,6 +22,12 @@ import android.content.Intent
 import android.os.SystemClock
 import android.view.TextureView
 import android.view.OrientationEventListener
+import android.view.MotionEvent
+import android.widget.ScrollView
+import android.widget.FrameLayout
+import android.view.ViewGroup
+import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import android.view.WindowManager
 import android.view.View
 import android.widget.ImageView
@@ -33,6 +39,7 @@ import androidx.appcompat.app.AlertDialog
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import java.io.ByteArrayOutputStream
@@ -205,7 +212,21 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private var backgroundMode = false
     // Abrir a tela inicia somente a prévia, sem servidor HTTP nem arquivo MP4.
     private var transmissionEnabled = false
+    @Volatile private var transmissionPaused = false
     private lateinit var transmissionButton: TextView
+    private lateinit var pauseTransmissionButton: TextView
+    private lateinit var txContent: LinearLayout
+    private lateinit var txScroll: ScrollView
+    private lateinit var txVideoBox: FrameLayout
+    private lateinit var txFullControls: View
+    private lateinit var txUnlock: View
+    private var txFull = false
+    private var txDismissedLandscape = false
+    private var txTouchLocked = false
+    private val previousTxVisibilities = mutableMapOf<View, Int>()
+    private val txNormalPad by lazy { (16f * resources.displayMetrics.density + 0.5f).toInt() }
+    private fun txDp(value: Int) = (value * resources.displayMetrics.density + .5f).toInt()
+
     private lateinit var transmissionClock: TextView
     private lateinit var codecButton: TextView
     private var sessionStartMs = 0L
@@ -290,7 +311,28 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         codecButton.setOnLongClickListener { chooseRecordingProfile(); true }
         findViewById<View>(R.id.phoneDiagnosticTop).setOnClickListener { showDiagnostic() }
         transmissionButton = findViewById(R.id.phoneTransmissionToggle)
+        pauseTransmissionButton = findViewById(R.id.phoneTransmissionPause)
+        txContent = findViewById(R.id.phoneTxContent)
+        txScroll = findViewById(R.id.phoneTxScroll)
+        txVideoBox = findViewById(R.id.phoneVideoBox)
+        txFullControls = findViewById(R.id.phoneTxFullscreenControls)
+        txUnlock = findViewById(R.id.phoneTxFullscreenUnlock)
         transmissionButton.setOnClickListener { toggleTransmission() }
+        pauseTransmissionButton.setOnClickListener { toggleTransmissionPause() }
+        findViewById<View>(R.id.phoneTxFullBack).setOnClickListener { setTransmitterFullscreen(false, userDismissed = true) }
+        findViewById<View>(R.id.phoneTxFullToggle).setOnClickListener { toggleTransmission() }
+        findViewById<View>(R.id.phoneTxFullPause).setOnClickListener { toggleTransmissionPause() }
+        findViewById<View>(R.id.phoneTxFullRecord).setOnClickListener { toggleRecording() }
+        findViewById<View>(R.id.phoneTxFullSwitch).setOnClickListener { findViewById<View>(R.id.phoneSwitch).performClick() }
+        findViewById<View>(R.id.phoneTxFullEco).setOnClickListener { toggleEcoCard() }
+        findViewById<View>(R.id.phoneTxFullSettings).setOnClickListener { showTransmitterQuickSettings() }
+        findViewById<View>(R.id.phoneTxFullLock).setOnClickListener { setTransmitterLocked(true) }
+        installTwoSecondUnlock(txUnlock) { setTransmitterLocked(false) }
+        txVideoBox.setOnClickListener {
+            if (txFull && !txTouchLocked) txFullControls.visibility =
+                if (txFullControls.visibility == View.VISIBLE) View.INVISIBLE else View.VISIBLE
+        }
+
         recordButton = findViewById(R.id.phoneRecord)
         recordLabel = findViewById(R.id.phoneRecordLabel)
         recordIcon = findViewById(R.id.phoneRecordIcon)
@@ -392,6 +434,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         refreshTransmitterCards()
         uiHandler.removeCallbacks(clockTick)
         uiHandler.post(clockTick)
+        syncTransmitterFullscreen(resources.configuration.orientation)
     }
     override fun onPause() {
         visible = false
@@ -407,6 +450,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        syncTransmitterFullscreen(newConfig.orientation)
         if (backgroundMode) return
         if (dualMode) { stopStreaming(); tryStart() }
         else try { updateOrientation() } catch (_: Exception) { stopStreaming(); tryStart() }
@@ -423,7 +467,104 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         recordWorker.shutdown()
         super.onDestroy()
     }
+    @Deprecated("Usado para sair da visualização imersiva")
+    override fun onBackPressed() {
+        if (txFull) {
+            if (txTouchLocked) Toast.makeText(this, "Segure o cadeado por 2 segundos", Toast.LENGTH_SHORT).show()
+            else setTransmitterFullscreen(false, userDismissed = true)
+        } else super.onBackPressed()
+    }
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
+
+    private fun syncTransmitterFullscreen(orientation: Int) {
+        if (!::txContent.isInitialized) return
+        if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            if (!txDismissedLandscape && !txFull) setTransmitterFullscreen(true)
+        } else {
+            txDismissedLandscape = false
+            if (txFull) setTransmitterFullscreen(false)
+        }
+    }
+
+    private fun setTransmitterLocked(locked: Boolean) {
+        txTouchLocked = locked
+        txFullControls.visibility = if (locked) View.GONE else View.VISIBLE
+        txUnlock.visibility = if (locked && txFull) View.VISIBLE else View.GONE
+    }
+
+    /** Desbloqueio consciente de 2 segundos, protegido contra toques acidentais. */
+    private fun installTwoSecondUnlock(view: View, unlocked: () -> Unit) {
+        val runnable = Runnable { unlocked() }
+        view.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> { uiHandler.postDelayed(runnable, 2000L); true }
+                MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_UP -> { uiHandler.removeCallbacks(runnable); true }
+                else -> true
+            }
+        }
+    }
+
+    private fun showTransmitterQuickSettings() {
+        val options = arrayOf("Resolução", "FPS", "Orientação", "Codec", "Perfil MP4", "Diagnóstico")
+        PhoneViewerChoiceDialog.show(this, "Ajustes da câmera", "Escolha uma configuração do transmissor",
+            options, intArrayOf(R.drawable.ic_ui_video, R.drawable.ic_ui_scan, R.drawable.ic_ui_screen,
+                R.drawable.ic_ui_cctv, R.drawable.ic_ui_folder, R.drawable.ic_ui_bug), -1) { index ->
+            when (index) {
+                0 -> chooseLocalQuality(); 1 -> chooseLocalFps(); 2 -> chooseOrientationMode()
+                3 -> chooseLocalCodec(); 4 -> chooseRecordingProfile(); else -> showDiagnostic()
+            }
+        }
+    }
+
+    /** Redimensiona o mesmo TextureView: não desconecta a câmera nem troca a Surface. */
+    private fun setTransmitterFullscreen(enabled: Boolean, userDismissed: Boolean = false) {
+        if (!::txVideoBox.isInitialized || txFull == enabled) return
+        if (!enabled && userDismissed && resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE)
+            txDismissedLandscape = true
+        txFull = enabled
+        if (enabled) {
+            previousTxVisibilities.clear()
+            for (i in 0 until txContent.childCount) {
+                val child = txContent.getChildAt(i)
+                if (child !== txVideoBox) {
+                    previousTxVisibilities[child] = child.visibility
+                    child.visibility = View.GONE
+                }
+            }
+            txContent.setPadding(0, 0, 0, 0)
+            txVideoBox.layoutParams = txVideoBox.layoutParams.apply { height = resources.displayMetrics.heightPixels }
+            (singlePreviewContainer.layoutParams as FrameLayout.LayoutParams).height = ViewGroup.LayoutParams.MATCH_PARENT
+            if (dualMode) {
+                dualTop.layoutParams.height = resources.displayMetrics.heightPixels / 2
+                dualBottom.layoutParams.height = resources.displayMetrics.heightPixels / 2
+            }
+            txScroll.scrollTo(0, 0)
+            txFullControls.visibility = View.VISIBLE
+            supportActionBar?.hide()
+            window.addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            WindowInsetsControllerCompat(window, window.decorView).apply {
+                systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+                hide(WindowInsetsCompat.Type.systemBars())
+            }
+        } else {
+            for ((child, original) in previousTxVisibilities) child.visibility = original
+            previousTxVisibilities.clear()
+            txContent.setPadding(txNormalPad, txNormalPad, txNormalPad, txNormalPad)
+            txVideoBox.layoutParams = txVideoBox.layoutParams.apply { height = txDp(if (dualMode) 410 else 250) }
+            (singlePreviewContainer.layoutParams as FrameLayout.LayoutParams).height = ViewGroup.LayoutParams.MATCH_PARENT
+            dualTop.layoutParams.height = txDp(200)
+            dualBottom.layoutParams.height = txDp(200)
+            txFullControls.visibility = View.GONE
+            txTouchLocked = false
+            txUnlock.visibility = View.GONE
+            supportActionBar?.show()
+            window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN)
+            WindowInsetsControllerCompat(window, window.decorView).show(WindowInsetsCompat.Type.systemBars())
+        }
+        txVideoBox.requestLayout()
+        preview.post { updatePreviewTransform() }
+    }
+
     override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
         surfaceReady = true
         tryStart()
@@ -456,8 +597,17 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
 
     private fun refreshTransmissionButton() {
         val live = transmissionEnabled || backgroundMode || server != null || PhoneCameraBackgroundService.running
-        if (::transmissionButton.isInitialized) transmissionButton.setText(
-            if (transmissionEnabled || backgroundMode) R.string.phone_transmit_stop else R.string.phone_transmit_start)
+        if (::transmissionButton.isInitialized) {
+            transmissionButton.text = if (transmissionEnabled || backgroundMode) "■ Parar" else "▶ Iniciar"
+            pauseTransmissionButton.visibility = if (transmissionEnabled && !backgroundMode &&
+                selectedStreamCodec() == "mjpeg") View.VISIBLE else View.GONE
+            pauseTransmissionButton.text = if (transmissionPaused) "▶ Retomar" else "Ⅱ Pausar"
+            findViewById<TextView>(R.id.phoneTxFullToggle).text = if (transmissionEnabled || backgroundMode) "■" else "▶"
+            findViewById<TextView>(R.id.phoneTxFullPause).apply {
+                visibility = if (transmissionEnabled && !backgroundMode && selectedStreamCodec() == "mjpeg") View.VISIBLE else View.GONE
+                text = if (transmissionPaused) "▶" else "Ⅱ"
+            }
+        }
         refreshNetworkIndicator(live)
         refreshTransmitterCards()
     }
@@ -470,7 +620,19 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         networkTop.contentDescription = getString(if (active) R.string.phone_online else R.string.phone_waiting)
     }
 
+    /** Pausa apenas a publicação MJPEG; a prévia e o servidor continuam vivos. */
+    private fun toggleTransmissionPause() {
+        if (!transmissionEnabled || backgroundMode || selectedStreamCodec() != "mjpeg") {
+            Toast.makeText(this, "Pausa disponível na transmissão MJPEG", Toast.LENGTH_SHORT).show()
+            return
+        }
+        transmissionPaused = !transmissionPaused
+        if (transmissionPaused) server?.clearFrame()
+        refreshTransmissionButton()
+    }
+
     private fun toggleTransmission() {
+        transmissionPaused = false
         if (backgroundMode) {
             transmissionEnabled = false
             toggleBackgroundMode() // Encerra sem reiniciar automaticamente o MJPEG.
@@ -741,6 +903,9 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             return
         }
         dualMode = !dualMode
+        if (!txFull) txVideoBox.layoutParams = txVideoBox.layoutParams.apply {
+            height = txDp(if (dualMode) 410 else 250)
+        }
         stopStreaming()
         singlePreviewContainer.visibility = if (dualMode) View.GONE else View.VISIBLE
         dualPreviewContainer.visibility = if (dualMode) View.VISIBLE else View.GONE
@@ -848,11 +1013,13 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                 .compressToJpeg(Rect(0, 0, w, h), PhoneEcoPolicy.jpegQuality(ecoEnabled, heatState), jpeg)) return
         if (!visible || server !== session) return
         val encoded = jpeg.toByteArray()
-        session.publish(encoded, battery)
-        streamStats.frame()
-        if (!publishedStreamFrame) {
-            publishedStreamFrame = true
-            runOnUiThread { if (visible && server === session && !recordingRequested) status.setText(R.string.phone_online) }
+        if (!transmissionPaused) {
+            session.publish(encoded, battery)
+            streamStats.frame()
+            if (!publishedStreamFrame) {
+                publishedStreamFrame = true
+                runOnUiThread { if (visible && server === session && !recordingRequested) status.setText(R.string.phone_online) }
+            }
         }
         if (dual && SystemClock.elapsedRealtime() - lastDualPreviewTime >=
             PhoneEcoPolicy.dualPreviewIntervalMs(ecoEnabled, heatState)) {
@@ -1098,28 +1265,26 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
 
     private fun chooseOrientationMode() {
-        val modes = arrayOf(PhoneOrientationMode.AUTO, PhoneOrientationMode.PORTRAIT,
-            PhoneOrientationMode.LANDSCAPE)
-        val labels = arrayOf(getString(R.string.phone_orientation_auto),
-            getString(R.string.phone_orientation_portrait), getString(R.string.phone_orientation_landscape))
-        val current = modes.indexOf(orientationMode()).coerceAtLeast(0)
-        AlertDialog.Builder(this).setTitle(R.string.phone_orientation_title)
-            .setSingleChoiceItems(labels, current) { dlg, index ->
-                dlg.dismiss()
-                // A escolha fica salva e também é enviada ao serviço independente da tela.
-                getSharedPreferences("phone_video", MODE_PRIVATE).edit()
-                    .putString(PhoneOrientationMode.PREF_KEY, modes[index]).apply()
-                if (backgroundMode && PhoneCameraBackgroundService.running) {
-                    PhoneCameraBackgroundService.changeOrientationLocal(this, modes[index])
-                } else {
-                    if (modes[index] == PhoneOrientationMode.AUTO && orientationSensor.canDetectOrientation())
-                        orientationSensor.enable()
-                    else orientationSensor.disable()
-                    if (!recordingRequested) updateOrientation()
-                    else Toast.makeText(this, R.string.phone_orientation_deferred, Toast.LENGTH_LONG).show()
-                }
-                refreshTransmitterCards()
-            }.setNegativeButton(R.string.cancelar, null).show()
+        val modes = arrayOf(PhoneOrientationMode.AUTO, PhoneOrientationMode.PORTRAIT, PhoneOrientationMode.LANDSCAPE)
+        val labels = arrayOf(getString(R.string.phone_orientation_auto), getString(R.string.phone_orientation_portrait),
+            getString(R.string.phone_orientation_landscape))
+        PhoneViewerChoiceDialog.show(this, getString(R.string.phone_orientation_title),
+            "Como a câmera codifica a orientação do vídeo", labels,
+            intArrayOf(R.drawable.ic_ui_screen, R.drawable.ic_ui_smartphone, R.drawable.ic_ui_expand),
+            modes.indexOf(orientationMode()).coerceAtLeast(0)) { index ->
+            getSharedPreferences("phone_video", MODE_PRIVATE).edit()
+                .putString(PhoneOrientationMode.PREF_KEY, modes[index]).apply()
+            if (backgroundMode && PhoneCameraBackgroundService.running) {
+                PhoneCameraBackgroundService.changeOrientationLocal(this, modes[index])
+            } else {
+                if (modes[index] == PhoneOrientationMode.AUTO && orientationSensor.canDetectOrientation())
+                    orientationSensor.enable()
+                else orientationSensor.disable()
+                if (!recordingRequested) updateOrientation()
+                else Toast.makeText(this, R.string.phone_orientation_deferred, Toast.LENGTH_LONG).show()
+            }
+            refreshTransmitterCards()
+        }
     }
 
     private fun chooseLocalQuality() {
@@ -1127,36 +1292,41 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         val labels = arrayOf("360p • economia", "480p • compatibilidade", "720p • HD",
             "1024×768 • 4:3", "1080p • quando suportado")
         val prefs = getSharedPreferences("phone_video", MODE_PRIVATE)
-        androidx.appcompat.app.AlertDialog.Builder(this).setTitle(R.string.viewer_remote_quality_title)
-            .setSingleChoiceItems(labels, options.indexOf(prefs.getInt("remote_quality",480))) { dialog, index ->
-                dialog.dismiss()
-                if (recordingRequested) { Toast.makeText(this, R.string.phone_stop_record_first, Toast.LENGTH_LONG).show(); return@setSingleChoiceItems }
-                if (backgroundMode && PhoneCameraBackgroundService.running) {
-                    PhoneCameraBackgroundService.changeSettingsLocal(this, PhoneCameraBackgroundService.ACTION_QUALITY, options[index])
-                } else {
-                    prefs.edit().putInt("remote_quality",options[index]).apply()
-                    stopStreaming()
-                    if (visible) tryStart()
-                }
-                refreshTransmitterCards()
-            }.setNegativeButton(R.string.cancelar, null).show()
+        PhoneViewerChoiceDialog.show(this, getString(R.string.viewer_remote_quality_title),
+            "Aumentar a resolução pode reduzir o FPS", labels,
+            intArrayOf(R.drawable.ic_ui_leaf, R.drawable.ic_ui_video, R.drawable.ic_ui_video,
+                R.drawable.ic_ui_screen, R.drawable.ic_ui_cctv),
+            options.indexOf(prefs.getInt("remote_quality",480))) { index ->
+            if (recordingRequested) {
+                Toast.makeText(this, R.string.phone_stop_record_first, Toast.LENGTH_LONG).show()
+                return@show
+            }
+            if (backgroundMode && PhoneCameraBackgroundService.running)
+                PhoneCameraBackgroundService.changeSettingsLocal(this, PhoneCameraBackgroundService.ACTION_QUALITY, options[index])
+            else {
+                prefs.edit().putInt("remote_quality",options[index]).apply()
+                stopStreaming()
+                if (visible) tryStart()
+            }
+            refreshTransmitterCards()
+        }
     }
 
     private fun chooseLocalFps() {
         val options = intArrayOf(5,10,15,24,30)
         val prefs = getSharedPreferences("phone_video", MODE_PRIVATE)
-        androidx.appcompat.app.AlertDialog.Builder(this).setTitle(R.string.viewer_remote_fps_title)
-            .setSingleChoiceItems(options.map { "$it FPS" }.toTypedArray(),
-                options.indexOf(prefs.getInt("remote_fps",10))) { dialog, index ->
-                dialog.dismiss()
-                if (backgroundMode && PhoneCameraBackgroundService.running)
-                    PhoneCameraBackgroundService.changeSettingsLocal(this,PhoneCameraBackgroundService.ACTION_FPS,options[index])
-                else {
-                    fpsTarget = options[index]
-                    prefs.edit().putInt("remote_fps",options[index]).apply()
-                }
-                refreshTransmitterCards()
-            }.setNegativeButton(R.string.cancelar, null).show()
+        PhoneViewerChoiceDialog.show(this, getString(R.string.viewer_remote_fps_title),
+            "Taxa solicitada; a taxa real depende do aparelho", options.map { "$it FPS" }.toTypedArray(),
+            IntArray(options.size) { R.drawable.ic_ui_scan },
+            options.indexOf(prefs.getInt("remote_fps",10))) { index ->
+            if (backgroundMode && PhoneCameraBackgroundService.running)
+                PhoneCameraBackgroundService.changeSettingsLocal(this, PhoneCameraBackgroundService.ACTION_FPS, options[index])
+            else {
+                fpsTarget = options[index]
+                prefs.edit().putInt("remote_fps",options[index]).apply()
+            }
+            refreshTransmitterCards()
+        }
     }
 
     private fun chooseRecordingProfile() {
@@ -1165,14 +1335,18 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         val prefs = getSharedPreferences("phone_video", MODE_PRIVATE)
         val fps = intArrayOf(10, 15, 24, 30)
         val bitrate = intArrayOf(1_000_000, 2_000_000, 4_000_000, 6_000_000)
-        androidx.appcompat.app.AlertDialog.Builder(this).setTitle(R.string.phone_record_profile_title)
-            .setSingleChoiceItems(labels, fps.indexOf(prefs.getInt("record_fps", 15))) { dialog, index ->
-                dialog.dismiss()
-                if (recordingRequested) { Toast.makeText(this, R.string.phone_stop_record_first, Toast.LENGTH_LONG).show(); return@setSingleChoiceItems }
-                prefs.edit().putInt("record_fps", fps[index]).putInt("record_bitrate", bitrate[index]).apply()
-                Toast.makeText(this, R.string.phone_record_profile_saved, Toast.LENGTH_SHORT).show()
-                refreshTransmitterCards()
-            }.setNegativeButton(R.string.cancelar, null).show()
+        PhoneViewerChoiceDialog.show(this, getString(R.string.phone_record_profile_title),
+            "Qualidade dos arquivos gravados no celular", labels,
+            IntArray(labels.size) { R.drawable.ic_ui_folder },
+            fps.indexOf(prefs.getInt("record_fps", 15))) { index ->
+            if (recordingRequested) {
+                Toast.makeText(this, R.string.phone_stop_record_first, Toast.LENGTH_LONG).show()
+                return@show
+            }
+            prefs.edit().putInt("record_fps", fps[index]).putInt("record_bitrate", bitrate[index]).apply()
+            Toast.makeText(this, R.string.phone_record_profile_saved, Toast.LENGTH_SHORT).show()
+            refreshTransmitterCards()
+        }
     }
 
     private fun selectedStreamCodec(): String = getSharedPreferences("phone_video", MODE_PRIVATE)
@@ -1181,45 +1355,54 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private fun chooseLocalCodec() {
         val options = arrayOf("MJPEG • compatibilidade", "H.264 • experimental, menos tráfego")
         val old = selectedStreamCodec()
-        androidx.appcompat.app.AlertDialog.Builder(this).setTitle(R.string.phone_codec_title)
-            .setSingleChoiceItems(options, if (old == "h264") 1 else 0) { dialog, index ->
-                dialog.dismiss()
-                val chosen = if (index == 1) "h264" else "mjpeg"
-                if (chosen == old) return@setSingleChoiceItems
-                if (recordingRequested || (dualMode && chosen == "h264")) {
-                    Toast.makeText(this, if (dualMode) R.string.phone_background_single_only else R.string.phone_stop_record_first,
-                        Toast.LENGTH_LONG).show()
-                    return@setSingleChoiceItems
+        PhoneViewerChoiceDialog.show(this, getString(R.string.phone_codec_title),
+            "O H.264 pode exigir reinício da transmissão", options,
+            intArrayOf(R.drawable.ic_ui_video, R.drawable.ic_ui_cctv), if (old == "h264") 1 else 0) { index ->
+            val chosen = if (index == 1) "h264" else "mjpeg"
+            if (chosen == old) return@show
+            if (recordingRequested || (dualMode && chosen == "h264")) {
+                Toast.makeText(this, if (dualMode) R.string.phone_background_single_only
+                    else R.string.phone_stop_record_first, Toast.LENGTH_LONG).show()
+                return@show
+            }
+            transmissionPaused = false
+            if (backgroundMode && PhoneCameraBackgroundService.running)
+                PhoneCameraBackgroundService.changeCodecLocal(this, chosen)
+            else {
+                getSharedPreferences("phone_video", MODE_PRIVATE).edit().putString("stream_codec", chosen).apply()
+                if (transmissionEnabled && chosen == "h264") {
+                    stopStreaming()
+                    toggleBackgroundMode()
                 }
-                if (backgroundMode && PhoneCameraBackgroundService.running) {
-                    PhoneCameraBackgroundService.changeCodecLocal(this, chosen)
-                } else {
-                    getSharedPreferences("phone_video", MODE_PRIVATE).edit().putString("stream_codec", chosen).apply()
-                    if (transmissionEnabled && chosen == "h264") {
-                        stopStreaming()
-                        toggleBackgroundMode()
-                    }
-                }
-                codecButton.text = chosen.uppercase(Locale.US)
-                refreshTransmitterCards()
-            }.setNegativeButton(R.string.cancelar, null).show()
+            }
+            codecButton.text = chosen.uppercase(Locale.US)
+            refreshTransmissionButton()
+        }
+    }
+
+    private var diagnosticToExport = ""
+    private val diagnosticExporter = registerForActivityResult(
+        ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        if (uri != null) {
+            val ok = runCatching {
+                contentResolver.openOutputStream(uri)?.use {
+                    it.write(diagnosticToExport.toByteArray(Charsets.UTF_8))
+                } ?: error("Não foi possível abrir o arquivo")
+            }.isSuccess
+            Toast.makeText(this, if (ok) "Diagnóstico exportado" else "Falha na exportação",
+                Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun showDiagnostic() {
         val report = PhoneStreamDiagnostics.report("tela=${if (backgroundMode) "apagável" else "normal"}, " +
             "transmissão=${if (backgroundMode) PhoneCameraBackgroundService.running else server != null}, " +
             "últimoErro=${PhoneCameraBackgroundService.lastError ?: "nenhum"}")
-        androidx.appcompat.app.AlertDialog.Builder(this).setTitle(R.string.phone_diagnostic_title)
-            .setMessage(report)
-            .setPositiveButton(R.string.phone_diagnostic_copy) { _, _ ->
-                val manager = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                manager.setPrimaryClip(android.content.ClipData.newPlainText("Diagnóstico Minha Câmera", report))
-                Toast.makeText(this, R.string.phone_diagnostic_copied, Toast.LENGTH_SHORT).show()
-            }
-            .setNeutralButton(R.string.phone_diagnostic_share) { _, _ ->
-                startActivity(android.content.Intent.createChooser(android.content.Intent(android.content.Intent.ACTION_SEND)
-                    .setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, report), getString(R.string.phone_diagnostic_share)))
-            }.setNegativeButton(R.string.ui_close, null).show()
+        val safe = report.replace(Regex("(?i)(token|password|secret|apikey)=([^\\s&]+)"), "$1=[REDACTED]")
+        CameraReportDialog(this, getString(R.string.phone_diagnostic_title), safe, { text ->
+            diagnosticToExport = text
+            diagnosticExporter.launch("Minha-Camera-diagnostico-local.txt")
+        }, "Relatório local • não compartilhe endereços privados sem revisar").show()
     }
 
     private fun openQrDialog() {

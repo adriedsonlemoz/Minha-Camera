@@ -1,3 +1,12 @@
+## 1.4.57+67 — 2026-10-16
+
+- Tela cheia automática **somente horizontal** nos dois modos, retorno vertical para tela normal. Entrada manual no receptor continua possível.
+- Transmissor: prévia permanece anexada para evitar encerrar a Surface em mudanças de layout; ação Iniciar/Parar no vídeo, Pausar/Retomar MJPEG sem encerrar servidor, FPS e duração junto aos indicadores da prévia.
+- Cartões de controle do transmissor reduzidos de 92 para 66 dp, com cantos menores e sem stroke; diálogos de orientação, qualidade, FPS, codec e MP4 usam opções visuais com ícones.
+- Barras de tela cheia ampliadas; Bloquear protege comandos e requer segurar cadeado por 2 segundos para liberar; mudança de orientação continua ativa.
+- Diagnóstico do transmissor usa o painel de relatório com exportação TXT local SAF. H.264 experimental não oferece Pausar.
+- Testes unitários/estáticos executados localmente; sem Android Gradle nem validação em dispositivo. Não altera assinatura nem cadastro.
+
 ## 1.4.56+66 — 2026-10-16
 - Corrigida falha `:app:compileReleaseKotlin` do Build APK 55: removido listener para `R.id.viewerFullPip`, que deixou de existir no layout imersivo, sem remover o botão PiP normal da grade.
 - Corrigida a referência obsoleta `landscapeDismissedByUser` no retorno do PiP para `dismissedFullscreenOrientation = null`, coerente com o estado de tela cheia automática atual.

@@ -14,7 +14,7 @@ class AutoLandscapeFullscreen1447(unittest.TestCase):
             'private fun syncLandscapeFullscreen()',
             'dismissedFullscreenOrientation',
             'automaticFullscreenOrientation',
-            'Configuration.ORIENTATION_PORTRAIT',
+            'if (!landscape)',
             'focusMode = false',
             'focusMode = true',
             'syncLandscapeFullscreen()'

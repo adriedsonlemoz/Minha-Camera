@@ -34,7 +34,7 @@ class RearviewTests(unittest.TestCase):
         self.assertNotIn("Bitmap.createBitmap(image", self.code)
 
     def test_focus_restorable_by_tap(self):
-        self.assertIn('if (focusMode) fullControls.visibility', self.code)
+        self.assertIn('if (focusMode && !viewerControlsLocked)', self.code)
         self.assertIn('fullscreenHost.visibility = View.VISIBLE', self.code)
         self.assertIn('normalPreviewParent.addView(previewContainer', self.code)
 

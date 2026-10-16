@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.56 (versionCode 66)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.57 (versionCode 67)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Novo em 1.4.57:** ambos os modos abrem em tela normal na vertical, entram automaticamente em tela cheia ao girar para horizontal e retornam à tela normal ao desvirar. A tela de transmissão mantém o `TextureView` anexado durante as mudanças de layout; controles Iniciar/Parar e Pausar MJPEG ficam sobre a prévia, com FPS, bateria e temperatura em indicadores; os cartões diminuíram de 92 para 66 dp, sem contorno extra. O receptor tem mais atalhos em tela cheia (Espelho, Ajustes, Bloquear); ambos os modos permitem bloquear comandos e desbloquear segurando por dois segundos. Menus do transmissor usam o seletor estilizado do receptor e o diagnóstico local oferece exportação TXT via SAF. A pausa é disponibilizada apenas para MJPEG; H.264 experimental permanece com Parar, sem alegar suporte de pausa. **Compilação Android e testes em aparelhos ainda pendentes.**
 
 **Correção 1.4.56 (Build APK 55):** corrigidas duas referências inválidas no receptor em `PhoneCameraViewerActivity.kt` que impediam `:app:compileReleaseKotlin`: removida a ligação com `viewerFullPip` (botão retirado da tela cheia) e redefinida a flag correta `dismissedFullscreenOrientation` no retorno do PiP. Inseridos preflight dos IDs R.id e testes de regressão antes da assinatura/compilação no GitHub Actions. Mantidas as melhorias de rotação, tela cheia, controles e diagnóstico da versão anterior. **APK 1.4.56 ainda requer compilação no GitHub Actions e testes no aparelho.**
 

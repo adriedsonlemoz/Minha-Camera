@@ -1,3 +1,10 @@
+# Minha Câmera 1.4.57 (versionCode 67)
+
+- Regra nova: retrato abre e permanece em tela normal; somente paisagem ativa tela cheia automaticamente, tanto ao transmitir quanto ao assistir. Retorno a retrato recupera menus completos.
+- Controles sobre a prévia: iniciar/parar e pausar/retomar MJPEG (H.264 sem pausa experimental), miniindicadores, cartões mais compactos e menos bordas.
+- Seleções estilizadas do transmissor, diagnóstico com exportação TXT e atalhos extras em tela cheia; cadeado exige pressão contínua de 2 segundos.
+- Sem build APK Android ou teste físico nesta entrega. Verificar passagem pela horizontal com o Redmi A3 e receptor, travamento/tela apagada e estabilidade MJPEG/H.264.
+
 # Minha Câmera 1.4.56 (versionCode 66)
 
 - Corrigidos os dois erros Kotlin do Build APK 55 em `PhoneCameraViewerActivity.kt`: controle PiP removido da camada imersiva ainda tinha um listener; restauração do PiP referia variável antiga inexistente.
