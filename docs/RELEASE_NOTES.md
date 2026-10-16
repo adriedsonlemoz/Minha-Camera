@@ -1,3 +1,10 @@
+# Minha Câmera 1.4.53 (versionCode 63)
+
+- Nova alternativa RTSP no LibVLC: primeiro tenta a URL original e, se falhar, tenta a URL sem credenciais embutidas e entrega a autenticação pelas opções nativas, mantendo os dados originais intactos.
+- Quando o SDP da câmera contiver vídeo, o diagnóstico consulta também SETUP/PLAY para RTP/TCP e observa brevemente a chegada de pacotes. O resultado mostra apenas etapas/códigos e nunca login, senha, nonce ou identificador de sessão.
+- Diagnóstico anterior confirmou que a Jortan responde `DESCRIBE 200` autenticado com `H265` no caminho `/`, mas ainda não houve imagem ou dados do VLC.
+- Testes locais Kotlin/JVM e Python; compilação Android completa e prova de vídeo real pendentes.
+
 # Minha Câmera 1.4.52 (versionCode 62)
 
 - Aceita URLs diretas de câmeras IP RTSP, HTTP/HTTPS (MJPEG, vídeo), HLS, MPEG-DASH e RTMP/RTP experimentais por LibVLC, sem prometer formatos/protocolos proprietários.

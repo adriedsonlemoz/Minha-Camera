@@ -1,3 +1,10 @@
+## 1.4.53+63 — 2026-10-16
+- Evidência da Jortan JT-9686 no relatório 1.4.52: caminho `/` devolveu DESCRIBE 200 autenticado com SDP H.265, mas LibVLC exibiu zero bytes e zero quadros nas duas rotas RTSP; a falha de reprodução não está confirmada como problema de codec.
+- LibVLC tenta URL RTSP com login (comportamento anterior) e, em caso de falha, repete a mesma combinação de caminho/transporte com URL sem user-info e credenciais entregues em opções `rtsp-user` e `rtsp-pwd`. Não modifica URLs nem senhas gravadas.
+- Diagnóstico avança além de DESCRIBE 200: avalia `a=control` do vídeo, SETUP para RTP/TCP intercalado, PLAY e presença de bytes intercalados após o PLAY. Diferencia o retorno 461 (transporte TCP não suportado) de outras falhas, sem exportar nonce, Session-ID ou senha.
+- Sondagem SETUP/PLAY limitada à rede local, mesma origem do serviço RTSP, com fechamento do socket após verificação. Não substitui testes reais do VLC/decodificador nem garante reprodução H.265.
+- Testes simulados com `401 Digest → DESCRIBE 200 → SETUP 200 → PLAY 200 → RTP` e variante SETUP 461, além de regressão de interface/versão e integridade do projeto. Build Android e testes físicos continuam pendentes.
+
 ## 1.4.52+62 — 2026-10-16
 - Aceita URLs diretas RTSP, HTTP(S)/MJPEG, HLS (.m3u8), MPEG-DASH (.mpd), RTMP/RTMPS e RTP/UDP experimental, via LibVLC. Fluxos que não sejam RTSP não recebem tentativas RTSP.
 - Cadastro manual/edição permite URLs diretas para várias marcas sem perder câmeras salvas. As credenciais dos campos separados são adicionadas à URL RTSP se ainda não houver login embutido. Apenas URL HTTP com token válido MCRP é tratada como celular.

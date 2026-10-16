@@ -77,6 +77,8 @@ class PlayerActivity : AppCompatActivity() {
     private var index = 0
     private var engine = Engine.VLC
     private var rtspTransport = RtspTransport.TCP
+    // Fallback conservador: URL com credenciais, depois URL limpa + opções RTSP.
+    private var rtspOptionsOnly = false
     private var useWifiBinding = false // Começa com o comportamento anterior à reformulação.
     private var lastVlcStats = "Ainda sem amostras"
     private var lastVlcState = "Não iniciado"
@@ -225,6 +227,7 @@ class PlayerActivity : AppCompatActivity() {
             "App: ${packageManager.getPackageInfo(packageName, 0).versionName} · LibVLC 3.7.7",
             "Motor: ${engine.name} · protocolo: ${CameraStreamProtocol.description(urls.getOrNull(index).orEmpty())} · transporte: ${if (CameraStreamProtocol.isRtsp(urls.getOrNull(index).orEmpty())) rtspTransport.name else "padrão nativo"}",
             "Rede do player: ${if (useWifiBinding) "Wi-Fi vinculado" else "rota padrão Android"}",
+            "Autenticação VLC atual: ${if (rtspOptionsOnly) "opções nativas (sem login na URL)" else "login embutido na URL"}",
             "Último estado do VLC: $lastVlcState",
             "Estatísticas VLC: $lastVlcStats",
             "Vídeo recebido: ${if (videoReady) "sim" else "não"}",
@@ -512,7 +515,7 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun resetAndPlay(startEngine: Engine) {
-        recordPending = false; index = 0; rtspTransport = RtspTransport.TCP
+        recordPending = false; index = 0; rtspTransport = RtspTransport.TCP; rtspOptionsOnly = false
         // Centraliza a política: nenhum botão/tentativa inicia Media3 RTSP nesta release.
         engine = if (media3RtspEnabled) startEngine else Engine.VLC
         failures.clear(); hevcSeen = false
@@ -571,7 +574,10 @@ class PlayerActivity : AppCompatActivity() {
         selectRtspRoute()
         val u = Uri.parse(url)
         val isRtsp = CameraStreamProtocol.isRtsp(url)
-        event("Tentativa ${index + 1}/${urls.size} [${CameraStreamProtocol.description(url)}]: ${u.host ?: "?"}:${u.port.takeIf { it in 1..65535 } ?: CameraStreamProtocol.defaultPort(url)}${safeReportPath(url)} (${if (isRtsp) rtspTransport.name else "nativo"})")
+        val attemptLabel = if (isRtsp)
+            "${rtspTransport.name}, auth=${if (rtspOptionsOnly) "opções" else "URL"}"
+        else "nativo"
+        event("Tentativa ${index + 1}/${urls.size} [${CameraStreamProtocol.description(url)}]: ${u.host ?: "?"}:${u.port.takeIf { it in 1..65535 } ?: CameraStreamProtocol.defaultPort(url)}${safeReportPath(url)} ($attemptLabel)")
         loading(if (failures.isEmpty()) R.string.aguarde_imagem else R.string.conexao_alternativa)
         exoView.visibility = if (engine == Engine.MEDIA3) View.VISIBLE else View.GONE
         vlcView.visibility = if (engine == Engine.VLC) View.VISIBLE else View.GONE
@@ -657,13 +663,20 @@ class PlayerActivity : AppCompatActivity() {
             }
             next.attachViews(vlcView, null, false, false)
             val parsedRtsp = Uri.parse(url)
-            val media = Media(core, parsedRtsp)
-            // Live555 aceita rtsp-user/rtsp-pwd. Repassar as credenciais decodificadas
-            // evita incompatibilidade com senhas que contêm caracteres reservados.
-            // Nunca incluir os valores no relatório ou em logs.
-            if (CameraStreamProtocol.isRtsp(url)) parsedRtsp.encodedUserInfo?.takeIf { it.isNotBlank() }?.let { info ->
-                val user = Uri.decode(info.substringBefore(':'))
-                val pass = Uri.decode(info.substringAfter(':', ""))
+            val encodedInfo = if (CameraStreamProtocol.isRtsp(url)) parsedRtsp.encodedUserInfo else null
+            // Live555 prefere as credenciais da URL quando há user-info. Alguns firmwares
+            // falham nessa negociação: na segunda tentativa, remova APENAS o user-info
+            // da URL passada ao player e informe o login via opções RTSP nativas.
+            // A URL original permanece intacta no cadastro e nunca é exportada.
+            val mediaUri = if (rtspOptionsOnly && !encodedInfo.isNullOrBlank()) {
+                parsedRtsp.buildUpon().encodedAuthority(
+                    parsedRtsp.encodedAuthority.orEmpty().substringAfterLast('@')
+                ).build()
+            } else parsedRtsp
+            val media = Media(core, mediaUri)
+            if (rtspOptionsOnly && !encodedInfo.isNullOrBlank()) {
+                val user = Uri.decode(encodedInfo.substringBefore(':'))
+                val pass = Uri.decode(encodedInfo.substringAfter(':', ""))
                 if (user.isNotBlank()) {
                     media.addOption(":rtsp-user=$user")
                     media.addOption(":rtsp-pwd=$pass")
@@ -780,15 +793,24 @@ class PlayerActivity : AppCompatActivity() {
             vlcPlayer?.let { lastVlcStats = vlcStatsSnapshot(it) }
             event("Estado VLC: $lastVlcState · $lastVlcStats")
         }
-        val via = if (engine == Engine.VLC && CameraStreamProtocol.isRtsp(urls.getOrNull(index).orEmpty())) ", ${rtspTransport.name}" else ""
+        val currentUrl = urls.getOrNull(index).orEmpty()
+        val isRtsp = engine == Engine.VLC && CameraStreamProtocol.isRtsp(currentUrl)
+        val via = if (isRtsp) ", ${rtspTransport.name}, auth=${if (rtspOptionsOnly) "opções" else "URL"}" else ""
         failures.add("$from (fluxo ${index+1}$via): ${maskCredentials(detail)}")
         event("Falha $from fluxo ${index+1}$via: ${maskCredentials(detail)}")
-        val next = if (engine == Engine.VLC)
+        // Antes de trocar TCP/UDP, tentar a segunda estratégia somente se há login.
+        // Não insistir em autenticação alternativa para fluxos anônimos.
+        val retryAuth = isRtsp && !rtspOptionsOnly &&
+            !Uri.parse(currentUrl).encodedUserInfo.isNullOrBlank()
+        val next = if (engine == Engine.VLC && !retryAuth)
             CameraStreamProtocol.nextAttempt(index, rtspTransport, urls) else null
         when {
-            next != null -> { index = next.urlIndex; rtspTransport = next.transport }
+            retryAuth -> { rtspOptionsOnly = true }
+            next != null -> {
+                index = next.urlIndex; rtspTransport = next.transport; rtspOptionsOnly = false
+            }
             engine == Engine.MEDIA3 && media3RtspEnabled -> {
-                engine = Engine.VLC; index = 0; rtspTransport = RtspTransport.TCP
+                engine = Engine.VLC; index = 0; rtspTransport = RtspTransport.TCP; rtspOptionsOnly = false
             }
             else -> { showFailure(); return }
         }
@@ -847,11 +869,18 @@ class PlayerActivity : AppCompatActivity() {
                             ProbeStatus.ERROR -> "DESCRIBE: ${probe.detail}. " +
                                 getString(R.string.rtsp_diagnostic_no_describe)
                         }
+                        // DESCRIBE 200 não comprova que SETUP/PLAY aceitam a faixa.
+                        // Sondagem curta, somente RTP/TCP e apenas quando há SDP com vídeo.
+                        val sessionDetail = if (probe.status == ProbeStatus.OK) {
+                            val result = RtspProbe.probeSetupPlay(host, port, user, password, path)
+                            "; sequência TCP: ${result.stage} " +
+                                (result.code?.toString() ?: "sem código") + "; ${result.detail}"
+                        } else ""
                         val authPresent = if (auth.isNotBlank()) "sim" else "não"
                         // 'debug' inclui apenas esquema anunciado e códigos RTSP, nunca nonce/login/senha.
                         val safeStages = probe.debug.trim().replace('\n', ' ')
                         "${service.detail}; Credenciais cadastradas: $authPresent; " +
-                            "$resultDetail" + if (safeStages.isBlank()) "" else "; $safeStages"
+                            "$resultDetail" + sessionDetail + if (safeStages.isBlank()) "" else "; $safeStages"
                         }
                     }
                 } catch (_: Exception) {

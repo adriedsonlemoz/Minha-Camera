@@ -40,7 +40,10 @@ class AboutActivity : AppCompatActivity() {
         content.addView(TextView(this).apply { text = "Minha Câmera $version"; textSize = 25f; setTextColor(getColor(R.color.app_text)); setPadding(0, 0, 0, dp(4)) })
         content.addView(TextView(this).apply { text = "Transmissão e visualização de câmera por rede local, sem nuvem obrigatória."; textSize = 14f; setTextColor(getColor(R.color.ui_muted)); setPadding(0, 0, 0, dp(16)) })
         addBlock(content, "O que é o app", "Projeto auxiliar do Vigia IA voltado para transmissão local entre celulares, MJPEG/H.264 experimental, modo de tela apagada, gravação opcional e acesso remoto à multimídia.")
-        addBlock(content, "Últimas versões", """1.4.52+62
+        addBlock(content, "Últimas versões", """1.4.53+63
+• Segundo caminho de autenticação LibVLC e diagnóstico SETUP/PLAY/RTP sem vazar credenciais.
+
+1.4.52+62
 • URLs RTSP, HTTP/MJPEG, HLS, DASH e RTMP/RTP experimentais; descoberta ampliada, RTSP SDP validado.
 
 1.4.51+61

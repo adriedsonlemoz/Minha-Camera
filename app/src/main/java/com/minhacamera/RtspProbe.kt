@@ -6,6 +6,7 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.net.URI
 import java.security.MessageDigest
 import java.security.SecureRandom
 
@@ -14,6 +15,9 @@ enum class ProbeStatus { OK, AUTH_FAIL, NOT_FOUND, ERROR }
 data class ProbeResult(
     val status: ProbeStatus, val detail: String, val debug: String = "", val videoCodec: String? = null
 )
+
+/** Apenas estados seguros para exportação: nunca inclui usuário, senha, nonce ou Session-ID. */
+data class RtspSessionResult(val stage: String, val code: Int?, val detail: String)
 
 object RtspProbe {
 
@@ -67,7 +71,10 @@ object RtspProbe {
         false
     }
 
-    private class Reply(val code: Int, val authHeaders: List<String>, val raw: String, val sdp: String)
+    private class Reply(
+        val code: Int, val authHeaders: List<String>, val raw: String,
+        val sdp: String, val headers: Map<String, String>
+    )
 
     private fun send(out: OutputStream, uri: String, cseq: Int, auth: String?) {
         val req = StringBuilder()
@@ -98,10 +105,13 @@ object RtspProbe {
         if (!statusLine.startsWith("RTSP/", ignoreCase = true)) return null
         val code = statusLine.split(" ").getOrNull(1)?.toIntOrNull() ?: return null
         val authHeaders = mutableListOf<String>()
+        val headers = mutableMapOf<String, String>()
         var length = 0
         for (i in 0..100) {
             val line = readLine(input) ?: return null
             if (line.isEmpty()) break
+            if (':' in line) headers[line.substringBefore(':').trim().lowercase()] =
+                line.substringAfter(':').trim()
             if (line.startsWith("WWW-Authenticate:", ignoreCase = true)) {
                 authHeaders.add(line.substringAfter(":").trim())
             }
@@ -121,7 +131,7 @@ object RtspProbe {
             body.write(buf, 0, n)
             remaining -= n
         }
-        return Reply(code, authHeaders, statusLine, body.toString("UTF-8"))
+        return Reply(code, authHeaders, statusLine, body.toString("UTF-8"), headers)
     }
 
     // Primeiro tenta autenticar na conexão do desafio. Alguns firmwares encerram
@@ -227,6 +237,129 @@ object RtspProbe {
             else -> ProbeResult(ProbeStatus.ERROR,
                 if (lastCode == -1) "sem resposta" else "resposta DESCRIBE $lastCode", dbg.toString())
         }
+    }
+
+    /**
+     * Depois de DESCRIBE 200, avalia a negociação real SETUP/PLAY usando RTP/TCP
+     * intercalado. Não decodifica imagens e nunca altera a câmera cadastrada.
+     * Limitado a 1 subfluxo de vídeo, 1,2 s observando RTP, e rede local do host.
+     */
+    fun probeSetupPlay(host: String, port: Int, user: String, pass: String, path: String): RtspSessionResult {
+        val uri = "rtsp://$host:$port$path"
+        var stage = "DESCRIBE"
+        try {
+            // A câmera pode encerrar o socket logo após 401. Capturar o desafio
+            // e abrir uma segunda conexão já com Authorization evita esse caso.
+            val initial = Socket().use { socket ->
+                socket.connect(InetSocketAddress(host, port), 2500)
+                socket.soTimeout = 2500
+                send(socket.getOutputStream(), uri, 1, null)
+                readReply(socket.getInputStream())
+            } ?: return RtspSessionResult(stage, null, "Sem resposta inicial")
+            if (initial.code !in listOf(200, 401))
+                return RtspSessionResult(stage, initial.code, "Servidor recusou DESCRIBE")
+            if (initial.code == 401 && (user.isBlank() || initial.authHeaders.isEmpty()))
+                return RtspSessionResult(stage, 401, "Autenticação exigida; credencial ou desafio ausente")
+            var last = RtspSessionResult(stage, null, "Não foi possível negociar")
+            for (variant in 0..1) {
+                val auth = if (initial.code == 401)
+                    buildAuth(initial.authHeaders, user, pass, uri, variant) ?: continue
+                else null
+                Socket().use { socket ->
+                    socket.connect(InetSocketAddress(host, port), 2500)
+                    socket.soTimeout = 2600
+                    val out = socket.getOutputStream()
+                    val input = socket.getInputStream()
+                    send(out, uri, 2, auth)
+                    val desc = readReply(input)
+                    if (desc == null) {
+                        last = RtspSessionResult("DESCRIBE", null, "Sem resposta na conexão autenticada")
+                        return@use
+                    }
+                    if (desc.code != 200) {
+                        last = RtspSessionResult("DESCRIBE", desc.code, "Resposta ao DESCRIBE")
+                        return@use
+                    }
+                    if (!desc.sdp.contains("m=video", ignoreCase = true))
+                        return RtspSessionResult("SDP", null, "DESCRIBE 200 sem faixa de vídeo")
+                    val base = desc.headers["content-base"] ?: desc.headers["content-location"] ?: uri
+                    val control = videoControl(desc.sdp)
+                    if (control.isNullOrBlank())
+                        return RtspSessionResult("SDP", 200, "Faixa de vídeo sem a=control; SETUP não testado")
+                    val setupUri = resolveControl(base, control)
+                        ?: return RtspSessionResult("SDP", 200, "a=control incompatível ou externo")
+                    stage = "SETUP"
+                    val setupAuth = if (initial.code == 401)
+                        buildAuth(initial.authHeaders, user, pass, setupUri, variant) else null
+                    sendMethod(out, "SETUP", setupUri, 3, setupAuth,
+                        mapOf("Transport" to "RTP/AVP/TCP;unicast;interleaved=0-1"))
+                    val setup = readReply(input)
+                        ?: return RtspSessionResult(stage, null, "Sem resposta ao SETUP")
+                    if (setup.code != 200)
+                        return RtspSessionResult(stage, setup.code,
+                            if (setup.code == 461) "RTP/TCP não aceito (461); testar UDP" else "SETUP recusado")
+                    val session = setup.headers["session"]?.substringBefore(';')?.trim().orEmpty()
+                    if (session.isEmpty())
+                        return RtspSessionResult("SETUP", 200, "Sem cabeçalho Session; PLAY não testado")
+                    stage = "PLAY"
+                    val playAuth = if (initial.code == 401)
+                        buildAuth(initial.authHeaders, user, pass, uri, variant) else null
+                    sendMethod(out, "PLAY", uri, 4, playAuth,
+                        mapOf("Session" to session, "Range" to "npt=0.000-"))
+                    val play = readReply(input)
+                        ?: return RtspSessionResult(stage, null, "Sem resposta ao PLAY")
+                    if (play.code != 200)
+                        return RtspSessionResult(stage, play.code, "PLAY recusado")
+                    stage = "RTP/TCP"
+                    socket.soTimeout = 1200
+                    val firstByte = try { input.read() } catch (_: java.net.SocketTimeoutException) { -1 }
+                    return RtspSessionResult(stage, 200,
+                        if (firstByte == 36) "PLAY 200; dados intercalados recebidos (não prova decodificação)"
+                        else "PLAY 200; nenhum pacote RTP/TCP confirmado em 1,2 s")
+                }
+            }
+            return last
+        } catch (_: Exception) {
+            return RtspSessionResult(stage, null, "Falha de rede/protocolo em $stage")
+        }
+    }
+
+    private fun videoControl(sdp: String): String? {
+        var video = false
+        for (raw in sdp.lineSequence()) {
+            val line = raw.trim()
+            if (line.startsWith("m=", ignoreCase = true))
+                video = line.startsWith("m=video", ignoreCase = true)
+            else if (video && line.startsWith("a=control:", ignoreCase = true))
+                return line.substringAfter(':').trim().takeIf { it.isNotBlank() }
+        }
+        return null
+    }
+
+    /** URLs RTSP fornecidas pelo SDP não podem apontar para host/porta diferentes. */
+    private fun resolveControl(base: String, control: String): String? = try {
+        val original = URI(base)
+        val relative = URI(control)
+        val resolved = if (control == "*") original else {
+            val normalizedBase = if (!base.endsWith('/') && !control.startsWith('/') &&
+                !relative.isAbsolute && !base.contains('?')) URI("$base/") else original
+            normalizedBase.resolve(relative)
+        }
+        if (resolved.scheme.equals("rtsp", ignoreCase = true) &&
+            resolved.host.equals(original.host, ignoreCase = true) &&
+            (if (resolved.port == -1) 554 else resolved.port) ==
+            (if (original.port == -1) 554 else original.port) && resolved.rawUserInfo == null
+        ) resolved.toASCIIString() else null
+    } catch (_: Exception) { null }
+
+    private fun sendMethod(out: OutputStream, method: String, uri: String, cseq: Int,
+                           auth: String?, extras: Map<String, String>) {
+        val req = StringBuilder("$method $uri RTSP/1.0\r\nCSeq: $cseq\r\nUser-Agent: MinhaCamera\r\n")
+        if (auth != null) req.append("Authorization: $auth\r\n")
+        extras.forEach { (key, value) -> req.append("$key: $value\r\n") }
+        req.append("\r\n")
+        out.write(req.toString().toByteArray(Charsets.ISO_8859_1))
+        out.flush()
     }
 
     private fun buildAuth(

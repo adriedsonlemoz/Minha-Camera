@@ -41,7 +41,7 @@ class WelcomeActivity : AppCompatActivity() {
             addView(content)
         }
         setContentView(scroll)
-        val version = packageManager.getPackageInfo(packageName, 0).versionName ?: "1.4.52"
+        val version = packageManager.getPackageInfo(packageName, 0).versionName ?: "1.4.53"
         content.addView(TextView(this).apply {
             text = "Novidades $version"
             textSize = 27f
@@ -54,12 +54,12 @@ class WelcomeActivity : AppCompatActivity() {
             setTextColor(getColor(R.color.ui_muted))
             setPadding(0, 0, 0, dp(18))
         })
-        addHighlight(content, "Mais formatos de vídeo",
-            "Cadastre URLs RTSP, HTTP/MJPEG, HLS ou DASH. RTMP e RTP disponíveis para testes experimentais.")
-        addHighlight(content, "Busca de serviços ampliada",
-            "Identifique portas HTTP e ONVIF, sem confundir detecção com transmissão de vídeo.")
-        addHighlight(content, "RTSP com diagnóstico mais rigoroso",
-            "A autenticação e a presença de vídeo no SDP são verificadas antes de confirmar o fluxo.")
+        addHighlight(content, "Alternativa de autenticação VLC",
+            "Se o login na URL falhar, o player tenta as credenciais pelas opções RTSP nativas antes de trocar o transporte.")
+        addHighlight(content, "Diagnóstico SETUP e PLAY",
+            "Após DESCRIBE 200, a análise verifica a sessão RTP/TCP e informa qual etapa respondeu ou falhou.")
+        addHighlight(content, "Câmera e rede preservadas",
+            "O cadastro e a senha não são modificados; a nova análise não exporta credenciais ou identificadores de sessão.")
         content.addView(MaterialButton(this).apply {
             text = getString(R.string.welcome_latest_continue)
             isAllCaps = false

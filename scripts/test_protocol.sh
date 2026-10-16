@@ -43,3 +43,8 @@ kotlinc "$RETRY_SOURCE" \
   "$ROOT/app/src/main/java/com/minhacamera/CameraStreamProtocol.kt" \
   "$ROOT/tests/CameraStreamProtocolSmoke.kt" -include-runtime -d "$BUILD/camera-protocols.jar"
 java -jar "$BUILD/camera-protocols.jar"
+
+# SETUP/PLAY real em socket local simulado (401 Digest, RTP e 461).
+kotlinc -classpath "$BUILD/tests.jar" "$ROOT/tests/RtspSessionSmoke.kt" \
+  -include-runtime -d "$BUILD/rtsp-session.jar"
+java -cp "$BUILD/tests.jar:$BUILD/rtsp-session.jar" com.minhacamera.RtspSessionSmokeKt
