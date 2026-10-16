@@ -144,7 +144,12 @@ Experimente habilitar H.264 ou outro perfil na câmera e refazer a busca.</strin
     <string name="phone_reconnecting">Sinal perdido. Reconectando…</string>
     <string name="phone_access_denied">Acesso negado. Escaneie o novo QR.</string>
     <string name="viewer_remote_zoom_requested">Zoom solicitado à câmera</string>
-    <string name="novidades_text">Versão 1.4.64 (código 74)
+    <string name="novidades_text">Versão 1.4.65 (código 75)
+- Corrigido Build APK 64: altura mínima do LinearLayout no seletor Lista/Miniaturas, resolvendo erro Kotlin minHeight.
+- Adicionada verificação preventiva de minHeight/minWidth incorretos em contêineres Android ao workflow.
+- Galeria em lista padrão, grade opcional, player e gerenciamento preservados.
+- Alterações visuais e recursos de câmera mantidos; aguarda validação APK em aparelho.
+- Novidades da 1.4.64: galeria abre em lista com miniatura à esquerda e detalhes à direita.
 - Galeria agora abre em lista: miniatura à esquerda, nome e informações à direita.
 - Escolha Lista ou Miniaturas nas configurações; preferência salva automaticamente.
 - Menu de personalização redesenhado com opções de metadados e ações reunidas.

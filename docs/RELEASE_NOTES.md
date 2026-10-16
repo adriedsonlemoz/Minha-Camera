@@ -1,3 +1,9 @@
+# Minha Câmera 1.4.65 (versionCode 75)
+
+- Corrigido Build APK 64: `Unresolved reference 'minHeight'` em `GalleryActivity.kt:313`, alterando a altura mínima do `LinearLayout` para a chamada Android `setMinimumHeight(dp(84))`.
+- Nova verificação estática no GitHub Actions impede repetir atribuições incorretas `minHeight` e `minWidth` nos contêineres Android.
+- Layout Lista/Miniaturas e funções da Central Multimídia preservados. Build Release e teste em aparelho pendentes.
+
 # Minha Câmera 1.4.64 (versionCode 74)
 
 - Galeria local inicia por padrão em lista com prévia à esquerda, nome e detalhes à direita, como no Explorador XP.

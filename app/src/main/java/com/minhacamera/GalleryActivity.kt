@@ -310,7 +310,7 @@ class GalleryActivity : AppCompatActivity() {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
-                minHeight = dp(84)
+                setMinimumHeight(dp(84))
                 setPadding(dp(6), dp(10), dp(6), dp(10))
                 isClickable = true
                 isFocusable = true

@@ -1,3 +1,9 @@
+## 1.4.65+75 — 2026-10-16
+- Corrigido `:app:compileReleaseKotlin` do Build APK 64: `GalleryActivity.kt:313` usava `minHeight = dp(84)` em `LinearLayout` e gerava `Unresolved reference 'minHeight'`.
+- Substituído por `setMinimumHeight(dp(84))`, preservando a altura mínima e o layout do seletor Lista/Miniaturas.
+- Novo preflight de propriedades `minHeight`/`minWidth` inválidas em contêineres Android, incorporado ao GitHub Actions e protegido por testes de regressão.
+- Preservados galeria em lista padrão, modo grade opcional, player e gerenciamento. Compilação Android Release e teste em dispositivo ainda pendentes.
+
 ## 1.4.64+74 — 2026-10-16
 - Galeria local inicia em lista, seguindo o padrão do Explorador XP: foto/vídeo à esquerda, nome e metadados à direita.
 - Opção de grade de miniaturas mantida; escolha de Lista ou Miniaturas salva nas preferências.
