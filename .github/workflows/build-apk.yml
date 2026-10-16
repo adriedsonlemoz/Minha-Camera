@@ -46,6 +46,8 @@ jobs:
         run: |
           python3 scripts/check_version.py
           python3 scripts/check_android_resources.py
+          python3 scripts/check_viewer_bindings.py
+          python3 -m unittest discover -s tests -p test_viewer_build_fix_1456.py -q
           python3 -m unittest discover -s tests -p test_android_resources.py -q
           python3 scripts/check_build_config.py
           python3 scripts/check_protocol_sources.py

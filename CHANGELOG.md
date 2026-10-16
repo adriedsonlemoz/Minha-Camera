@@ -1,3 +1,9 @@
+## 1.4.56+66 — 2026-10-16
+- Corrigida falha `:app:compileReleaseKotlin` do Build APK 55: removido listener para `R.id.viewerFullPip`, que deixou de existir no layout imersivo, sem remover o botão PiP normal da grade.
+- Corrigida a referência obsoleta `landscapeDismissedByUser` no retorno do PiP para `dismissedFullscreenOrientation = null`, coerente com o estado de tela cheia automática atual.
+- Adicionado preflight `scripts/check_viewer_bindings.py` e testes de regressão para detectar IDs `R.id` ausentes nos recursos Android antes da compilação no GitHub Actions.
+- Mantidos MJPEG, H.264 experimental, gravação, modo retrovisor, interface compacta e assinatura existente. Build Android e testes físicos da 1.4.56 continuam pendentes.
+
 ## 1.4.55+65 — 2026-10-16
 - Tela cheia automática do receptor em retrato ou paisagem no modo de orientação Automático, mantendo a transmissão e a ImageView; controles essenciais sobrepostos, com botão para retornar à grade. Sair manualmente não reabre até a próxima mudança física de orientação.
 - Giro de vídeo local em passos de 90° com matriz de imagem, espelhamento e FIT/FILL proporcionais, sem alterar JPEGs ou stream no Redmi A3; ajuste da camada VLC H.264 experimental também é solicitado.

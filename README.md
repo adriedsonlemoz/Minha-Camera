@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.55 (versionCode 65)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.56 (versionCode 66)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Correção 1.4.56 (Build APK 55):** corrigidas duas referências inválidas no receptor em `PhoneCameraViewerActivity.kt` que impediam `:app:compileReleaseKotlin`: removida a ligação com `viewerFullPip` (botão retirado da tela cheia) e redefinida a flag correta `dismissedFullscreenOrientation` no retorno do PiP. Inseridos preflight dos IDs R.id e testes de regressão antes da assinatura/compilação no GitHub Actions. Mantidas as melhorias de rotação, tela cheia, controles e diagnóstico da versão anterior. **APK 1.4.56 ainda requer compilação no GitHub Actions e testes no aparelho.**
 
 **Novo em 1.4.55:** receptor com vídeo imersivo automático no modo de orientação do Android em retrato e paisagem, sobreposição de cinco atalhos compactos (Sair, Gravar, Foto, Girar 90° e Enquadramento), toque no vídeo para esconder/mostrar a sobreposição e saída manual respeitada até a próxima mudança de orientação. Rotação local de MJPEG por matriz gráfica (90°/180°/270°, com ajuste FIT/FILL e espelho sem recodificar ou aumentar bytes transmitidos); controle também tenta girar o visualizador H.264 experimental, sujeito à superfície nativa do LibVLC. Grade de ações reduzida de 82 para 66 dp, diálogos de orientação/codec/resolução/FPS/lente com ícones e seleção destacada, e diagnóstico remoto com Copiar/Exportar TXT via seletor de arquivos do Android. O emissor conserva o cálculo de orientação existente. **Compilação de APK e verificação visual em Redmi A3 pendentes.**
 

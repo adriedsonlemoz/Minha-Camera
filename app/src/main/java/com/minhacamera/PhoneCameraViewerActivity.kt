@@ -252,7 +252,6 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         findViewById<View>(R.id.viewerFullPhoto).setOnClickListener { requestRemotePhoto() }
         findViewById<View>(R.id.viewerFullRotate).setOnClickListener { rotateVideo() }
         findViewById<View>(R.id.viewerFullFit).setOnClickListener { toggleFitMode() }
-        findViewById<View>(R.id.viewerFullPip).setOnClickListener { enterPip() }
         findViewById<View>(R.id.viewerRecordAction).setOnClickListener { setRemoteRecording(remoteRecording != true) }
         findViewById<View>(R.id.viewerRemoteEco).setOnClickListener {
             if (remoteEco == null) {
@@ -342,7 +341,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         super.onPictureInPictureModeChanged(inPictureInPictureMode, newConfig)
         switchPipLayout(inPictureInPictureMode)
         if (!inPictureInPictureMode) {
-            landscapeDismissedByUser = false
+            dismissedFullscreenOrientation = null
             syncLandscapeFullscreen()
         }
         if (!inPictureInPictureMode && !active && !isFinishing && !isDestroyed) start()

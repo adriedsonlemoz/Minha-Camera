@@ -1,3 +1,9 @@
+# Minha Câmera 1.4.56 (versionCode 66)
+
+- Corrigidos os dois erros Kotlin do Build APK 55 em `PhoneCameraViewerActivity.kt`: controle PiP removido da camada imersiva ainda tinha um listener; restauração do PiP referia variável antiga inexistente.
+- Novo preflight para verificar IDs referenciados no receptor e testes de regressão integrados ao workflow antes de assinar/compilar. O PiP da grade principal continua disponível.
+- Sem mudanças na transmissão, assinatura, cadastros ou armazenamento. A compilação Android e os testes físicos desta versão ainda precisam ser confirmados.
+
 # Minha Câmera 1.4.55 (versionCode 65)
 
 - Tela cheia automática do receptor nos modos vertical e horizontal quando acompanha a rotação do Android, com controles essenciais discretos por cima da imagem e saída para ajustes completos.
