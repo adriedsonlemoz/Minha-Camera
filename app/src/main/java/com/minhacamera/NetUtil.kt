@@ -26,6 +26,13 @@ object NetUtil {
         }
     }
 
+    /** Desfaz o bind global da rede para testar a rota normal do Android. */
+    fun useDefaultNetwork(ctx: Context) {
+        try {
+            ctx.getSystemService(ConnectivityManager::class.java)?.bindProcessToNetwork(null)
+        } catch (_: Exception) { }
+    }
+
     private fun localAddress(ctx: Context): Pair<Long, Int>? {
         val cm = ctx.getSystemService(ConnectivityManager::class.java) ?: return null
         val net = wifiNetwork(ctx) ?: return null

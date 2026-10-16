@@ -5,7 +5,7 @@ import java.net.Socket
 
 /** Porta TCP aberta não é prova de serviço RTSP. Não envia senha nem token. */
 enum class RtspServiceKind { RTSP, HTTP, OTHER, SILENT, CLOSED }
-data class RtspServiceResult(val kind: RtspServiceKind, val detail: String)
+data class RtspServiceResult(val kind: RtspServiceKind, val detail: String, val statusCode: Int? = null)
 
 object RtspServiceDetector {
     fun inspect(host: String, port: Int, timeoutMs: Int = 1100): RtspServiceResult {
@@ -25,7 +25,11 @@ object RtspServiceDetector {
                 }
                 val firstLine = String(bytes.toByteArray(), Charsets.ISO_8859_1).trim()
                 when {
-                    firstLine.startsWith("RTSP/", true) -> RtspServiceResult(RtspServiceKind.RTSP, "resposta RTSP recebida")
+                    firstLine.startsWith("RTSP/", true) -> {
+                        val code = firstLine.split(' ').getOrNull(1)?.toIntOrNull()
+                        RtspServiceResult(RtspServiceKind.RTSP,
+                            "OPTIONS: ${firstLine.take(72)}", code)
+                    }
                     firstLine.startsWith("HTTP/", true) -> RtspServiceResult(RtspServiceKind.HTTP, "serviço HTTP, não RTSP")
                     firstLine.isNotEmpty() -> RtspServiceResult(RtspServiceKind.OTHER, "serviço respondeu com outro protocolo")
                     else -> RtspServiceResult(RtspServiceKind.SILENT, "porta aberta, sem resposta ao OPTIONS RTSP")

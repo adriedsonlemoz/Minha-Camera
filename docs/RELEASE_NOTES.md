@@ -1,3 +1,10 @@
+# Minha Câmera 1.4.50 (versionCode 60)
+
+- Testes alternativos de RTSP: rota padrão do Android e rede Wi-Fi vinculada (seleção manual), comparação no VLC externo com consentimento antes de compartilhar eventuais credenciais embutidas.
+- Diagnóstico com eventos do VLC e contadores de bytes, demux e quadros. O status OPTIONS do servidor não é apresentado como confirmação de DESCRIBE.
+- Preservadas a lista de câmeras, URLs, senhas e o modo de monitoramento de celular. Media3 RTSP continua indisponível nesta versão.
+- Compilação e câmera física pendentes.
+
 # Minha Câmera 1.4.49 (versionCode 59)
 
 - Novidades verticalmente centralizadas com rolagem quando a altura não for suficiente.

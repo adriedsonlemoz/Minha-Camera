@@ -16,6 +16,10 @@ fun main() {
             }
             val result = RtspServiceDetector.inspect("127.0.0.1", server.localPort, 350)
             require(result.kind == expected) { "Esperado $expected, veio ${result.kind}" }
+            if (expected == RtspServiceKind.RTSP) {
+                require(result.statusCode == 401) { "OPTIONS não preservou código 401" }
+                require("401" in result.detail) { "Diagnóstico sem resposta RTSP" }
+            }
             task.join(2000)
         }
     }

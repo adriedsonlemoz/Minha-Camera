@@ -77,6 +77,9 @@ class PlayerActivity : AppCompatActivity() {
     private var index = 0
     private var engine = Engine.VLC
     private var rtspTransport = RtspTransport.TCP
+    private var useWifiBinding = false // Começa com o comportamento anterior à reformulação.
+    private var lastVlcStats = "Ainda sem amostras"
+    private var lastVlcState = "Não iniciado"
     private var generation = 0
     private var active = false
     private var hevcSeen = false
@@ -117,6 +120,66 @@ class PlayerActivity : AppCompatActivity() {
         }
     }
 
+    private fun selectRtspRoute() {
+        if (useWifiBinding) NetUtil.bindToWifi(applicationContext)
+        else NetUtil.useDefaultNetwork(applicationContext)
+    }
+
+    private fun toggleRtspRoute() {
+        if (recordingSession != null || recordPending) {
+            Toast.makeText(this, "Encerre a gravação antes de trocar a rede", Toast.LENGTH_LONG).show()
+            return
+        }
+        val choices = arrayOf("Rota padrão do Android (anterior)", "Forçar Wi-Fi local")
+        AlertDialog.Builder(this).setTitle("Rede do player RTSP")
+            .setSingleChoiceItems(choices, if (useWifiBinding) 1 else 0) { dialog, which ->
+                dialog.dismiss()
+                val selected = which == 1
+                if (selected == useWifiBinding) return@setSingleChoiceItems
+                useWifiBinding = selected
+                getSharedPreferences("rtsp_player", MODE_PRIVATE).edit()
+                    .putBoolean("bind_wifi", useWifiBinding).apply()
+                selectRtspRoute()
+                event("Rede alterada: ${if (useWifiBinding) "Wi-Fi vinculado" else "rota padrão"}")
+                resetAndPlay(Engine.VLC)
+            }.setNegativeButton(R.string.cancelar, null).show()
+    }
+
+    private fun testExternalVlc() {
+        val url = urls.getOrNull(index) ?: return
+        val parsed = Uri.parse(url)
+        val hasCredentials = !parsed.encodedUserInfo.isNullOrBlank()
+        AlertDialog.Builder(this)
+            .setTitle("Testar com VLC independente")
+            .setMessage("Abrir o mesmo fluxo RTSP no aplicativo VLC para Android. " +
+                "${if (hasCredentials) "O endereço contém login e será entregue ao aplicativo VLC após confirmar." else "Nenhuma senha está embutida no endereço."} " +
+                "Se o vídeo abrir no VLC externo, isso aponta para uma falha de reprodução no Minha Câmera.")
+            .setNegativeButton(R.string.cancelar, null)
+            .setPositiveButton("Abrir VLC") { _, _ ->
+                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    .setPackage("org.videolan.vlc")
+                    .setDataAndType(Uri.parse(url), "video/*")
+                try {
+                    startActivity(intent)
+                    event("Teste no VLC externo solicitado pelo usuário")
+                } catch (_: android.content.ActivityNotFoundException) {
+                    Toast.makeText(this, "Instale o VLC para Android para testar este endereço.", Toast.LENGTH_LONG).show()
+                } catch (_: Exception) {
+                    Toast.makeText(this, "Não foi possível abrir o VLC externo", Toast.LENGTH_LONG).show()
+                }
+            }.show()
+    }
+
+    private fun vlcStatsSnapshot(player: VlcMediaPlayer): String = try {
+        val media = player.media
+        try {
+            val stats = media?.stats
+            if (stats == null) "Sem estatísticas do VLC"
+            else "bytes=${stats.readBytes}; demux=${stats.demuxReadBytes}; " +
+                "decodificados=${stats.decodedVideo}; exibidos=${stats.displayedPictures}; perdas=${stats.lostPictures}"
+        } finally { media?.release() }
+    } catch (_: Exception) { "Estatísticas nativas indisponíveis" }
+
     private fun event(message: String) {
         val stamp = SimpleDateFormat("HH:mm:ss", Locale.ROOT).format(Date())
         diagnosticEvents.addLast("$stamp · ${maskCredentials(message)}")
@@ -136,7 +199,11 @@ class PlayerActivity : AppCompatActivity() {
         val lines = mutableListOf(
             "Minha Câmera · RTSP",
             "Android ${Build.VERSION.RELEASE} · SDK ${Build.VERSION.SDK_INT}",
+            "App: ${packageManager.getPackageInfo(packageName, 0).versionName} · LibVLC 3.7.7",
             "Motor: ${engine.name} · transporte: ${rtspTransport.name}",
+            "Rede do player: ${if (useWifiBinding) "Wi-Fi vinculado" else "rota padrão Android"}",
+            "Último estado do VLC: $lastVlcState",
+            "Estatísticas VLC: $lastVlcStats",
             "Vídeo recebido: ${if (videoReady) "sim" else "não"}",
             "Endereços configurados: ${urls.size}"
         )
@@ -161,8 +228,11 @@ class PlayerActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_player)
-        // Redes locais sem Internet podem não ser a rede padrão escolhida pelo Android.
-        NetUtil.bindToWifi(applicationContext)
+        // A reformulação forçava bindProcessToNetwork() ao abrir o player.
+        // Restaurar a rota padrão anterior e permitir testar o bind via menu.
+        useWifiBinding = getSharedPreferences("rtsp_player", MODE_PRIVATE)
+            .getBoolean("bind_wifi", false)
+        selectRtspRoute()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         toolbar = findViewById(R.id.playerToolbar)
         setSupportActionBar(toolbar)
@@ -254,6 +324,8 @@ class PlayerActivity : AppCompatActivity() {
         menu.add(0, 2004, 3, R.string.identificar_camera)
         menu.add(0, 2005, 4, R.string.pip_window)
         menu.add(0, 2007, 5, "Localizar fluxo RTSP")
+        menu.add(0, 2008, 6, "Testar no VLC externo")
+        menu.add(0, 2009, 7, "Testar outra rota de rede")
         menu.add(0, 2006, 0, "Diagnóstico").apply {
             setIcon(R.drawable.ic_ui_bug)
             setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
@@ -267,6 +339,8 @@ class PlayerActivity : AppCompatActivity() {
         2005 -> { enterPip(); true }
         2006 -> { showDiagnosticReport(); true }
         2007 -> { recoverRtsp(); true }
+        2008 -> { testExternalVlc(); true }
+        2009 -> { toggleRtspRoute(); true }
         else -> super.onOptionsItemSelected(item)
     }
     override fun onSupportNavigateUp(): Boolean { if (fullscreen) { fullscreen=false; applyFullscreen() } else finish(); return true }
@@ -409,6 +483,8 @@ class PlayerActivity : AppCompatActivity() {
         // Centraliza a política: nenhum botão/tentativa inicia Media3 RTSP nesta release.
         engine = if (media3RtspEnabled) startEngine else Engine.VLC
         failures.clear(); hevcSeen = false
+        lastVlcStats = "Ainda sem amostras"
+        lastVlcState = "Aguardando reprodução"
         rtspAnalysis = "Aguardando tentativa de conexão"
         if (active) playCurrent()
     }
@@ -458,6 +534,8 @@ class PlayerActivity : AppCompatActivity() {
         val current = ++generation; failedGeneration = -1
         releasePlayers(); videoReady = false; videoAspect = 0.0; applyDisplayMode(); errorBox.visibility = View.GONE
         if (url == null) { event("Nenhum endereço RTSP disponível"); showFailure(); return }
+        // Aplicar somente a escolha explícita do usuário a cada tentativa do player.
+        selectRtspRoute()
         val u = Uri.parse(url)
         event("Tentativa ${index + 1}/${urls.size}: ${u.host ?: "?"}:${u.port.takeIf { it in 1..65535 } ?: 554}${u.encodedPath ?: "/"} (${rtspTransport.name})")
         loading(if (failures.isEmpty()) R.string.aguarde_imagem else R.string.conexao_alternativa)
@@ -507,6 +585,7 @@ class PlayerActivity : AppCompatActivity() {
             if (rtspTransport == RtspTransport.TCP) coreOptions.add("--rtsp-tcp")
             val core = LibVLC(this, coreOptions); vlcCore = core
             val next = VlcMediaPlayer(core); vlcPlayer = next
+            lastVlcState = "Inicializando ${rtspTransport.name}"
             next.setEventListener { event ->
                 // Recording close events must be handled even while leaving the screen.
                 val eventType = event.type
@@ -521,13 +600,23 @@ class PlayerActivity : AppCompatActivity() {
                     }
                     if (!active || generation != current || engine != Engine.VLC) return@runOnUiThread
                     when (eventType) {
+                        VlcMediaPlayer.Event.Opening -> { lastVlcState = "Abrindo fluxo" }
+                        VlcMediaPlayer.Event.Playing -> { lastVlcState = "Reprodução iniciada" }
                         VlcMediaPlayer.Event.Vout -> readVlcVideoSize(next)
                         VlcMediaPlayer.Event.Buffering -> {
                             if (event.buffering < 100f) loading(if (videoReady) R.string.buffer_imagem else R.string.aguarde_imagem)
                             else if (videoReady) videoAvailable()
                         }
-                        VlcMediaPlayer.Event.EncounteredError -> onAttemptFailed("LibVLC", "Erro ao abrir ou decodificar fluxo RTSP")
-                        VlcMediaPlayer.Event.EndReached -> onAttemptFailed("LibVLC", "Transmissão encerrada")
+                        VlcMediaPlayer.Event.EncounteredError -> {
+                            lastVlcStats = vlcStatsSnapshot(next)
+                            lastVlcState = "Erro nativo: ${rtspTransport.name}"
+                            onAttemptFailed("LibVLC", "Erro nativo. $lastVlcStats")
+                        }
+                        VlcMediaPlayer.Event.EndReached -> {
+                            lastVlcStats = vlcStatsSnapshot(next)
+                            lastVlcState = "Stream terminou"
+                            onAttemptFailed("LibVLC", "Transmissão encerrada. $lastVlcStats")
+                        }
                     }
                 }
             }
@@ -544,7 +633,10 @@ class PlayerActivity : AppCompatActivity() {
                     val currentMedia = next.media
                     try { currentMedia?.stats?.displayedPictures ?: 0 } finally { currentMedia?.release() }
                 }.getOrDefault(0)
-                if (displayed > 0) videoAvailable() else mainHandler.postDelayed({ awaitPicture() }, 250L)
+                if (displayed > 0) {
+                    lastVlcStats = vlcStatsSnapshot(next)
+                    videoAvailable()
+                } else mainHandler.postDelayed({ awaitPicture() }, 250L)
             }
             mainHandler.postDelayed({ awaitPicture() }, 250L)
         } catch (error: Exception) { onAttemptFailed("LibVLC", causeSummary(error)) }
@@ -636,6 +728,10 @@ class PlayerActivity : AppCompatActivity() {
     private fun onAttemptFailed(from: String, detail: String) {
         if (!active || failedGeneration == generation) return
         failedGeneration = generation
+        if (engine == Engine.VLC && !detail.contains("bytes=")) {
+            vlcPlayer?.let { lastVlcStats = vlcStatsSnapshot(it) }
+            event("Estado VLC: $lastVlcState · $lastVlcStats")
+        }
         val via = if (engine == Engine.VLC) ", ${rtspTransport.name}" else ""
         failures.add("$from (fluxo ${index+1}$via): ${maskCredentials(detail)}")
         event("Falha $from fluxo ${index+1}$via: ${maskCredentials(detail)}")
@@ -689,13 +785,15 @@ class PlayerActivity : AppCompatActivity() {
                         val path = (parsed.encodedPath ?: "/") +
                             (parsed.encodedQuery?.let { "?$it" } ?: "")
                         val probe = RtspProbe.probe(host, port, user, password, path)
-                        when (probe.status) {
+                        val resultDetail = when (probe.status) {
                             ProbeStatus.OK -> getString(R.string.rtsp_diagnostic_describe_ok,
                                 probe.videoCodec ?: "codec não identificado")
                             ProbeStatus.AUTH_FAIL -> getString(R.string.rtsp_diagnostic_auth)
                             ProbeStatus.NOT_FOUND -> getString(R.string.rtsp_diagnostic_path)
-                            ProbeStatus.ERROR -> "${service.detail}. ${getString(R.string.rtsp_diagnostic_no_describe)}"
+                            ProbeStatus.ERROR -> "DESCRIBE sem confirmação: ${probe.detail}. " +
+                                getString(R.string.rtsp_diagnostic_no_describe)
                         }
+                        "${service.detail}; $resultDetail"
                         }
                     }
                 } catch (_: Exception) {

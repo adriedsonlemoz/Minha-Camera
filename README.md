@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.49 (versionCode 59)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.50 (versionCode 60)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Novo em 1.4.50:** investigação de regressão RTSP sem alterar o cadastro: ao abrir o player, a rota padrão do Android foi restaurada (antes da 1.4.46 o app não vinculava globalmente o processo ao Wi-Fi no visualizador); no menu da câmera existem **Testar outra rota de rede** (alternar entre rota padrão e Wi-Fi vinculado) e **Testar no VLC externo** com confirmação explícita quando a URL contém credenciais. O diagnóstico exportável passa a registrar o estado do VLC, bytes de entrada, demux, quadros decodificados e exibidos, versão do app, transporte TCP/UDP, modo de rede e resposta `OPTIONS` detalhada, diferenciando-a de `DESCRIBE`. Não habilita Media3 1.3.1 que apresentou travamento nativo anterior. **Ainda não há prova de que a câmera 209 voltará a conectar. Teste real necessário.**
 
 **Novo na 1.4.49:** boas-vindas centralizadas verticalmente, preservando rolagem em telas menores; botões do relatório com contraste consistente (Fechar neutro, Copiar azul preenchido e Exportar azul contornado). O diagnóstico RTSP passa a atualizar a janela já aberta quando o resultado de `DESCRIBE` chegar, evitando relatórios exportados que ficam presos em “Verificando...”. O TXT recebido da Câmera 209 registrou falha em `/onvif1` e `/onvif2` via TCP e UDP sem resposta RTSP conclusiva; nenhuma URL/credencial foi alterada. **Ainda depende do build e dos testes com hardware real.**
 

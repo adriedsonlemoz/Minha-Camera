@@ -1,3 +1,10 @@
+## 1.4.50+60 — 2026-10-16
+- Novo teste de regressão RTSP: rota padrão do Android como comportamento inicial, com troca manual opcional para Wi-Fi vinculado no menu.
+- Ação "Testar no VLC externo" solicita confirmação antes de enviar a URL RTSP (inclusive credenciais, quando presentes) ao app independente VLC.
+- Diagnóstico expandido com dados de sessão do LibVLC, estatísticas de quadros e bytes, tentativa de transporte e resposta a OPTIONS separada do DESCRIBE.
+- Nenhuma alteração automática de URL/senha das câmeras cadastradas; mantém o Media3 RTSP desativado por causa da falha histórica do parser CSeq.
+- Falta compilar no Android/CI e confirmar em hardware real o resultado da Câmera 209.
+
 ## 1.4.49+59 — 2026-10-16
 - Tela Novidades centralizada verticalmente quando há espaço, com rolagem preservada para telas pequenas e fontes ampliadas.
 - Pop-up de diagnóstico: Fechar neutro, Copiar azul sólido e Exportar com contorno azul, mantendo acessibilidade e ações existentes.

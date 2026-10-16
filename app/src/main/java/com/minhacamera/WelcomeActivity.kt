@@ -41,7 +41,7 @@ class WelcomeActivity : AppCompatActivity() {
             addView(content)
         }
         setContentView(scroll)
-        val version = packageManager.getPackageInfo(packageName, 0).versionName ?: "1.4.49"
+        val version = packageManager.getPackageInfo(packageName, 0).versionName ?: "1.4.50"
         content.addView(TextView(this).apply {
             text = "Novidades $version"
             textSize = 27f
@@ -54,12 +54,12 @@ class WelcomeActivity : AppCompatActivity() {
             setTextColor(getColor(R.color.ui_muted))
             setPadding(0, 0, 0, dp(18))
         })
-        addHighlight(content, "Novidades centralizadas",
-            "A tela se adapta à altura do aparelho, com rolagem em telas pequenas.")
-        addHighlight(content, "Botões de diagnóstico renovados",
-            "Fechar neutro, Copiar em azul e Exportar com contorno azul.")
-        addHighlight(content, "Relatório RTSP atualizado",
-            "O diagnóstico reflete a resposta da câmera mesmo quando a janela já está aberta.")
+        addHighlight(content, "Teste no VLC independente",
+            "Compare o mesmo fluxo RTSP no aplicativo VLC, com sua confirmação antes de compartilhar credenciais.")
+        addHighlight(content, "Duas rotas de rede",
+            "Experimente a rota padrão do Android ou Wi-Fi vinculado, sem modificar sua câmera cadastrada.")
+        addHighlight(content, "Diagnóstico RTSP aprofundado",
+            "Veja respostas OPTIONS, estado da conexão, bytes e quadros reportados pelo LibVLC.")
         content.addView(MaterialButton(this).apply {
             text = getString(R.string.welcome_latest_continue)
             isAllCaps = false
