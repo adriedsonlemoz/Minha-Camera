@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.content.res.ColorStateList
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -73,24 +74,37 @@ class CameraReportDialog(
         container.addView(scroller, LinearLayout.LayoutParams(-1,
             (activity.resources.displayMetrics.heightPixels * .40f).toInt()))
         val actions = LinearLayout(activity).apply { orientation = LinearLayout.HORIZONTAL }
-        fun action(title: String, click: () -> Unit) {
-            actions.addView(MaterialButton(activity, null,
+        fun action(title: String, primary: Boolean, neutral: Boolean = false, click: () -> Unit) {
+            val button = MaterialButton(activity, null,
                 com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
                 text = title
-                textSize = 12f
+                textSize = 13f
                 isAllCaps = false
                 minWidth = 0
-                setPadding(0, 0, 0, 0)
+                cornerRadius = dp(14)
+                val color = activity.getColor(if (neutral) R.color.app_outline else R.color.brand_primary)
+                strokeColor = ColorStateList.valueOf(color)
+                strokeWidth = if (primary) 0 else dp(1)
+                backgroundTintList = ColorStateList.valueOf(activity.getColor(
+                    if (primary) R.color.brand_primary else R.color.app_surface))
+                setTextColor(activity.getColor(when {
+                    primary -> R.color.brand_on_primary
+                    neutral -> R.color.app_text
+                    else -> R.color.brand_primary
+                }))
                 setOnClickListener { click() }
-            }, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginEnd = dp(4) })
+            }
+            actions.addView(button, LinearLayout.LayoutParams(0, dp(48), 1f).apply {
+                marginEnd = dp(4)
+            })
         }
-        action("Fechar") { dialog.dismiss() }
-        action("Copiar") {
+        action("Fechar", primary = false, neutral = true) { dialog.dismiss() }
+        action("Copiar", primary = true) {
             val clipboard = activity.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
             clipboard.setPrimaryClip(ClipData.newPlainText("Diagnóstico Minha Câmera", body.text))
             Toast.makeText(activity, "Relatório copiado", Toast.LENGTH_SHORT).show()
         }
-        action("Exportar") { export(body.text.toString()) }
+        action("Exportar", primary = false) { export(body.text.toString()) }
         container.addView(actions)
     }
 

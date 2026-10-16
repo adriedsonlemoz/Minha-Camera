@@ -1,3 +1,10 @@
+## 1.4.49+59 — 2026-10-16
+- Tela Novidades centralizada verticalmente quando há espaço, com rolagem preservada para telas pequenas e fontes ampliadas.
+- Pop-up de diagnóstico: Fechar neutro, Copiar azul sólido e Exportar com contorno azul, mantendo acessibilidade e ações existentes.
+- Diagnóstico RTSP assíncrono atualiza uma janela aberta quando `DESCRIBE` terminar; o TXT passa a refletir o resultado efetivo sem duplicar a lista de tentativas.
+- Arquivo de diagnóstico da Câmera 209 analisado: `/onvif1` e `/onvif2` em TCP e UDP sem quadros; não há evidência suficiente para atribuir a causa ao codec ou autenticação.
+- Compilação Android e teste físico ainda pendentes.
+
 ## 1.4.48+58 — 2026-10-16
 - Diagnóstico RTSP com botão discreto no topo e relatório local em modal minimalista com Fechar, Copiar e Exportar TXT (Android SAF).
 - Relatórios de informação de transmissão e identificação ONVIF/serviços em janelas próprias, sem pressupor marca ou capacidades que não responderam.

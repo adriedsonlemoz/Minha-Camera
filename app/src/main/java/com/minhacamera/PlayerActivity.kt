@@ -100,6 +100,8 @@ class PlayerActivity : AppCompatActivity() {
     private val failures = mutableListOf<String>()
     private val diagnosticEvents = ArrayDeque<String>()
     private var reportDialog: CameraReportDialog? = null
+    private var diagnosticDialog: CameraReportDialog? = null
+    private var rtspAnalysis = "Diagnóstico ainda não concluído"
     private var reportTextPending = ""
     private var recoveryRunning = false
     private var recoveryThread: Thread? = null
@@ -142,7 +144,7 @@ class PlayerActivity : AppCompatActivity() {
         lines.add("\nTentativas")
         lines.addAll(failures)
         lines.add("\nAnálise RTSP")
-        lines.add(if (::errorDetail.isInitialized) errorDetail.text.toString() else "")
+        lines.add(rtspAnalysis)
         lines.add("\nEventos desta sessão")
         lines.addAll(diagnosticEvents)
         lines.add("\nObservação: uma porta TCP aberta não comprova serviço RTSP.")
@@ -152,7 +154,9 @@ class PlayerActivity : AppCompatActivity() {
     private fun showReport(title: String, report: String): CameraReportDialog {
         return CameraReportDialog(this, title, maskCredentials(report), ::exportReport).show().also { reportDialog = it }
     }
-    private fun showDiagnosticReport() { showReport("Diagnóstico RTSP", reportSnapshot()) }
+    private fun showDiagnosticReport() {
+        diagnosticDialog = showReport("Diagnóstico RTSP", reportSnapshot())
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -405,6 +409,7 @@ class PlayerActivity : AppCompatActivity() {
         // Centraliza a política: nenhum botão/tentativa inicia Media3 RTSP nesta release.
         engine = if (media3RtspEnabled) startEngine else Engine.VLC
         failures.clear(); hevcSeen = false
+        rtspAnalysis = "Aguardando tentativa de conexão"
         if (active) playCurrent()
     }
     private fun releasePlayers() {
@@ -652,7 +657,9 @@ class PlayerActivity : AppCompatActivity() {
         errorText.setText(if (hevcSeen) R.string.erro_h265 else R.string.erro_generico)
         val initial = failures.takeLast(8).joinToString("\n")
             .ifBlank { getString(R.string.erro_sem_fluxos) }
-        errorDetail.text = initial + "\n" + getString(R.string.rtsp_diagnostic_running)
+        rtspAnalysis = getString(R.string.rtsp_diagnostic_running)
+        errorDetail.text = initial + "\n" + rtspAnalysis
+        diagnosticDialog?.takeIf { it.isShowing }?.update(reportSnapshot())
         errorBox.visibility = View.VISIBLE; updateRecordButton()
         pendingRecovered = null
         event("Nenhum fluxo produziu imagem após as tentativas")
@@ -699,9 +706,12 @@ class PlayerActivity : AppCompatActivity() {
             runOnUiThread {
                 if (active && generation == checkedGeneration &&
                     !isFinishing && !isDestroyed && errorBox.visibility == View.VISIBLE) {
+                    rtspAnalysis = lines.joinToString("\n")
                     errorDetail.text = originalMessage + "\n\n" +
-                        getString(R.string.rtsp_diagnostic_title) + "\n" + lines.joinToString("\n")
+                        getString(R.string.rtsp_diagnostic_title) + "\n" + rtspAnalysis
                     event("Diagnóstico DESCRIBE concluído")
+                    // A janela exportável pode ter sido aberta antes do término do DESCRIBE.
+                    diagnosticDialog?.takeIf { it.isShowing }?.update(reportSnapshot())
                 }
             }
         }, "rtsp-diagnostic").apply { isDaemon = true; start() }

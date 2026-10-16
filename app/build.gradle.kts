@@ -13,8 +13,8 @@ android {
         applicationId = "com.minhacamera"
         minSdk = 24
         targetSdk = 34
-        versionCode = 58
-        versionName = "1.4.48"
+        versionCode = 59
+        versionName = "1.4.49"
     }
 
     // O AAR LibVLC 3.7.7 contém as quatro ABIs; manter x86 para compatibilidade.

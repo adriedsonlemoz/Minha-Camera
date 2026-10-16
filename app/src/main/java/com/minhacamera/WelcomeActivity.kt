@@ -1,6 +1,7 @@
 package com.minhacamera
 
 import android.os.Bundle
+import android.view.Gravity
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
@@ -29,12 +30,18 @@ class WelcomeActivity : AppCompatActivity() {
         supportActionBar?.hide()
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), dp(18), dp(18), dp(28))
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(18), dp(24), dp(18), dp(24))
             setBackgroundColor(getColor(R.color.app_background))
         }
-        val scroll = ScrollView(this).apply { addView(content) }
+        // fillViewport preenche a altura útil e centraliza o conteúdo se houver espaço.
+        // Se a fonte for grande ou a tela estiver deitada, a rolagem continua disponível.
+        val scroll = ScrollView(this).apply {
+            isFillViewport = true
+            addView(content)
+        }
         setContentView(scroll)
-        val version = packageManager.getPackageInfo(packageName, 0).versionName ?: "1.4.48"
+        val version = packageManager.getPackageInfo(packageName, 0).versionName ?: "1.4.49"
         content.addView(TextView(this).apply {
             text = "Novidades $version"
             textSize = 27f
@@ -47,12 +54,12 @@ class WelcomeActivity : AppCompatActivity() {
             setTextColor(getColor(R.color.ui_muted))
             setPadding(0, 0, 0, dp(18))
         })
-        addHighlight(content, "RTSP e detecção mais claros",
-            "Diferencia porta aberta de serviço RTSP confirmado e oferece recuperação de fluxo na rede local.")
-        addHighlight(content, "Diagnóstico completo",
-            "Botão discreto no visualizador para consultar, copiar e exportar os eventos de conexão.")
-        addHighlight(content, "Interface mais limpa",
-            "Mensagens técnicas em janela compacta e tela de novidades sem textos acumulados de outras versões.")
+        addHighlight(content, "Novidades centralizadas",
+            "A tela se adapta à altura do aparelho, com rolagem em telas pequenas.")
+        addHighlight(content, "Botões de diagnóstico renovados",
+            "Fechar neutro, Copiar em azul e Exportar com contorno azul.")
+        addHighlight(content, "Relatório RTSP atualizado",
+            "O diagnóstico reflete a resposta da câmera mesmo quando a janela já está aberta.")
         content.addView(MaterialButton(this).apply {
             text = getString(R.string.welcome_latest_continue)
             isAllCaps = false

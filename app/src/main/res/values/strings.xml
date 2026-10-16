@@ -143,7 +143,12 @@ Experimente habilitar H.264 ou outro perfil na câmera e refazer a busca.</strin
     <string name="phone_delay_unavailable">atraso --</string>
     <string name="phone_reconnecting">Sinal perdido. Reconectando…</string>
     <string name="phone_access_denied">Acesso negado. Escaneie o novo QR.</string>
-    <string name="novidades_text">Versão 1.4.48 (código 58)
+    <string name="novidades_text">Versão 1.4.49 (código 59)
+• Tela de novidades centralizada na altura útil e com rolagem nas telas menores.
+• Botões de diagnóstico atualizados: Fechar neutro, Copiar azul sólido e Exportar com contorno azul.
+• Resultado RTSP é atualizado na janela aberta após o término de DESCRIBE.
+
+Versão 1.4.48 (código 58)
 • Diagnóstico RTSP no botão de bug, com copiar e exportar arquivo TXT.
 • Detecção de serviços mais precisa e recuperação de caminhos RTSP conhecidos, sem alterar a câmera até confirmar o vídeo.
 • Boas-vindas e janelas de informação mais limpas, exibindo apenas as novidades desta atualização.</string>
@@ -311,7 +316,7 @@ Abra uma câmera e toque em Gravar.</string>
     <string name="viewer_remote_facing_requested">Troca de câmera solicitada. A imagem pode pausar brevemente.</string>
     <string name="viewer_fullscreen_hint">Controles compactos na parte inferior. Toque no vídeo para ocultar ou mostrar.</string>
     <string name="welcome_latest_title">Bem-vindo à nova versão!</string>
-    <string name="welcome_latest_summary">Novidades 1.4.48: diagnóstico RTSP exportável, detecção de serviços confirmados e recuperação de caminhos RTSP na rede local. Boas-vindas compactas com somente alterações da versão atual.</string>
+    <string name="welcome_latest_summary">Novidades 1.4.49: tela de novidades centralizada, botões de diagnóstico com contraste padronizado e relatório RTSP que se atualiza quando a análise terminar.</string>
     <string name="welcome_latest_continue">Começar</string>
     <string name="phone_codec_title">Formato da transmissão</string>
     <string name="phone_codec_changed">Formato solicitado. Reconectando…</string>

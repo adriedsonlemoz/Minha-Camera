@@ -1,3 +1,10 @@
+# Minha Câmera 1.4.49 (versionCode 59)
+
+- Novidades verticalmente centralizadas com rolagem quando a altura não for suficiente.
+- Ações do pop-up de diagnóstico padronizadas: Fechar neutro, Copiar azul sólido, Exportar contornado.
+- Relatório RTSP passa a atualizar a janela enquanto está aberta ao receber o resultado de `DESCRIBE`, deixando o TXT mais conclusivo.
+- A câmera real permanece indisponível para teste neste ambiente; nenhuma alteração foi feita nas credenciais ou endereços cadastrados.
+
 # Minha Câmera 1.4.48 (versionCode 58)
 
 - RTSP: diagnóstico próprio acessível pelo botão de bug, com Fechar, Copiar e Exportar TXT no Android.

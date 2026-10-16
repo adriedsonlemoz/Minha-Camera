@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.48 (versionCode 58)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.49 (versionCode 59)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Novo na 1.4.49:** boas-vindas centralizadas verticalmente, preservando rolagem em telas menores; botões do relatório com contraste consistente (Fechar neutro, Copiar azul preenchido e Exportar azul contornado). O diagnóstico RTSP passa a atualizar a janela já aberta quando o resultado de `DESCRIBE` chegar, evitando relatórios exportados que ficam presos em “Verificando...”. O TXT recebido da Câmera 209 registrou falha em `/onvif1` e `/onvif2` via TCP e UDP sem resposta RTSP conclusiva; nenhuma URL/credencial foi alterada. **Ainda depende do build e dos testes com hardware real.**
 
 **Novo na 1.4.48:** diagnóstico RTSP em painel minimalista pelo ícone de bug no topo, com Fechar, Copiar e Exportar TXT via seletor de arquivos do Android, sem revelar senha/token. Serviços detectados passam a ser classificados como RTSP confirmado ou porta TCP sem confirmação, sem pressupor que toda porta aberta transmita vídeo. Ao falhar, o player permite **Localizar fluxo RTSP** em portas 554/8554/10554 e caminhos conhecidos, somente em IP privado; o cadastro só muda após apresentar um quadro real e depois de confirmação. Identificação ONVIF mostra o que foi confirmado e distingue protocolo proprietário. Janela de boas-vindas exibe somente alterações da versão atual, sem histórico acumulado. **Ainda requer build CI e teste real da câmera; porta aberta sem resposta RTSP pode indicar função NVR/RTSP desativada na câmera.**
 
