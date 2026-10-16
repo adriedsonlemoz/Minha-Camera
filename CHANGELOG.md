@@ -1,3 +1,10 @@
+## 1.4.42+52 — 2026-10-15
+
+- Corrige o Build APK 42: o AAPT2 interrompia `:app:processReleaseResources` com 16 erros `attribute insetLeft/Right/Top/Bottom not found` em `item_camera.xml`.
+- Retirados apenas os atributos `app:inset*` inválidos dos quatro `MaterialButton`; mantém os quatro controles na mesma linha e seus identificadores, ações, estilos e largura por peso.
+- O preflight `scripts/check_android_resources.py` agora também valida layouts contra esses atributos incompatíveis; teste de regressão cobre o caso.
+- Preservados orientação automática/vertical/horizontal, transmissão, gravação, PiP e Secrets de assinatura. **Sem compilação Android completa nem teste em dispositivo nesta entrega; executar o workflow para verificar.**
+
 ## 1.4.41+51 — 2026-10-15
 
 - Central Multimídia passa a atalho azul ao lado de Buscar, Adicionar e Manual; quatro ações por câmera na mesma linha, com rótulos legíveis e sem revelar credenciais do RTSP.

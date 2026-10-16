@@ -1,3 +1,9 @@
+# Minha Câmera 1.4.42 (versionCode 52)
+
+- Corrige 16 erros AAPT2 em `:app:processReleaseResources` (Build APK 42) removendo atributos `app:insetLeft`, `app:insetRight`, `app:insetTop` e `app:insetBottom` inexistentes dos quatro botões Material no cartão de dispositivos.
+- Mantém a grade horizontal com Abrir, Copiar, Editar e Excluir; preservados os controles compactos do receptor e os modos de orientação para bicicleta/casa.
+- Reforçado o preflight de recursos Android para identificar este problema antes do Gradle. Ainda requer validação de `assembleRelease` no GitHub Actions e teste real em dispositivo.
+
 # Minha Câmera 1.4.41 (versionCode 51)
 
 - Tela inicial: Central Multimídia em botão azul compacto com Buscar, Adicionar e Manual; botões Abrir, Copiar, Editar, Excluir juntos em linha.

@@ -6,28 +6,28 @@
     </LinearLayout>
     <TextView android:id="@+id/tvMasked" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:textAppearance="?attr/textAppearanceBodyMedium" android:maxLines="2" android:ellipsize="end" />
     <TextView android:id="@+id/tvInfo" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:textAppearance="?attr/textAppearanceBodySmall" android:maxLines="2" android:ellipsize="end" android:textColor="@color/ui_muted"/>
-    <!-- Ações em uma única linha, sem ícones internos que esmagariam o texto. -->
+    <!-- Ações em uma única linha; sem atributos app:inset* (inexistentes no Material Components 1.12). -->
     <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="horizontal" android:baselineAligned="false">
       <com.google.android.material.button.MaterialButton android:id="@+id/btnOpen" style="@style/Widget.Material3.Button.TonalButton"
           android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1"
           android:layout_marginHorizontal="2dp" android:minWidth="0dp" android:minHeight="48dp"
-          android:paddingStart="0dp" android:paddingEnd="0dp" app:insetLeft="0dp" app:insetRight="0dp"
-          app:insetTop="0dp" app:insetBottom="0dp" android:text="@string/abrir" android:textSize="10sp" android:textAllCaps="false"/>
+          android:paddingStart="0dp" android:paddingEnd="0dp"
+          android:text="@string/abrir" android:textSize="10sp" android:textAllCaps="false"/>
       <com.google.android.material.button.MaterialButton android:id="@+id/btnCopy" style="@style/Widget.Material3.Button.OutlinedButton"
           android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1"
           android:layout_marginHorizontal="2dp" android:minWidth="0dp" android:minHeight="48dp"
-          android:paddingStart="0dp" android:paddingEnd="0dp" app:insetLeft="0dp" app:insetRight="0dp"
-          app:insetTop="0dp" app:insetBottom="0dp" android:text="Copiar" android:textSize="10sp" android:textAllCaps="false"/>
+          android:paddingStart="0dp" android:paddingEnd="0dp"
+          android:text="Copiar" android:textSize="10sp" android:textAllCaps="false"/>
       <com.google.android.material.button.MaterialButton android:id="@+id/btnEdit" style="@style/Widget.Material3.Button.OutlinedButton"
           android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1"
           android:layout_marginHorizontal="2dp" android:minWidth="0dp" android:minHeight="48dp"
-          android:paddingStart="0dp" android:paddingEnd="0dp" app:insetLeft="0dp" app:insetRight="0dp"
-          app:insetTop="0dp" app:insetBottom="0dp" android:text="@string/home_edit" android:textSize="10sp" android:textAllCaps="false"/>
+          android:paddingStart="0dp" android:paddingEnd="0dp"
+          android:text="@string/home_edit" android:textSize="10sp" android:textAllCaps="false"/>
       <com.google.android.material.button.MaterialButton android:id="@+id/btnDelete" style="@style/Widget.Material3.Button.OutlinedButton"
           android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1"
           android:layout_marginHorizontal="2dp" android:minWidth="0dp" android:minHeight="48dp"
-          android:paddingStart="0dp" android:paddingEnd="0dp" app:insetLeft="0dp" app:insetRight="0dp"
-          app:insetTop="0dp" app:insetBottom="0dp" android:text="@string/home_delete" android:textSize="10sp" android:textAllCaps="false"/>
+          android:paddingStart="0dp" android:paddingEnd="0dp"
+          android:text="@string/home_delete" android:textSize="10sp" android:textAllCaps="false"/>
     </LinearLayout>
   </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

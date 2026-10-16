@@ -2,14 +2,17 @@
 """Detecta texto Android inválido (especialmente apóstrofos crus que AAPT2 rejeita).
 
 XML sintaticamente válido NÃO garante compatibilidade com a compilação de recursos.
-Este preflight verifica os escapes das strings antes do Gradle; AAPT2 continua
-sendo a verificação definitiva durante :app:mergeReleaseResources.
+Este preflight verifica strings e atributos MaterialButton incompatíveis antes
+do Gradle; AAPT2 continua a validação definitiva durante o build.
 """
 from pathlib import Path
 import sys
 import xml.etree.ElementTree as ET
 
 ALLOWED_ESCAPES = set("\\'\"ntr@?u")
+APP_NS = "{http://schemas.android.com/apk/res-auto}"
+ANDROID_NS = "{http://schemas.android.com/apk/res/android}"
+INVALID_MATERIAL_INSETS = frozenset(("insetLeft", "insetRight", "insetTop", "insetBottom"))
 
 
 def errors_in_android_string(text: str):
@@ -52,6 +55,24 @@ def check(root: Path):
             value = ''.join(item.itertext())
             for error in errors_in_android_string(value):
                 failures.append(f'{path.name}:{item.attrib.get("name", "?")}: {error}')
+    # Build APK 42: app:inset* passa pelo parser XML, mas não existe como
+    # atributo no namespace da aplicação e falha no linking do AAPT2.
+    for path in (root / 'app/src/main/res').glob('layout*/*.xml'):
+        try:
+            layout = ET.parse(path).getroot()
+        except ET.ParseError as exc:
+            failures.append(f'{path}: XML de layout inválido: {exc}')
+            continue
+        for widget in layout.iter():
+            if not widget.tag.endswith('MaterialButton'):
+                continue
+            wid = widget.attrib.get(ANDROID_NS + 'id', '(sem id)')
+            for inset in INVALID_MATERIAL_INSETS:
+                if APP_NS + inset in widget.attrib:
+                    failures.append(
+                        f'{path.name}:{wid}: app:{inset} não é atributo MaterialButton válido; '
+                        'remova-o (erro AAPT2 do Build APK 42).'
+                    )
     return count, failures
 
 

@@ -29,4 +29,4 @@ def test_strings_include_new_dialog_copy_and_novidades():
     xml = (ROOT / 'app/src/main/res/values/strings.xml').read_text(encoding='utf-8')
     assert 'phone_more_dialog_subtitle' in xml
     assert 'phone_more_link_subtitle' in xml
-    assert 'Versão 1.4.41 (código 51)' in xml
+    assert 'Versão 1.4.42 (código 52)' in xml

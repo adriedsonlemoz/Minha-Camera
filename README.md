@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.41 (versionCode 51)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.42 (versionCode 52)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Correção 1.4.42 (Build APK 42):** removidos 16 atributos `app:insetLeft/Right/Top/Bottom` inválidos dos quatro botões no layout `item_camera.xml`, que impediam `:app:processReleaseResources`. A grade de quatro ações por câmera permanece intacta. Adicionada validação preventiva dos atributos no preflight Android. Não muda assinatura, permissão, fluxo de vídeo ou orientação. **O novo APK ainda deve ser compilado e instalado no CI/aparelho.**
 
 **Novo em 1.4.41:** tela inicial com quatro atalhos de mesmo tamanho, incluindo Mídia; cada dispositivo mostra Abrir, Copiar, Editar e Excluir na mesma linha. O visualizador agora exibe todos os controles em cards compactos (19 ações) numa grade de cinco colunas em aparelhos usuais, reorganizada em quatro/três colunas apenas quando necessário. Resolução, FPS, câmera, Eco, orientação, sobreposição, indicadores, biblioteca remota e diagnóstico ficam diretamente visíveis, com rolagem. O protocolo, transmissão, gravação e atalhos PiP/tela cheia foram preservados. **Sem APK compilado/teste no aparelho nesta entrega.**
 
