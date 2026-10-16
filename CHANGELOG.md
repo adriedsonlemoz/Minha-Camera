@@ -1,3 +1,11 @@
+## 1.4.58+68 — 2026-10-16
+
+- Removidos controles de transmissão e indicadores da área do vídeo; agora em painel próprio abaixo da prévia. Barra de ações na tela cheia separada da imagem, com fundo opaco e altura reservada no ScrollView.
+- Zoom remoto real para câmera Android MJPEG em primeiro plano e no serviço com tela apagada: novo controle no receptor normal e na tela cheia; diálogo com barra deslizante e retorno a 1×. Usa Camera.Parameters quando suportado; não faz ampliação fictícia no receptor.
+- Protocolo local autenticado `/control/<token>/zoom/<0..100>` (POST) com validação de faixa e retorno por status (`X-Zoom-Supported`, `X-Zoom-Percent`, `X-Zoom-Ratio-100`). Requests rejeitados quando indisponível; H.264 experimental e modo duplo não anunciam zoom.
+- Testes de segurança do protocolo, URL, estrutura visual e funções de zoom adicionados; nenhum componente de assinatura/keystore foi alterado.
+- Kotlin/JVM de protocolos e 122 testes Python aprovados neste ambiente. APK Release e testes em aparelho pendentes.
+
 ## 1.4.57+67 — 2026-10-16
 
 - Tela cheia automática **somente horizontal** nos dois modos, retorno vertical para tela normal. Entrada manual no receptor continua possível.

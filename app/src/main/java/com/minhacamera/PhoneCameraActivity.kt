@@ -46,6 +46,8 @@ import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.Locale
 
 @Suppress("DEPRECATION")
@@ -113,6 +115,38 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     @Volatile private var server: PhoneCameraServer? = null
     private var selectedFacing = Camera.CameraInfo.CAMERA_FACING_BACK
     private var selectedId: Int? = null
+    @Volatile private var zoomAvailable = false
+    @Volatile private var zoomPercent = 0
+    @Volatile private var zoomRatio100 = 100
+    /** Media só reporta valores de câmera confirmados, sem ampliador no receptor. */
+    private fun applyCameraZoom(percent: Int): Boolean {
+        val c = camera ?: return false
+        if (dualMode || backgroundMode || !zoomAvailable || percent !in 0..100) return false
+        return try {
+            val params = c.parameters
+            if (!params.isZoomSupported || params.maxZoom <= 0) return false
+            val step = ((params.maxZoom.toLong() * percent + 50) / 100).toInt().coerceIn(0,params.maxZoom)
+            params.zoom = step
+            c.parameters = params
+            val verified = c.parameters
+            zoomPercent = if (params.maxZoom > 0) (verified.zoom * 100 / params.maxZoom).coerceIn(0,100) else 0
+            zoomRatio100 = verified.zoomRatios?.getOrNull(verified.zoom) ?: 100
+            true
+        } catch (_: Exception) { false }
+    }
+
+    private fun setZoomFromRemote(percent: Int): Boolean {
+        if (!visible || backgroundMode || dualMode || !zoomAvailable) return false
+        if (Looper.myLooper() == Looper.getMainLooper()) return applyCameraZoom(percent)
+        val signal = CountDownLatch(1)
+        val success = AtomicBoolean(false)
+        uiHandler.post {
+            try { success.set(visible && transmissionEnabled && applyCameraZoom(percent)) }
+            finally { signal.countDown() }
+        }
+        return signal.await(2, TimeUnit.SECONDS) && success.get()
+    }
+
     @Volatile private var frameRotation = 0
     private var physicalDegrees = 0
     private val orientationStabilizer = PhoneOrientationStabilizer()
@@ -532,7 +566,14 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                 }
             }
             txContent.setPadding(0, 0, 0, 0)
-            txVideoBox.layoutParams = txVideoBox.layoutParams.apply { height = resources.displayMetrics.heightPixels }
+            (txScroll.layoutParams as FrameLayout.LayoutParams).apply {
+                bottomMargin = txDp(58)
+                txScroll.layoutParams = this
+            }
+            txVideoBox.layoutParams = txVideoBox.layoutParams.apply { height = resources.displayMetrics.heightPixels - txDp(58) }
+            txScroll.post {
+                if (txFull) txVideoBox.layoutParams = txVideoBox.layoutParams.apply { height = txScroll.height }
+            }
             (singlePreviewContainer.layoutParams as FrameLayout.LayoutParams).height = ViewGroup.LayoutParams.MATCH_PARENT
             if (dualMode) {
                 dualTop.layoutParams.height = resources.displayMetrics.heightPixels / 2
@@ -549,6 +590,10 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         } else {
             for ((child, original) in previousTxVisibilities) child.visibility = original
             previousTxVisibilities.clear()
+            (txScroll.layoutParams as FrameLayout.LayoutParams).apply {
+                bottomMargin = 0
+                txScroll.layoutParams = this
+            }
             txContent.setPadding(txNormalPad, txNormalPad, txNormalPad, txNormalPad)
             txVideoBox.layoutParams = txVideoBox.layoutParams.apply { height = txDp(if (dualMode) 410 else 250) }
             (singlePreviewContainer.layoutParams as FrameLayout.LayoutParams).height = ViewGroup.LayoutParams.MATCH_PARENT
@@ -708,6 +753,9 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             if (params.supportedFocusModes?.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO) == true)
                 params.focusMode = Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO
             c.parameters = params
+            zoomAvailable = params.isZoomSupported && params.maxZoom > 0
+            zoomPercent = 0
+            zoomRatio100 = 100
             previewWidth = size.width
             previewHeight = size.height
             receivedCameraFrames = false
@@ -823,6 +871,9 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                         true
                     }
                 }, fpsStatus = { fpsTarget },
+                changeZoom = { percent -> setZoomFromRemote(percent) },
+                zoomStatus = { if (zoomAvailable && !dualMode && !backgroundMode) zoomPercent else null },
+                zoomRatioStatus = { if (zoomAvailable && !dualMode && !backgroundMode) zoomRatio100 else null },
                 diagnostics = { PhoneStreamDiagnostics.report("Transmissão em primeiro plano; quadros=$receivedCameraFrames; modo=MJPEG") })
             lastTelemetryLabel = ""
             cachedTelemetryLabel = ""
@@ -1518,6 +1569,9 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         val c = camera
         camera = null
         selectedId = null
+        zoomAvailable = false
+        zoomPercent = 0
+        zoomRatio100 = 100
         receivedCameraFrames = false
         renderedPreviewFrames = false
         publishedStreamFrame = false

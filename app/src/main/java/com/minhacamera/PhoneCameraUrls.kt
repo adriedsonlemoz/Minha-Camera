@@ -29,6 +29,10 @@ object PhoneCameraUrls {
 
     fun photoCommandUrl(input: String): String? = controlUrl(input, "photo")
 
+    /** Zoom absoluto normalizado; nunca adiciona um sufixo fora de 0..100 à URL autenticada. */
+    fun zoomCommandUrl(input: String, percent: Int): String? =
+        if (percent in 0..100) controlUrl(input, "zoom/$percent") else null
+
     fun codecCommandUrl(input: String, codec: String): String? =
         if (codec == "h264" || codec == "mjpeg") controlUrl(input, "codec/$codec") else null
 

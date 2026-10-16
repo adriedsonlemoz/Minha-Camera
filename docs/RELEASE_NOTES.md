@@ -1,3 +1,11 @@
+# Minha Câmera 1.4.58 (versionCode 68)
+
+- Botões Iniciar/Parar e Pausar/Retomar agora ficam abaixo do vídeo no modo Transmitir, com indicadores de desempenho fora da imagem.
+- Tela cheia do transmissor: ações em barra sólida inferior com área reservada para não sobrepor a prévia.
+- Zoom remoto do transmissor MJPEG, inclusive com tela apagada no serviço foreground, na tela Assistir, de 1× ao máximo informado pela câmera, com deslizador e reset. Zoom indisponível em modos não compatíveis, incluindo H.264 e câmera dupla.
+- Protocolo autenticado e limites 0–100%; status remoto com razão de zoom confirmada.
+- Android Release e testes físicos ainda pendentes; preserve a mesma chave de assinatura para atualizar.
+
 # Minha Câmera 1.4.57 (versionCode 67)
 
 - Regra nova: retrato abre e permanece em tela normal; somente paisagem ativa tela cheia automaticamente, tanto ao transmitir quanto ao assistir. Retorno a retrato recupera menus completos.

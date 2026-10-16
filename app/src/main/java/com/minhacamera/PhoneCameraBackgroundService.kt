@@ -28,6 +28,8 @@ import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 /**
@@ -102,6 +104,38 @@ class PhoneCameraBackgroundService : Service() {
     private val encoding = AtomicBoolean(false)
     private val recordingBusy = AtomicBoolean(false)
     private val battery by lazy { PhoneBatteryTelemetry(applicationContext) }
+    @Volatile private var zoomAvailable = false
+    @Volatile private var zoomPercent = 0
+    @Volatile private var zoomRatio100 = 100
+    /** Zoom da câmera do serviço: funciona com a tela apagada, sem depender da Activity. */
+    private fun applyServiceZoom(percent: Int): Boolean {
+        val current = camera ?: return false
+        if (!zoomAvailable || closing || switching || liveCodec != "mjpeg" || percent !in 0..100) return false
+        return try {
+            val params = current.parameters
+            if (!params.isZoomSupported || params.maxZoom <= 0) return false
+            val step = ((params.maxZoom.toLong() * percent + 50) / 100).toInt().coerceIn(0,params.maxZoom)
+            params.zoom = step
+            current.parameters = params
+            val confirmed = current.parameters
+            zoomPercent = (confirmed.zoom * 100 / params.maxZoom).coerceIn(0,100)
+            zoomRatio100 = confirmed.zoomRatios?.getOrNull(confirmed.zoom) ?: 100
+            true
+        } catch (_: Exception) { false }
+    }
+
+    private fun setServiceZoom(percent: Int): Boolean {
+        if (!running || closing || switching || liveCodec != "mjpeg" || !zoomAvailable) return false
+        if (Looper.myLooper() == Looper.getMainLooper()) return applyServiceZoom(percent)
+        val latch = CountDownLatch(1)
+        val success = AtomicBoolean(false)
+        mainHandler.post {
+            try { success.set(running && applyServiceZoom(percent)) }
+            finally { latch.countDown() }
+        }
+        return latch.await(2, TimeUnit.SECONDS) && success.get()
+    }
+
     private var camera: Camera? = null
     private var headlessPreview: PhoneHeadlessPreview? = null
     private var selectedFacing = Camera.CameraInfo.CAMERA_FACING_BACK
@@ -335,6 +369,9 @@ class PhoneCameraBackgroundService : Service() {
                     true
                 }
             }, fpsStatus = { fpsLimit },
+            changeZoom = { percent -> setServiceZoom(percent) },
+            zoomStatus = { if (running && liveCodec == "mjpeg" && zoomAvailable && !switching) zoomPercent else null },
+            zoomRatioStatus = { if (running && liveCodec == "mjpeg" && zoomAvailable && !switching) zoomRatio100 else null },
             changeFacing = { desired ->
                 if (!running || closing || switching || recording || takingPhoto ||
                     desired !in listOf(Camera.CameraInfo.CAMERA_FACING_BACK, Camera.CameraInfo.CAMERA_FACING_FRONT) ||
@@ -376,6 +413,9 @@ class PhoneCameraBackgroundService : Service() {
     private fun releasePreview() {
         val old = camera
         camera = null
+        zoomAvailable = false
+        zoomPercent = 0
+        zoomRatio100 = 100
         try { old?.setPreviewCallbackWithBuffer(null) } catch (_: Exception) { }
         try { old?.stopPreview() } catch (_: Exception) { }
         try { old?.release() } catch (_: Exception) { }
@@ -432,6 +472,9 @@ class PhoneCameraBackgroundService : Service() {
         if (params.supportedFocusModes?.contains(Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO) == true)
             params.focusMode = Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO
         opened.parameters = params
+        zoomAvailable = params.isZoomSupported && params.maxZoom > 0
+        zoomPercent = 0
+        zoomRatio100 = 100
         val info = Camera.CameraInfo()
         Camera.getCameraInfo(deviceId, info)
         activeSensorMount = info.orientation

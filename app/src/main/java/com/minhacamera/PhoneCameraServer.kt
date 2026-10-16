@@ -25,6 +25,9 @@ class PhoneCameraServer(
     private val qualityStatus: (() -> Int)? = null,
     private val changeFps: ((Int) -> Boolean)? = null,
     private val fpsStatus: (() -> Int)? = null,
+    private val changeZoom: ((Int) -> Boolean)? = null,
+    private val zoomStatus: (() -> Int?)? = null,
+    private val zoomRatioStatus: (() -> Int?)? = null,
     private val changeFacing: ((Int) -> Boolean)? = null,
     private val facingStatus: (() -> Int)? = null,
     private val takePhoto: (() -> Boolean)? = null,
@@ -135,7 +138,7 @@ class PhoneCameraServer(
                 val model = (deviceModel?.invoke() ?: "Android").replace(Regex("[^A-Za-z0-9 ._-]"), "").take(50)
                 val body = ("{\"protocol\":\"mcrp\",\"version\":1,\"device\":{\"model\":\"$model\"}," +
                     "\"stream\":{\"codec\":\"${if (codecStatus?.invoke() == "h264") "h264" else "mjpeg"}\",\"mjpeg\":\"$wanted\",\"h264\":\"${wanted.replace("/live/", "/h264/")}\"}," +
-                    "\"capabilities\":{\"record\":${changeRecording != null},\"photo\":${takePhoto != null},\"eco\":${changeEco != null},\"facing\":${changeFacing != null},\"quality\":${changeQuality != null},\"fps\":${changeFps != null},\"codec\":${changeCodec != null},\"media\":${mediaIndex != null}}}")
+                    "\"capabilities\":{\"record\":${changeRecording != null},\"photo\":${takePhoto != null},\"eco\":${changeEco != null},\"facing\":${changeFacing != null},\"quality\":${changeQuality != null},\"fps\":${changeFps != null},\"zoom\":${changeZoom != null && zoomStatus?.invoke() != null},\"codec\":${changeCodec != null},\"media\":${mediaIndex != null}}}")
                 writeJson(peer, body)
                 return
             }
@@ -173,6 +176,11 @@ class PhoneCameraServer(
                 "POST $control/camera/front HTTP/1.1" -> 1
                 else -> null
             }
+            // Valor absoluto, 0..100%. Sem URI livre ou números fora do intervalo.
+            val zoomPercent = if (line.startsWith("POST $control/zoom/") && line.endsWith(" HTTP/1.1"))
+                line.removePrefix("POST $control/zoom/").removeSuffix(" HTTP/1.1")
+                    .takeIf { it.matches(Regex("[0-9]{1,3}")) }?.toIntOrNull()?.takeIf { it in 0..100 }
+            else null
             val photoAction = line == "POST $control/photo HTTP/1.1"
             val codecAction = when (line) {
                 "POST $control/codec/mjpeg HTTP/1.1" -> "mjpeg"
@@ -206,6 +214,9 @@ class PhoneCameraServer(
                     ecoStatus?.let { append("X-Eco: ${if (it()) 1 else 0}\r\n") }
                     qualityStatus?.let { append("X-Quality-Profile: ${it()}\r\n") }
                     fpsStatus?.let { append("X-FPS-Target: ${it()}\r\n") }
+                    append("X-Zoom-Supported: ${if (changeZoom != null && zoomStatus?.invoke() != null) 1 else 0}\r\n")
+                    zoomStatus?.let { it()?.let { percent -> append("X-Zoom-Percent: $percent\r\n") } }
+                    zoomRatioStatus?.let { it()?.let { ratio -> append("X-Zoom-Ratio-100: $ratio\r\n") } }
                     facingStatus?.let { append("X-Camera-Facing: ${it()}\r\n") }
                     append("Content-Length: 0\r\nConnection: close\r\n\r\n")
                 }
@@ -228,12 +239,13 @@ class PhoneCameraServer(
                 serveAvc(peer)
                 return
             }
-            if (qualityAction != null || fpsAction != null || cameraAction != null || photoAction) {
+            if (qualityAction != null || fpsAction != null || cameraAction != null || photoAction || zoomPercent != null) {
                 val success = try {
                     when {
                         qualityAction != null -> changeQuality?.invoke(qualityAction) == true
                         fpsAction != null -> changeFps?.invoke(fpsAction) == true
                         cameraAction != null -> changeFacing?.invoke(cameraAction) == true
+                        zoomPercent != null -> changeZoom?.invoke(zoomPercent) == true
                         else -> takePhoto?.invoke() == true
                     }
                 } catch (_: Exception) { false }
@@ -243,6 +255,7 @@ class PhoneCameraServer(
                     else if ((qualityAction != null && changeQuality == null) ||
                         (fpsAction != null && changeFps == null) ||
                         (cameraAction != null && changeFacing == null) ||
+                        (zoomPercent != null && (changeZoom == null || zoomStatus?.invoke() == null)) ||
                         (photoAction && takePhoto == null)) "unsupported-mode" else "command-rejected"
                 peer.getOutputStream().write(("HTTP/1.1 $status\r\nCache-Control: no-store\r\n" +
                     "X-Control-Reason: $reason\r\nConnection: close\r\nContent-Length: 0\r\n\r\n").toByteArray(Charsets.US_ASCII))

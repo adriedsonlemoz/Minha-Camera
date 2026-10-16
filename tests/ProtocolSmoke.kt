@@ -452,6 +452,13 @@ private fun checkRemoteRecordingApi() {
         "http://192.168.12.2:8765/control/$token/photo")
     check(PhoneCameraUrls.qualityCommandUrl(privateUrl, 1080) != null)
     check(PhoneCameraUrls.fpsCommandUrl(privateUrl, 100) == null)
+    check(PhoneCameraUrls.zoomCommandUrl(privateUrl, 50) ==
+        "http://192.168.12.2:8765/control/$token/zoom/50")
+    check(PhoneCameraUrls.zoomCommandUrl(privateUrl, 0) != null)
+    check(PhoneCameraUrls.zoomCommandUrl(privateUrl, 100) != null)
+    check(PhoneCameraUrls.zoomCommandUrl(privateUrl, -1) == null)
+    check(PhoneCameraUrls.zoomCommandUrl(privateUrl, 101) == null)
+    check(PhoneCameraUrls.zoomCommandUrl("http://8.8.8.8:8765/live/$token", 60) == null)
     check(PhoneCameraUrls.photoCommandUrl("http://8.8.8.8:8765/live/$token") == null)
     val localhost = java.net.InetAddress.getByName("127.0.0.1") as java.net.Inet4Address
     var recording = false
@@ -459,6 +466,7 @@ private fun checkRemoteRecordingApi() {
     var quality = 480
     var fps = 10
     var facing = 0
+    var zoom = 0
     var photos = 0
     var codec = "mjpeg"
     val server = PhoneCameraServer(localhost, token,
@@ -468,6 +476,7 @@ private fun checkRemoteRecordingApi() {
         ecoStatus = { eco },
         changeQuality = { quality = it; true }, qualityStatus = { quality },
         changeFps = { fps = it; true }, fpsStatus = { fps },
+        changeZoom = { zoom = it; true }, zoomStatus = { zoom }, zoomRatioStatus = { 100 + zoom * 2 },
         changeFacing = { facing = it; true }, facingStatus = { facing },
         takePhoto = { photos++; true }, recordingSeconds = { 3L },
         changeCodec = { codec = it; true }, codecStatus = { codec },
@@ -503,6 +512,13 @@ private fun checkRemoteRecordingApi() {
         check(command("/control/$token/quality/720") == 204 && quality == 720)
         check(command("/control/$token/fps/15") == 204 && fps == 15)
         check(command("/control/$token/camera/front") == 204 && facing == 1)
+        check(command("/control/$token/zoom/70") == 204 && zoom == 70)
+        check(command("/control/$token/zoom/0") == 204 && zoom == 0)
+        check(command("/control/$token/zoom/100") == 204 && zoom == 100)
+        check(command("/control/$token/zoom/101") == 403 && zoom == 100)
+        check(command("/control/$token/zoom/-1") == 403 && zoom == 100)
+        check(command("/control/${"0".repeat(32)}/zoom/50") == 403 && zoom == 100)
+        check(command("/control/$token/zoom/50", "GET") == 403 && zoom == 100)
         check(command("/control/$token/photo") == 204 && photos == 1)
         check(command("/control/${"0".repeat(32)}/photo") == 403 && photos == 1)
         check(command("/control/$token/photo", "GET") == 403 && photos == 1)
@@ -525,9 +541,12 @@ private fun checkRemoteRecordingApi() {
             check(status.responseCode == 200)
             check(status.getHeaderField("X-Stream-Codec") == "mjpeg")
             check(status.getHeaderField("X-Transmission-Seconds") == "42")
+            check(status.getHeaderField("X-Zoom-Supported") == "1")
+            check(status.getHeaderField("X-Zoom-Percent") == "100")
+            check(status.getHeaderField("X-Zoom-Ratio-100") == "300")
         } finally { status.disconnect() }
         check(command("/control/$token/diagnostic", "GET") == 200)
         check(command("/control/${"0".repeat(32)}/diagnostic", "GET") == 403)
     } finally { server.stop() }
-    println("OK: REC, Eco, foto, qualidade, FPS e câmera remotos autenticados; token/método inválidos rejeitados")
+    println("OK: REC, Eco, foto, qualidade, FPS e zoom remotos autenticados; token/método inválidos rejeitados")
 }
