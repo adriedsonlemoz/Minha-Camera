@@ -369,8 +369,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             android.view.Surface.ROTATION_270 -> 270
             else -> 0
         }
-        if (orientationMode() == PhoneOrientationMode.AUTO && orientationSensor.canDetectOrientation())
-            orientationSensor.enable()
+        if (orientationSensor.canDetectOrientation()) orientationSensor.enable()
         else orientationSensor.disable()
         backgroundMode = PhoneCameraBackgroundService.running || backgroundMode
         if (PhoneCameraBackgroundService.running) backgroundRequestedAt = SystemClock.elapsedRealtime() - 10_000L

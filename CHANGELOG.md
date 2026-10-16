@@ -1,3 +1,9 @@
+## 1.4.44+54 — 2026-10-15
+- Corrigida a orientação do transmissor nos modos **Vertical fixo** e **Horizontal fixo** para evitar imagem de cabeça para baixo quando o aparelho está no lado oposto da rotação.
+- Os modos fixos agora preservam a família retrato/paisagem, mas escolhem automaticamente o lado físico correto (0/180 ou 90/270) com base na posição real do aparelho.
+- O sensor de orientação permanece ativo também nos modos fixos, tanto na Activity quanto no serviço em segundo plano, apenas para decidir o lado correto sem reintroduzir oscilações rápidas.
+- Build Android/APK e teste em aparelho ainda pendentes nesta entrega.
+
 ## 1.4.43+53 — 2026-10-15
 - Tela **Usar o celular como câmera** reorganizada com controles e ajustes visíveis em grade na própria página, sem depender do menu Mais para funções principais.
 - Novos cards diretos para Link, Código, sobreposição de bateria, Eco, tela apagada, orientação, resolução, FPS, codec, perfil MP4 e diagnóstico, preservando QR, gravação, troca de câmera e modo duplo.

@@ -8,9 +8,25 @@ object PhoneOrientationMode {
     const val LANDSCAPE = "landscape"
     fun normalize(mode: String?): String = if (mode in listOf(AUTO, PORTRAIT, LANDSCAPE)) mode!! else AUTO
     fun snap(angle: Int): Int = if (angle < 0) -1 else ((angle + 45) / 90 * 90) % 360
+
+    private fun circularDistance(a: Int, b: Int): Int {
+        val diff = kotlin.math.abs((a - b) % 360)
+        return kotlin.math.min(diff, 360 - diff)
+    }
+
+    private fun nearest(angle: Int, vararg candidates: Int): Int {
+        val valid = angle.takeIf { it in listOf(0, 90, 180, 270) } ?: 0
+        return candidates.minByOrNull { circularDistance(valid, it) } ?: candidates.firstOrNull() ?: 0
+    }
+
+    /**
+     * Em modo fixo, mantém a família retrato/paisagem, mas preserva o lado físico
+     * mais próximo (0/180 ou 90/270). Assim evita imagem de cabeça para baixo
+     * quando o celular está no "outro horizontal" do retrovisor.
+     */
     fun deviceDegrees(mode: String?, lastSensorDegrees: Int): Int = when (normalize(mode)) {
-        PORTRAIT -> 0
-        LANDSCAPE -> 90
+        PORTRAIT -> nearest(lastSensorDegrees, 0, 180)
+        LANDSCAPE -> nearest(lastSensorDegrees, 90, 270)
         else -> lastSensorDegrees.takeIf { it in listOf(0, 90, 180, 270) } ?: 0
     }
     fun frameDegrees(sensorMount: Int, frontFacing: Boolean, deviceDegrees: Int): Int =

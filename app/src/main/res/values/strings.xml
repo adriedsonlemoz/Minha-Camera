@@ -143,7 +143,12 @@ Experimente habilitar H.264 ou outro perfil na câmera e refazer a busca.</strin
     <string name="phone_delay_unavailable">atraso --</string>
     <string name="phone_reconnecting">Sinal perdido. Reconectando…</string>
     <string name="phone_access_denied">Acesso negado. Escaneie o novo QR.</string>
-    <string name="novidades_text">Versão 1.4.43 (código 53)
+    <string name="novidades_text">Versão 1.4.44 (código 54)
+• Corrigida a orientação fixa do transmissor para evitar imagem de cabeça para baixo quando o celular está no outro lado da horizontal ou de cabeça para baixo no modo vertical fixo.
+• Agora Vertical fixo e Horizontal fixo escolhem automaticamente o lado físico correto (0/180 ou 90/270) sem perder a estabilidade.
+• O ajuste vale também para a transmissão em segundo plano.
+
+Versão 1.4.43 (código 53)
 • A tela Usar o celular como câmera voltou a mostrar controles e ajustes com ícones visíveis na própria tela, em grade, sem depender do menu Mais para o uso principal.
 • Novos cards diretos para Link, Código, bateria no vídeo, Eco, tela apagada, orientação, resolução, FPS, codec, qualidade MP4 e diagnóstico.
 • Câmeras RTSP já cadastradas agora têm a ação Analisar e aplicar no menu de opções, para reavaliar e atualizar o fluxo salvo.
@@ -154,16 +159,7 @@ Versão 1.4.42 (código 52)
 
 Versão 1.4.41 (código 51)
 • Central Multimídia é botão azul ao lado de Buscar, Adicionar e Manual; ações Abrir/Copiar/Editar/Excluir ficam na mesma linha.
-• Visualizador tem 19 cards compactos em cinco colunas adaptáveis e rolagem, incluindo controles do antigo menu Mais e resolução, FPS, câmera e Eco.
-
-Versão 1.4.40 (código 50)
-• Nova orientação automática com estabilização; modos vertical fixo e horizontal fixo para monitorar casa ou usar na bicicleta.
-• Transmissão MJPEG/H.264 se adapta à orientação, mantendo as dimensões de uma gravação MP4 estáveis até finalizar.
-• O visualizador permite rotação do Android, vertical ou horizontal fixo, e ajusta a área do vídeo.
-
-Versão 1.4.39 (código 49)
-• Segunda passada de design com tela inicial mais premium, biblioteca remota do outro celular redesenhada e acabamento moderno na tela de transmissão.
-• Mantidas as telas dedicadas de configurações, apoio, sobre e novidades, além da Central Multimídia e do protocolo MCRP.</string>
+• Visualizador tem 19 cards compactos em cinco colunas adaptáveis e rolagem, incluindo controles do antigo menu Mais e resolução, FPS, câmera e Eco.</string>
     <string name="carregando_imagem">Carregando sua imagem…</string>
     <string name="aguarde_imagem">Aguarde, conectando à câmera.</string>
     <string name="conexao_alternativa">Aguarde, testando outro fluxo compatível.</string>
@@ -328,7 +324,7 @@ Abra uma câmera e toque em Gravar.</string>
     <string name="viewer_remote_facing_requested">Troca de câmera solicitada. A imagem pode pausar brevemente.</string>
     <string name="viewer_fullscreen_hint">Controles compactos na parte inferior. Toque no vídeo para ocultar ou mostrar.</string>
     <string name="welcome_latest_title">Bem-vindo à nova versão!</string>
-    <string name="welcome_latest_summary">Novidades 1.4.43: o transmissor voltou a exibir os controles principais em cards visíveis na própria tela, incluindo link, código, bateria no vídeo, Eco, tela apagada, orientação, resolução, FPS, codec, MP4 e diagnóstico, e câmeras RTSP salvas agora podem ser reanalisadas com a ação Analisar e aplicar. Novidades 1.4.42: correção de 16 atributos MaterialButton inválidos que impediam o Build APK 42 e novo teste preventivo de recursos. Mantidos os quatro botões por dispositivo. Novidades 1.4.41: quatro atalhos na página inicial, quatro ações por dispositivo na mesma linha e 19 controles de vídeo em cards compactos. Mantidas orientação automática e fixa, MJPEG/H.264 e gravação opcional para casa e bicicleta.</string>
+    <string name="welcome_latest_summary">Novidades 1.4.44: corrigida a orientação fixa do transmissor para evitar imagem de cabeça para baixo; agora os modos vertical e horizontal fixos respeitam automaticamente o lado físico correto do aparelho, inclusive em segundo plano. Novidades 1.4.43: controles principais em cards visíveis na tela do transmissor e ação Analisar e aplicar para câmeras RTSP salvas. Novidades 1.4.42: correção de recursos XML do Build APK 42. Mantidos MJPEG/H.264, gravação opcional e uso para casa e bicicleta.</string>
     <string name="welcome_latest_continue">Começar</string>
     <string name="phone_codec_title">Formato da transmissão</string>
     <string name="phone_codec_changed">Formato solicitado. Reconectando…</string>

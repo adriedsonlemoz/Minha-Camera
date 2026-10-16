@@ -198,8 +198,7 @@ class PhoneCameraBackgroundService : Service() {
                 currentOrientationMode = PhoneOrientationMode.normalize(intent.getStringExtra(EXTRA_ORIENTATION))
                 getSharedPreferences("phone_video", MODE_PRIVATE).edit()
                     .putString(PhoneOrientationMode.PREF_KEY, currentOrientationMode).apply()
-                if (currentOrientationMode == PhoneOrientationMode.AUTO && orientationSensor.canDetectOrientation())
-                    orientationSensor.enable()
+                if (orientationSensor.canDetectOrientation()) orientationSensor.enable()
                 else orientationSensor.disable()
                 refreshFrameRotation()
             }
@@ -352,8 +351,7 @@ class PhoneCameraBackgroundService : Service() {
             streamUrl = session.url
             lastError = null
             running = true
-            if (currentOrientationMode == PhoneOrientationMode.AUTO && orientationSensor.canDetectOrientation())
-                orientationSensor.enable()
+            if (orientationSensor.canDetectOrientation()) orientationSensor.enable()
             transmissionStartedMs = SystemClock.elapsedRealtime()
             PhoneStreamDiagnostics.add("Transmissão iniciada: perfil=$requestedQuality, fps=$fpsLimit, codec=$liveCodec")
             lastPublishedAtMs = SystemClock.elapsedRealtime()

@@ -1,3 +1,10 @@
+# Minha Câmera 1.4.44 (versionCode 54)
+
+- Corrigido o problema em que a imagem do transmissor podia sair **de cabeça para baixo** no modo horizontal/vertical fixo quando o aparelho estava montado no lado oposto da rotação esperada.
+- Os modos fixos agora continuam travando retrato ou paisagem, mas respeitam automaticamente o lado físico correto do aparelho (0/180 ou 90/270).
+- O ajuste vale também para transmissão em segundo plano.
+- Compilação Android e teste em aparelho ainda pendentes.
+
 # Minha Câmera 1.4.43 (versionCode 53)
 
 - O transmissor **Usar o celular como câmera** agora mantém os controles/ajustes importantes visíveis em cards com ícones na própria tela, sem esconder o uso principal dentro do menu Mais.
