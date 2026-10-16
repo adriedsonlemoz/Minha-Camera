@@ -1,3 +1,10 @@
+# Minha Câmera 1.4.62 (versionCode 72)
+
+- Galeria mais compacta: título, busca recolhível, Remoto e configurações na mesma barra; filtros com ícones; mais espaço para imagens.
+- Configurações de miniatura para tamanho, resolução, duração de vídeo e data. Miniaturas obtidas com maior resolução para reduzir aspecto borrado quando a origem permitir.
+- Seleção, ordenação, escolher arquivos e atualização disponíveis em Configurações > Mais ações. Reprodução e gerenciamento preservados.
+- Build Release e testes Android físicos pendentes.
+
 # Minha Câmera 1.4.61 (versionCode 71)
 
 - Central Multimídia agora é uma galeria interna de fotos e vídeos reais do aparelho, incluindo gravações privadas do aplicativo.

@@ -19,6 +19,11 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ImageButton
+import android.view.inputmethod.InputMethodManager
+import android.content.Context
+import android.text.TextUtils
+import android.graphics.Typeface
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -58,6 +63,14 @@ class GalleryActivity : AppCompatActivity() {
     private lateinit var progress: ProgressBar
     private lateinit var search: EditText
     private lateinit var count: TextView
+    private lateinit var title: TextView
+    private lateinit var searchButton: ImageButton
+    private val filterButtons = linkedMapOf<String, Button>()
+    private val preferences by lazy { getSharedPreferences("gallery_presentation", MODE_PRIVATE) }
+    private var showSize = true
+    private var showResolution = true
+    private var showDuration = true
+    private var showDate = false
     private var deleteAfterApproval: List<GalleryItem> = emptyList()
     private var legacyDeleteConsent = false
 
@@ -68,7 +81,8 @@ class GalleryActivity : AppCompatActivity() {
             val mime = contentResolver.getType(uri) ?: return@forEach
             if (!mime.startsWith("image/") && !mime.startsWith("video/")) return@forEach
             val name = queryName(uri) ?: "Arquivo selecionado"
-            picked[uri.toString()] = GalleryItem(uri, name, mime, 0L, System.currentTimeMillis() / 1000L)
+            val size = querySize(uri)
+            picked[uri.toString()] = GalleryItem(uri, name, mime, size, System.currentTimeMillis() / 1000L)
         }
         showFiltered()
     }
@@ -90,45 +104,102 @@ class GalleryActivity : AppCompatActivity() {
         }
     }.getOrNull()
 
+    private fun querySize(uri: Uri): Long = runCatching {
+        contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.SIZE), null, null, null)?.use {
+            if (it.moveToFirst() && !it.isNull(0)) it.getLong(0).coerceAtLeast(0L) else 0L
+        } ?: 0L
+    }.getOrDefault(0L)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         if (getSharedPreferences(CameraTheme.PREFS, MODE_PRIVATE).getString(CameraTheme.KEY, CameraTheme.SYSTEM) == CameraTheme.AMOLED)
             setTheme(R.style.Theme_MinhaCamera_Amoled)
         super.onCreate(savedInstanceState)
-        supportActionBar?.title = "Central multimídia"
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        supportActionBar?.hide() // Cabeçalho compacto com busca e remoto na mesma linha.
+        showSize = preferences.getBoolean("size", true)
+        showResolution = preferences.getBoolean("resolution", true)
+        showDuration = preferences.getBoolean("duration", true)
+        showDate = preferences.getBoolean("date", false)
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setBackgroundColor(getColor(R.color.app_background))
         }
         setContentView(content)
-        val tabs = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(12), dp(12), dp(12), dp(5)) }
-        val local = chip("▦  Neste aparelho") { /* já nesta galeria */ }
-        tabs.addView(local, LinearLayout.LayoutParams(0, dp(48), 1f))
-        tabs.addView(chip("⌁  Outro celular") { startActivity(Intent(this, RemoteMultimediaActivity::class.java)) },
-            LinearLayout.LayoutParams(0, dp(48), 1f))
-        content.addView(tabs)
-        val tools = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(14), dp(4), dp(14), dp(6)) }
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(5), dp(4), dp(6), dp(4))
+            setBackgroundColor(getColor(R.color.app_surface))
+            elevation = dp(2).toFloat()
+        }
+        val back = iconAction(R.drawable.ic_back, "Voltar") { finish() }
+        top.addView(back, LinearLayout.LayoutParams(dp(44), dp(48)))
+        title = TextView(this).apply {
+            text = "Central multimídia"
+            textSize = 16f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(getColor(R.color.app_text))
+            maxLines = 1
+            ellipsize = TextUtils.TruncateAt.END
+        }
+        top.addView(title, LinearLayout.LayoutParams(0, dp(48), 1f).apply { gravity = Gravity.CENTER_VERTICAL })
         search = EditText(this).apply {
-            hint = "Buscar fotos e vídeos"
+            hint = "Pesquisar arquivos"
             textSize = 14f
             setSingleLine(true)
-            setCompoundDrawablesWithIntrinsicBounds(android.R.drawable.ic_menu_search, 0, 0, 0)
-            compoundDrawablePadding = dp(8)
+            visibility = View.GONE
+            inputType = android.text.InputType.TYPE_CLASS_TEXT
             addTextChangedListener(object : TextWatcher {
                 override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
                 override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = showFiltered()
                 override fun afterTextChanged(s: Editable?) {}
             })
         }
-        tools.addView(search, LinearLayout.LayoutParams(0, dp(52), 1f))
-        tools.addView(chip("↕") { chooseOrder() }, LinearLayout.LayoutParams(dp(50), dp(52)))
-        tools.addView(chip("✓") { selectMode = !selectMode; if (!selectMode) selected.clear(); showFiltered() },
-            LinearLayout.LayoutParams(dp(50), dp(52)))
-        content.addView(tools)
-        val filterRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(10), dp(3), dp(10), dp(3)) }
-        listOf("Todas", "Fotos", "Vídeos", "Gravações").forEach { label ->
-            filterRow.addView(chip(label) { category = label; showFiltered() },
-                LinearLayout.LayoutParams(0, dp(44), 1f).apply { marginEnd = dp(3) })
+        top.addView(search, LinearLayout.LayoutParams(0, dp(48), 1f))
+        searchButton = iconAction(R.drawable.ic_ui_search, "Pesquisar na galeria") { toggleSearch() }
+        top.addView(searchButton, LinearLayout.LayoutParams(dp(42), dp(48)))
+        val remote = Button(this).apply {
+            text = "Remoto"
+            textSize = 11.5f
+            isAllCaps = false
+            setTextColor(getColor(R.color.app_text))
+            setBackgroundResource(R.drawable.bg_gallery_filter)
+            compoundDrawablePadding = dp(3)
+            val symbol = ContextCompat.getDrawable(this@GalleryActivity, R.drawable.ic_ui_smartphone)?.mutate()
+            symbol?.setBounds(0, 0, dp(17), dp(17))
+            setCompoundDrawables(symbol, null, null, null)
+            setPadding(dp(6), 0, dp(6), 0)
+            minHeight = 0
+            minWidth = 0
+            contentDescription = "Abrir galeria do celular remoto por Wi-Fi"
+            setOnClickListener { startActivity(Intent(this@GalleryActivity, RemoteMultimediaActivity::class.java)) }
+        }
+        top.addView(remote, LinearLayout.LayoutParams(dp(86), dp(40)).apply { marginEnd = dp(3) })
+        top.addView(iconAction(R.drawable.ic_ui_settings, "Configurações e exibição da galeria") { showGalleryOptions() },
+            LinearLayout.LayoutParams(dp(42), dp(48)))
+        content.addView(top)
+
+        // Os filtros ficam diretamente sob o cabeçalho, sem duas faixas de botões gigantes.
+        val filterRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(dp(8), dp(8), dp(8), dp(3))
+        }
+        listOf("Todas" to R.drawable.ic_ui_gallery, "Fotos" to R.drawable.ic_ui_camera,
+            "Vídeos" to R.drawable.ic_ui_video, "Gravações" to R.drawable.ic_ui_record).forEach { (label, iconId) ->
+            val button = chip(label) { category = label; showFiltered() }.apply {
+                textSize = 11f
+                setPadding(dp(2), 0, dp(2), 0)
+                setBackgroundResource(R.drawable.bg_gallery_filter)
+                minWidth = 0
+                minHeight = 0
+                compoundDrawablePadding = dp(3)
+                val symbol = ContextCompat.getDrawable(this@GalleryActivity, iconId)?.mutate()
+                symbol?.setBounds(0, 0, dp(15), dp(15))
+                setCompoundDrawables(symbol, null, null, null)
+            }
+            filterButtons[label] = button
+            filterRow.addView(button, LinearLayout.LayoutParams(0, dp(40), 1f).apply {
+                marginStart = dp(2); marginEnd = dp(2)
+            })
         }
         content.addView(filterRow)
         count = TextView(this).apply { textSize = 12f; setTextColor(getColor(R.color.ui_muted)); setPadding(dp(16), dp(10), dp(16), dp(8)) }
@@ -156,13 +227,75 @@ class GalleryActivity : AppCompatActivity() {
         center.addView(progress, FrameLayout.LayoutParams(dp(34), dp(34), Gravity.CENTER))
         footer = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(8), dp(6), dp(8), dp(8)); visibility = View.GONE }
         content.addView(footer)
-        val options = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(12), dp(8), dp(12), dp(10)) }
-        options.addView(chip("⊞ Escolher arquivos") { documents.launch(arrayOf("image/*", "video/*")) },
-            LinearLayout.LayoutParams(0, dp(44), 1f))
-        options.addView(chip("⟳ Atualizar") { refresh() }, LinearLayout.LayoutParams(0, dp(44), 1f))
-        content.addView(options)
+        // Escolher arquivos, atualizar, ordenar e selecionar ficam no menu de configurações.
         maybeRequestAccess()
         refresh()
+    }
+
+    private fun iconAction(iconId: Int, description: String, action: () -> Unit): ImageButton =
+        ImageButton(this).apply {
+            setImageResource(iconId)
+            setBackgroundColor(Color.TRANSPARENT)
+            contentDescription = description
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setPadding(dp(9), dp(9), dp(9), dp(9))
+            setOnClickListener { action() }
+        }
+
+    private fun toggleSearch() {
+        val open = search.visibility != View.VISIBLE
+        title.visibility = if (open) View.GONE else View.VISIBLE
+        search.visibility = if (open) View.VISIBLE else View.GONE
+        searchButton.contentDescription = if (open) "Fechar pesquisa" else "Pesquisar na galeria"
+        searchButton.setImageResource(if (open) R.drawable.ic_ui_close else R.drawable.ic_ui_search)
+        if (open) {
+            search.requestFocus()
+            search.post {
+                (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
+                    ?.showSoftInput(search, InputMethodManager.SHOW_IMPLICIT)
+            }
+        } else {
+            search.text.clear()
+            search.clearFocus()
+            (getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager)
+                ?.hideSoftInputFromWindow(search.windowToken, 0)
+        }
+    }
+
+    private fun showGalleryOptions() {
+        val labels = arrayOf("Tamanho do arquivo", "Resolução da imagem", "Duração dos vídeos", "Data na miniatura")
+        val flags = booleanArrayOf(showSize, showResolution, showDuration, showDate)
+        AlertDialog.Builder(this)
+            .setTitle("Exibição da galeria")
+            .setMultiChoiceItems(labels, flags) { _, index, checked ->
+                flags[index] = checked
+                showSize = flags[0]
+                showResolution = flags[1]
+                showDuration = flags[2]
+                showDate = flags[3]
+                preferences.edit().putBoolean("size", showSize)
+                    .putBoolean("resolution", showResolution)
+                    .putBoolean("duration", showDuration)
+                    .putBoolean("date", showDate).apply()
+                showFiltered()
+            }
+            .setPositiveButton("Concluir", null)
+            .setNeutralButton("Mais ações") { _, _ -> showGalleryActions() }
+            .show()
+    }
+
+    private fun showGalleryActions() {
+        val actions = arrayOf("Ordenar arquivos", if (selectMode) "Cancelar seleção" else "Selecionar vários",
+            "Escolher fotos/vídeos", "Atualizar galeria")
+        AlertDialog.Builder(this).setTitle("Ações da galeria")
+            .setItems(actions) { _, index ->
+                when (index) {
+                    0 -> chooseOrder()
+                    1 -> { selectMode = !selectMode; if (!selectMode) selected.clear(); showFiltered() }
+                    2 -> documents.launch(arrayOf("image/*", "video/*"))
+                    3 -> refresh()
+                }
+            }.show()
     }
 
     override fun onResume() { super.onResume(); if (::adapter.isInitialized) refresh() }
@@ -223,7 +356,11 @@ class GalleryActivity : AppCompatActivity() {
         adapter.notifyDataSetChanged()
         message.visibility = if (visible.isEmpty()) View.VISIBLE else View.GONE
         message.text = if (all.isEmpty()) "Nenhum arquivo acessível ainda. Autorize fotos/vídeos ou use Escolher arquivos." else "Nenhuma mídia corresponde ao filtro."
-        count.text = "${visible.size} arquivo(s)  ·  ${selected.size} selecionado(s)"
+        count.text = if (selectMode) "${visible.size} arquivo(s) · ${selected.size} selecionado(s)" else "${visible.size} arquivo(s)"
+        filterButtons.forEach { (label, button) ->
+            button.setBackgroundResource(if (label == category) R.drawable.bg_gallery_filter_selected else R.drawable.bg_gallery_filter)
+            button.isSelected = label == category
+        }
         footer.removeAllViews()
         footer.visibility = if (selectMode) View.VISIBLE else View.GONE
         if (selectMode) {
@@ -369,24 +506,50 @@ class GalleryActivity : AppCompatActivity() {
                 layoutParams = RecyclerView.LayoutParams(-1, dp(120)).apply { setMargins(dp(2), dp(2), dp(2), dp(2)) }
                 setBackgroundColor(Color.rgb(22, 33, 47))
             }
-            val photo = ImageView(parent.context).apply { scaleType = ImageView.ScaleType.CENTER_CROP }
+            val photo = ImageView(parent.context).apply {
+                scaleType = ImageView.ScaleType.CENTER_CROP
+            }
             frame.addView(photo, FrameLayout.LayoutParams(-1, -1))
             val overlay = TextView(parent.context).apply {
-                setTextColor(Color.WHITE); textSize = 12f; gravity = Gravity.END
-                setPadding(dp(6), dp(5), dp(6), dp(5)); setBackgroundColor(0x66000000)
+                setTextColor(Color.WHITE); textSize = 10f; gravity = Gravity.END
+                setPadding(dp(5), dp(3), dp(5), dp(3)); setBackgroundColor(0x990A1422)
+                maxLines = 3
             }
-            frame.addView(overlay, FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM))
+            frame.addView(overlay, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.RIGHT))
             return Holder(frame, photo, overlay)
         }
         override fun getItemCount() = items.size
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val item = items[position]
             val marked = item.key in selected
-            holder.overlay.text = (if (item.isVideo) "▶  " else "") +
-                (if (marked) "✓ Selecionado" else SimpleDateFormat("dd/MM", Locale("pt", "BR")).format(Date(item.dateSeconds * 1000)))
+            val dateText = if (showDate) SimpleDateFormat("dd/MM", Locale("pt", "BR"))
+                .format(Date(item.dateSeconds * 1000)) else ""
+            holder.overlay.text = if (marked) "✓ Selecionado" else
+                listOfNotNull(if (item.isVideo) "▶" else null, dateText.takeIf { it.isNotEmpty() }).joinToString("  ")
+            holder.overlay.visibility = if (marked || item.isVideo || showDate || showSize || showResolution) View.VISIBLE else View.GONE
             holder.frame.alpha = if (marked) 0.65f else 1f
             holder.frame.contentDescription = "${if (item.isVideo) "Vídeo" else "Foto"}: ${item.name}"
-            GalleryThumbnails.load(this@GalleryActivity, item, holder.thumbnail, 280)
+            // Solicita miniaturas suficientes para telas de maior densidade, sem usar o arquivo original na grade.
+            val columns = (grid.layoutManager as GridLayoutManager).spanCount
+            val thumbPx = (resources.displayMetrics.widthPixels * 1.4f / columns).toInt().coerceIn(360, 640)
+            GalleryThumbnails.load(this@GalleryActivity, item, holder.thumbnail, thumbPx)
+            holder.thumbnail.setTag(R.id.gallery_media_tag, item.key)
+            if (!marked && (showSize || showResolution || (showDuration && item.isVideo))) {
+                GalleryMetadata.load(this@GalleryActivity, item) { metadata ->
+                    if (holder.thumbnail.getTag(R.id.gallery_media_tag) != item.key || item.key in selected) return@load
+                    val bits = mutableListOf<String>()
+                    if (item.isVideo) bits.add("▶")
+                    if (showSize && item.size > 0) bits.add(Formatter.formatShortFileSize(this@GalleryActivity, item.size))
+                    if (showResolution && metadata.width > 0 && metadata.height > 0)
+                        bits.add("${metadata.width}×${metadata.height}")
+                    val duration = if (metadata.durationMs > 0) metadata.durationMs else item.durationMs
+                    if (item.isVideo && showDuration && duration > 0) bits.add(GalleryMetadata.formatDuration(duration))
+                    if (showDate) bits.add(SimpleDateFormat("dd/MM", Locale("pt", "BR"))
+                        .format(Date(item.dateSeconds * 1000)))
+                    holder.overlay.text = bits.joinToString(" · ")
+                    holder.overlay.visibility = if (bits.isEmpty()) View.GONE else View.VISIBLE
+                }
+            }
             holder.frame.setOnLongClickListener { selectMode = true; toggle(item); true }
             holder.frame.setOnClickListener { if (selectMode) toggle(item) else open(item) }
         }

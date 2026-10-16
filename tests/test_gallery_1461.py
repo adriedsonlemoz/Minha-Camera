@@ -43,7 +43,9 @@ class GallerySmoke(unittest.TestCase):
         src = kotlin('GalleryActivity.kt')
         self.assertIn('RecyclerView', src)
         self.assertIn('GalleryThumbnails.load', src)
-        self.assertIn('"Fotos", "Vídeos", "Gravações"', src)
+        self.assertIn('"Fotos" to R.drawable.ic_ui_camera', src)
+        self.assertIn('"Vídeos" to R.drawable.ic_ui_video', src)
+        self.assertIn('"Gravações" to R.drawable.ic_ui_record', src)
         self.assertIn('RemoteMultimediaActivity::class.java', src)
 
 if __name__ == '__main__': unittest.main()

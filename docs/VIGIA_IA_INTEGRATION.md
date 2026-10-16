@@ -141,3 +141,10 @@ O receptor MJPEG deve atualizar periodicamente capacidades do transmissor após 
 - Manter indexação, miniaturas e cópias no executor de IO, com cache de imagens limitado; reutilizar instâncias de player apenas durante visualização, liberando-as ao sair da tela.
 - Para exclusão de mídia compartilhada no Android 11+, usar `MediaStore.createDeleteRequest` e aceitar cancelamento. A cópia por `ACTION_OPEN_DOCUMENT_TREE` preserva arquivos de origem.
 - A implementação 1.4.61 tem testes estáticos e sintáticos locais, mas a execução Android (permissões parciais, codecs, EXIF e exclusões) ainda precisa de validação real antes de reutilizar no Vigia IA.
+
+
+## 1.4.62: desempenho de galerias Android
+- Layout compacto com filtros vetoriais e pesquisa recolhível evita toolbar duplicada.
+- Miniaturas decodificadas em dimensões adequadas à densidade real da grade e metadados de vídeo/foto consultados fora da UI com cache limitado.
+- Metadados opcionais de tamanho/resolução/duração não devem ser tratados como presentes se o provedor SAF/MediaStore não informar.
+- Não replicar no Vigia IA automaticamente sem testes de consumo e scrolling no Android real.

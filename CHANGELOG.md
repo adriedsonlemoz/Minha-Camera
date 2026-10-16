@@ -1,3 +1,11 @@
+## 1.4.62+72 — 2026-10-16
+- Central Multimídia com cabeçalho próprio: pesquisa recolhível ao lado do título; botão Remoto com ícone de celular; ajustes de exibição no cabeçalho. Removidas aba Neste aparelho, barra extensa de busca/ordenação e botões inferiores redundantes.
+- Quatro filtros com ícones vetoriais pequenos e estados sem traços de borda excessivos; grade usa mais área vertical.
+- Ajustes persistentes para exibir tamanho, resolução, duração real (vídeo) e data; consulta de metadados por arquivo em threads de trabalho e cache limitado. Arquivos SAF usam tamanho quando o provedor o disponibiliza.
+- Miniaturas de fotos decodificadas diretamente para densidade/tamanho mais adequados, evitando thumbnails pequenas entregues por provedores Android; vídeo com quadro escalado. Não há filtro de desfoque intencional. A nitidez final depende do arquivo original e do provedor.
+- Ações de organizar, selecionar, escolher arquivo e atualizar ficam em Ajustes > Mais ações. Preservados player, exclusão com confirmação e conexão remota.
+- Testes estruturais locais; sem build Release Android ou validação no Redmi A3.
+
 ## 1.4.61+71 — 2026-10-16
 - Central Multimídia passa a abrir diretamente a galeria local em grade; removidos os três cartões intermediários.
 - Indexação assíncrona pelo MediaStore dos arquivos autorizados e das gravações RTSP privadas, com cache de miniaturas limitado e reciclagem de células RecyclerView.

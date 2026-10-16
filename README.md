@@ -1,6 +1,8 @@
 # Minha Câmera
 
-**Versão atual: 1.4.61 (versionCode 71)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.62 (versionCode 72)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Novo em 1.4.62:** Cabeçalho compacto da Central Multimídia: busca recolhível à esquerda dos atalhos, botão Remoto com ícone de celular e menu de exibição/ações. Sem a aba "Neste aparelho", sem faixa de ferramentas duplicada e sem botões fixos inferiores. Filtros com ícones e seleção discreta; miniaturas ampliadas em pixels reais para reduzir aparência embaçada. Exibição opcional e persistida de tamanho, resolução, duração e data por arquivo, com metadados consultados fora da UI e sem inventar informação ausente. **APK e validação em aparelho pendentes.**
 
 **Novo em 1.4.61:** Central Multimídia abre diretamente a galeria local (fotos, vídeos e gravações RTSP privadas) com miniaturas em grade, busca, filtros, ordenação e seleção múltipla. Player Media3/ExoPlayer integrado para vídeos e visualizador de fotos com pinça e navegação. Compartilhar, copiar para pasta escolhida pelo SAF, detalhes e exclusão confirmada. Permissões de mídia modernas e seleção parcial no Android 14. Biblioteca do outro celular mantida via aba e conexão Wi-Fi já existente. Arquivos originais nunca são alterados ao copiar. **Compilação e testes físicos Android pendentes.**
 

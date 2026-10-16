@@ -8,7 +8,6 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.LruCache
-import android.util.Size
 import android.widget.ImageView
 import java.util.concurrent.Executors
 
@@ -47,10 +46,8 @@ object GalleryThumbnails {
                 }
             } finally { runCatching { retriever.release() } }
         }
-        if (Build.VERSION.SDK_INT >= 29) {
-            runCatching { context.contentResolver.loadThumbnail(item.uri, Size(size, size), null) }
-                .getOrNull()?.let { return it }
-        }
+        // Preferir decodificação direta para fotos; alguns provedores devolvem miniaturas
+        // de 96–256 px mesmo após solicitar resolução maior, deixando a grade embaçada.
         // ImageDecoder aplica automaticamente a orientação EXIF e reduz antes de
         // alocar a imagem completa, inclusive no visualizador de fotos.
         if (Build.VERSION.SDK_INT >= 28) {
