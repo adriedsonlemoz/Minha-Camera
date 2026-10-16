@@ -20,7 +20,7 @@ class RtspEnginePolicyTests(unittest.TestCase):
         self.assertIn('if (!media3RtspEnabled) engine = Engine.VLC', PLAYER)
         self.assertIn('engine == Engine.MEDIA3 && media3RtspEnabled', PLAYER)
     def test_other_functionality_preserved(self):
-        for name in ['enterPip()', 'beginRecording()', 'startVlc(url, current)', 'RtspPlaybackPolicy.next(', 'R.id.btnRecordings', 'stopRecording()']:
+        for name in ['enterPip()', 'beginRecording()', 'startVlc(url, current)', 'CameraStreamProtocol.nextAttempt(', 'R.id.btnRecordings', 'stopRecording()']:
             self.assertIn(name, PLAYER)
         manifest=(ROOT/'app/src/main/AndroidManifest.xml').read_text()
         self.assertEqual(manifest.count('android:supportsPictureInPicture="true"'), 2)

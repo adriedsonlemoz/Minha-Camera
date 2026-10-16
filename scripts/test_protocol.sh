@@ -37,3 +37,9 @@ java -jar "$BUILD/rtsp-retry.jar"
 kotlinc "$ROOT/app/src/main/java/com/minhacamera/RtspServiceDetector.kt" \
   "$ROOT/tests/RtspServiceSmoke.kt" -include-runtime -d "$BUILD/rtsp-service.jar"
 java -jar "$BUILD/rtsp-service.jar"
+RETRY_NAME=RtspPlaybackPolicy
+RETRY_SOURCE="$ROOT/app/src/main/java/com/minhacamera/${RETRY_NAME}.kt"
+kotlinc "$RETRY_SOURCE" \
+  "$ROOT/app/src/main/java/com/minhacamera/CameraStreamProtocol.kt" \
+  "$ROOT/tests/CameraStreamProtocolSmoke.kt" -include-runtime -d "$BUILD/camera-protocols.jar"
+java -jar "$BUILD/camera-protocols.jar"

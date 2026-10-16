@@ -245,7 +245,7 @@ class MainActivity : AppCompatActivity() {
     }
 
 
-    private fun isPhoneCamera(camera: Camera): Boolean = camera.url.startsWith("http://", true)
+    private fun isPhoneCamera(camera: Camera): Boolean = PhoneCameraUrls.normalize(camera.url) != null
 
     private fun showPhoneDialog(position: Int? = null) {
         val nameInput = EditText(this).apply {
@@ -328,26 +328,24 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun masked(url: String): String {
-        if (url.startsWith("http://", true)) {
-            return try {
-                val parsed = Uri.parse(url)
-                "http://${parsed.host}:${parsed.port}/live/••••••"
-            } catch (_: Exception) { "MJPEG • Endereço oculto" }
-        }
         return try {
             val u = Uri.parse(url)
-            val host = u.host ?: return url
-            val port = if (u.port != -1) ":${u.port}" else ""
-            "rtsp://$host$port${u.path ?: ""}${u.query?.let { "?$it" } ?: ""}"
-        } catch (_: Exception) {
-            url
-        }
+            val host = u.host ?: return "Endereço não identificado"
+            val port = if (u.port > 0) ":${u.port}" else ""
+            val scheme = u.scheme?.lowercase().orEmpty()
+            // Não expor query string: alguns serviços usam token de acesso no parâmetro.
+            "$scheme://$host$port${u.encodedPath ?: "/"}" + if (u.encodedQuery != null) "?••••" else ""
+        } catch (_: Exception) { "Endereço protegido" }
     }
 
     private fun infoSummary(camera: Camera): String {
         if (isPhoneCamera(camera)) {
             val known = remoteDetails[camera.url] ?: getString(R.string.home_resolution_unknown)
             return getString(R.string.home_device_phone) + " · " + known
+        }
+        if (!CameraStreamProtocol.isRtsp(camera.url)) {
+            return CameraStreamProtocol.description(camera.url) + " · " +
+                getString(R.string.home_device_ip) + " · " + camera.alts.size + " alternativos"
         }
         val parsed = CameraFormUi.parseRtsp(camera.url)
         val pathLabel = CameraFormUi.normalizePathChoice(parsed.path).ifEmpty { getString(R.string.default_option) }
@@ -386,7 +384,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun analyzeAndApplyCamera(pos: Int) {
         val camera = cams.getOrNull(pos) ?: return
-        if (isPhoneCamera(camera)) return
+        if (isPhoneCamera(camera) || !CameraStreamProtocol.isRtsp(camera.url)) return
         val parsed = CameraFormUi.parseRtsp(camera.url)
         if (parsed.host.isBlank()) {
             Toast.makeText(this, R.string.ip_invalido, Toast.LENGTH_LONG).show()
@@ -522,13 +520,16 @@ class MainActivity : AppCompatActivity() {
                 getString(R.string.copiar_rtsp_com_senha),
                 getString(R.string.excluir)
             )
-        } else {
+        } else if (CameraStreamProtocol.isRtsp(camera.url)) {
             arrayOf(
                 getString(R.string.editar),
                 getString(R.string.rtsp_analyze_apply),
                 getString(R.string.copiar_rtsp_com_senha),
                 getString(R.string.excluir)
             )
+        } else {
+            arrayOf(getString(R.string.editar), getString(R.string.copiar_rtsp_com_senha),
+                getString(R.string.excluir))
         }
         AlertDialog.Builder(this)
             .setTitle(camera.name)
@@ -539,11 +540,17 @@ class MainActivity : AppCompatActivity() {
                         1 -> copyCameraUrl(camera)
                         else -> confirmDelete(pos)
                     }
-                } else {
+                } else if (CameraStreamProtocol.isRtsp(camera.url)) {
                     when (which) {
                         0 -> showEditDialog(pos)
                         1 -> analyzeAndApplyCamera(pos)
                         2 -> copyCameraUrl(camera)
+                        else -> confirmDelete(pos)
+                    }
+                } else {
+                    when (which) {
+                        0 -> showEditDialog(pos)
+                        1 -> copyCameraUrl(camera)
                         else -> confirmDelete(pos)
                     }
                 }
@@ -566,7 +573,7 @@ class MainActivity : AppCompatActivity() {
         val parsed = CameraFormUi.parseRtsp(c.url)
 
         etName.setText(c.name)
-        etIp.setText(if (parsed.host.isBlank()) c.url else parsed.host)
+        etIp.setText(if (!CameraStreamProtocol.isRtsp(c.url) || parsed.host.isBlank()) c.url else parsed.host)
         etPort.setText(parsed.port.toString())
         etUser.setText(parsed.user.ifBlank { "admin" })
         etPass.setText(parsed.pass)
@@ -583,8 +590,10 @@ class MainActivity : AppCompatActivity() {
         dlg.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
             val target = etIp.text?.toString()?.trim().orEmpty()
             val name = etName.text?.toString()?.trim().orEmpty().ifEmpty { c.name }
-            if (target.startsWith("rtsp://", ignoreCase = true)) {
-                cams[pos] = Camera(name, target, if (target == c.url) c.alts else emptyList())
+            if (CameraStreamProtocol.isSupported(target)) {
+                val finalUrl = CameraFormUi.attachRtspCredentials(target,
+                    etUser.text?.toString()?.trim().orEmpty(), etPass.text?.toString().orEmpty())
+                cams[pos] = Camera(name, finalUrl, if (finalUrl == c.url) c.alts else emptyList())
                 store.save(cams)
                 refresh()
                 dlg.dismiss()

@@ -41,7 +41,7 @@ class WelcomeActivity : AppCompatActivity() {
             addView(content)
         }
         setContentView(scroll)
-        val version = packageManager.getPackageInfo(packageName, 0).versionName ?: "1.4.50"
+        val version = packageManager.getPackageInfo(packageName, 0).versionName ?: "1.4.52"
         content.addView(TextView(this).apply {
             text = "Novidades $version"
             textSize = 27f
@@ -54,12 +54,12 @@ class WelcomeActivity : AppCompatActivity() {
             setTextColor(getColor(R.color.ui_muted))
             setPadding(0, 0, 0, dp(18))
         })
-        addHighlight(content, "Teste no VLC independente",
-            "Compare o mesmo fluxo RTSP no aplicativo VLC, com sua confirmação antes de compartilhar credenciais.")
-        addHighlight(content, "Duas rotas de rede",
-            "Experimente a rota padrão do Android ou Wi-Fi vinculado, sem modificar sua câmera cadastrada.")
-        addHighlight(content, "Diagnóstico RTSP aprofundado",
-            "Veja respostas OPTIONS, estado da conexão, bytes e quadros reportados pelo LibVLC.")
+        addHighlight(content, "Mais formatos de vídeo",
+            "Cadastre URLs RTSP, HTTP/MJPEG, HLS ou DASH. RTMP e RTP disponíveis para testes experimentais.")
+        addHighlight(content, "Busca de serviços ampliada",
+            "Identifique portas HTTP e ONVIF, sem confundir detecção com transmissão de vídeo.")
+        addHighlight(content, "RTSP com diagnóstico mais rigoroso",
+            "A autenticação e a presença de vídeo no SDP são verificadas antes de confirmar o fluxo.")
         content.addView(MaterialButton(this).apply {
             text = getString(R.string.welcome_latest_continue)
             isAllCaps = false

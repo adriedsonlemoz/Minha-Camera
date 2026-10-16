@@ -90,6 +90,18 @@ object CameraFormUi {
         return "rtsp://$auth$host:$port$path"
     }
 
+    /** Aplica credenciais da tela a uma URL RTSP sem autenticação embutida. */
+    fun attachRtspCredentials(url: String, user: String, password: String): String {
+        if (!CameraStreamProtocol.isRtsp(url) || (user.isBlank() && password.isBlank())) return url
+        return try {
+            val parsed = android.net.Uri.parse(url)
+            if (!parsed.encodedUserInfo.isNullOrBlank()) return url
+            val authority = parsed.encodedAuthority ?: return url
+            val auth = "${android.net.Uri.encode(user)}:${android.net.Uri.encode(password)}@"
+            parsed.buildUpon().encodedAuthority(auth + authority).build().toString()
+        } catch (_: Exception) { url }
+    }
+
     fun parseRtsp(url: String): ParsedRtsp {
         return try {
             val uri = android.net.Uri.parse(url)

@@ -29,8 +29,10 @@ class RtspCompatibility1450(unittest.TestCase):
         self.assertIn("lastVlcStats", P)
         self.assertIn("maskCredentials(report)", P)
     def test_welcome_only_this_version(self):
-        for text in ("Teste no VLC independente", "Duas rotas de rede", "Diagnóstico RTSP aprofundado"):
+        for text in ("Mais formatos de vídeo", "Busca de serviços ampliada", "RTSP com diagnóstico mais rigoroso"):
             self.assertIn(text, W)
+        for old_title in ("Teste no VLC independente", "Duas rotas de rede", "Diagnóstico RTSP aprofundado"):
+            self.assertNotIn(old_title, W)
         self.assertNotIn("Novidades centralizadas", W)
 
 if __name__ == "__main__": unittest.main()

@@ -1,3 +1,13 @@
+# Minha Câmera 1.4.52 (versionCode 62)
+
+- Aceita URLs diretas de câmeras IP RTSP, HTTP/HTTPS (MJPEG, vídeo), HLS, MPEG-DASH e RTMP/RTP experimentais por LibVLC, sem prometer formatos/protocolos proprietários.
+- ONVIF/WS-Discovery continuam mecanismos de detecção/configuração, não codecs de reprodução.
+- O campo IP/URL no cadastro manual aceita URLs completas; a tela inicial diferencia fluxos HTTP genéricos de transmissões especiais do próprio aplicativo.
+- Diagnóstico RTSP exige SDP com `m=video` após DESCRIBE 200 e orienta sobre credenciais NVR/RTSP sem alterá-las automaticamente.
+- Varredura local acrescenta portas HTTP 80 e 8080, e ONVIF 5000. Sem novos Secrets ou permissões de nuvem.
+- A câmera da embalagem é identificada como JORTAN JT-9686 / adesivo AJ-A13-1H, app Yoosee e codec H.265 anunciado. Isso não comprova suporte a outros protocolos no firmware específico.
+- Compilação Android completa, teste da câmera real e compatibilidade RTMP/RTP ainda pendentes.
+
 # Minha Câmera 1.4.51 (versionCode 61)
 
 - Análise de autenticação RTSP após retorno 200 ao OPTIONS da câmera 209.

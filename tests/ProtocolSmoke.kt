@@ -33,7 +33,10 @@ private fun checkDigestFallback() {
                     val authed = socket.readRequest()
                     check(authed.contains("Authorization: Digest")) { "Digest não foi enviado" }
                     val code = if (variant == 1) 401 else 200
-                    socket.getOutputStream().write("RTSP/1.0 $code RESULT\r\nCSeq: 2\r\nContent-Length: 0\r\n\r\n".toByteArray())
+                    val sdp = if (code == 200) "v=0\r\nm=video 0 RTP/AVP 96\r\na=rtpmap:96 H264/90000\r\n" else ""
+                    val body = sdp.toByteArray(Charsets.UTF_8)
+                    socket.getOutputStream().write(("RTSP/1.0 $code RESULT\r\nCSeq: 2\r\n" +
+                        "Content-Length: ${body.size}\r\n\r\n").toByteArray() + body)
                 }
             }
         }

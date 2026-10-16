@@ -145,13 +145,28 @@ class PlayerActivity : AppCompatActivity() {
             }.setNegativeButton(R.string.cancelar, null).show()
     }
 
+    private fun showSupportedMethods() {
+        val primary = urls.getOrNull(index).orEmpty()
+        val detail = "Fluxo atual: ${CameraStreamProtocol.description(primary)}\n\n" +
+            "Reprodução via LibVLC:\n" +
+            "• RTSP (TCP e UDP)\n• HTTP/HTTPS: MJPEG e vídeo direto\n" +
+            "• HLS (.m3u8) e MPEG-DASH (.mpd)\n" +
+            "• RTMP/RTMPS e RTP/UDP (experimentais)\n\n" +
+            "Descoberta separada: ONVIF/WS-Discovery.\n" +
+            "WebRTC/P2P proprietário: necessita sinalização, SDK ou protocolo documentado; não há acesso universal.\n\n" +
+            "Para adicionar outro protocolo: Adicionar → Manual → cole a URL completa no campo IP/URL. " +
+            "A compatibilidade real depende do formato e do firmware da câmera."
+        AlertDialog.Builder(this).setTitle("Métodos de conexão")
+            .setMessage(detail).setPositiveButton(android.R.string.ok, null).show()
+    }
+
     private fun testExternalVlc() {
         val url = urls.getOrNull(index) ?: return
         val parsed = Uri.parse(url)
         val hasCredentials = !parsed.encodedUserInfo.isNullOrBlank()
         AlertDialog.Builder(this)
             .setTitle("Testar com VLC independente")
-            .setMessage("Abrir o mesmo fluxo RTSP no aplicativo VLC para Android. " +
+            .setMessage("Abrir a mesma URL (${CameraStreamProtocol.description(url)}) no aplicativo VLC para Android. " +
                 "${if (hasCredentials) "O endereço contém login e será entregue ao aplicativo VLC após confirmar." else "Nenhuma senha está embutida no endereço."} " +
                 "Se o vídeo abrir no VLC externo, isso aponta para uma falha de reprodução no Minha Câmera.")
             .setNegativeButton(R.string.cancelar, null)
@@ -191,16 +206,24 @@ class PlayerActivity : AppCompatActivity() {
         exportLauncher.launch("Minha-Camera-RTSP-diagnostico.txt")
     }
 
+    /** Não incluir tokens ou senhas embutidos no caminho do fluxo exportado. */
+    private fun safeReportPath(url: String): String {
+        if (!CameraStreamProtocol.isRtsp(url)) return "/[caminho protegido]"
+        val path = Uri.parse(url).encodedPath.orEmpty().ifEmpty { "/" }
+        val hasSensitiveParameter = Regex("(?i)(?:password|passwd|pass|pwd|token|secret|key|auth|user)=").containsMatchIn(path)
+        return if (hasSensitiveParameter || path.length > 120) "/[caminho protegido]" else path
+    }
+
     private fun reportSnapshot(): String {
         val safeAddresses = urls.mapIndexed { i, address ->
             val u = Uri.parse(address)
-            "Fluxo ${i + 1}: ${u.host ?: "?"}:${u.port.takeIf { it > 0 } ?: 554}${u.encodedPath ?: "/"}"
+            "Fluxo ${i + 1}: ${CameraStreamProtocol.description(address)} · ${u.host ?: "?"}:${u.port.takeIf { it > 0 } ?: CameraStreamProtocol.defaultPort(address)}${safeReportPath(address)}"
         }
         val lines = mutableListOf(
-            "Minha Câmera · RTSP",
+            "Minha Câmera · Fluxos IP",
             "Android ${Build.VERSION.RELEASE} · SDK ${Build.VERSION.SDK_INT}",
             "App: ${packageManager.getPackageInfo(packageName, 0).versionName} · LibVLC 3.7.7",
-            "Motor: ${engine.name} · transporte: ${rtspTransport.name}",
+            "Motor: ${engine.name} · protocolo: ${CameraStreamProtocol.description(urls.getOrNull(index).orEmpty())} · transporte: ${if (CameraStreamProtocol.isRtsp(urls.getOrNull(index).orEmpty())) rtspTransport.name else "padrão nativo"}",
             "Rede do player: ${if (useWifiBinding) "Wi-Fi vinculado" else "rota padrão Android"}",
             "Último estado do VLC: $lastVlcState",
             "Estatísticas VLC: $lastVlcStats",
@@ -210,7 +233,7 @@ class PlayerActivity : AppCompatActivity() {
         lines.addAll(safeAddresses)
         lines.add("\nTentativas")
         lines.addAll(failures)
-        lines.add("\nAnálise RTSP")
+        lines.add("\nAnálise do protocolo")
         lines.add(rtspAnalysis)
         lines.add("\nEventos desta sessão")
         lines.addAll(diagnosticEvents)
@@ -222,7 +245,7 @@ class PlayerActivity : AppCompatActivity() {
         return CameraReportDialog(this, title, maskCredentials(report), ::exportReport).show().also { reportDialog = it }
     }
     private fun showDiagnosticReport() {
-        diagnosticDialog = showReport("Diagnóstico RTSP", reportSnapshot())
+        diagnosticDialog = showReport("Diagnóstico da conexão", reportSnapshot())
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -254,12 +277,15 @@ class PlayerActivity : AppCompatActivity() {
         videoContainer = findViewById(R.id.videoContainer)
         val main = intent.getStringExtra("url").orEmpty()
         val alternatives = intent.getStringArrayExtra("alts")?.toList().orEmpty()
-        urls = (listOf(main) + alternatives).filter { it.startsWith("rtsp://", true) }.distinct()
+        urls = (listOf(main) + alternatives).filter { CameraStreamProtocol.isSupported(it) }.distinct()
         displayMode = (savedInstanceState?.getInt("displayMode") ?: 0).coerceIn(0, 2)
         fullscreen = savedInstanceState?.getBoolean("fullscreen") ?: false
         findViewById<View>(R.id.btnRetry).setOnClickListener { resetAndPlay(Engine.VLC) }
         findViewById<View>(R.id.btnCopyRtspDiagnostic).setOnClickListener { showDiagnosticReport() }
-        findViewById<View>(R.id.btnRecoverRtsp).setOnClickListener { recoverRtsp() }
+        findViewById<View>(R.id.btnRecoverRtsp).apply {
+            visibility = if (urls.any { CameraStreamProtocol.isRtsp(it) }) View.VISIBLE else View.GONE
+            setOnClickListener { recoverRtsp() }
+        }
         event("Visualizador iniciado; sessão local")
         recordButton.setOnClickListener { onRecordClick() }
         findViewById<View>(R.id.btnRecordings).setOnClickListener { startActivity(Intent(this, RecordingsActivity::class.java)) }
@@ -323,7 +349,9 @@ class PlayerActivity : AppCompatActivity() {
         menu.add(0, 2003, 2, R.string.informacoes_tecnicas)
         menu.add(0, 2004, 3, R.string.identificar_camera)
         menu.add(0, 2005, 4, R.string.pip_window)
-        menu.add(0, 2007, 5, "Localizar fluxo RTSP")
+        if (urls.any { CameraStreamProtocol.isRtsp(it) })
+            menu.add(0, 2007, 5, "Localizar fluxo RTSP")
+        menu.add(0, 2010, 8, "Protocolos disponíveis")
         menu.add(0, 2008, 6, "Testar no VLC externo")
         menu.add(0, 2009, 7, "Testar outra rota de rede")
         menu.add(0, 2006, 0, "Diagnóstico").apply {
@@ -341,6 +369,7 @@ class PlayerActivity : AppCompatActivity() {
         2007 -> { recoverRtsp(); true }
         2008 -> { testExternalVlc(); true }
         2009 -> { toggleRtspRoute(); true }
+        2010 -> { showSupportedMethods(); true }
         else -> super.onOptionsItemSelected(item)
     }
     override fun onSupportNavigateUp(): Boolean { if (fullscreen) { fullscreen=false; applyFullscreen() } else finish(); return true }
@@ -444,6 +473,10 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun recoverRtsp() {
+        if (urls.none { CameraStreamProtocol.isRtsp(it) }) {
+            Toast.makeText(this, "Recuperação RTSP não se aplica a este endereço", Toast.LENGTH_LONG).show()
+            return
+        }
         if (recoveryRunning) {
             Toast.makeText(this, "Busca de fluxo em andamento", Toast.LENGTH_SHORT).show()
             return
@@ -533,11 +566,12 @@ class PlayerActivity : AppCompatActivity() {
         if (!media3RtspEnabled) engine = Engine.VLC
         val current = ++generation; failedGeneration = -1
         releasePlayers(); videoReady = false; videoAspect = 0.0; applyDisplayMode(); errorBox.visibility = View.GONE
-        if (url == null) { event("Nenhum endereço RTSP disponível"); showFailure(); return }
+        if (url == null) { event("Nenhum endereço de vídeo compatível disponível"); showFailure(); return }
         // Aplicar somente a escolha explícita do usuário a cada tentativa do player.
         selectRtspRoute()
         val u = Uri.parse(url)
-        event("Tentativa ${index + 1}/${urls.size}: ${u.host ?: "?"}:${u.port.takeIf { it in 1..65535 } ?: 554}${u.encodedPath ?: "/"} (${rtspTransport.name})")
+        val isRtsp = CameraStreamProtocol.isRtsp(url)
+        event("Tentativa ${index + 1}/${urls.size} [${CameraStreamProtocol.description(url)}]: ${u.host ?: "?"}:${u.port.takeIf { it in 1..65535 } ?: CameraStreamProtocol.defaultPort(url)}${safeReportPath(url)} (${if (isRtsp) rtspTransport.name else "nativo"})")
         loading(if (failures.isEmpty()) R.string.aguarde_imagem else R.string.conexao_alternativa)
         exoView.visibility = if (engine == Engine.MEDIA3) View.VISIBLE else View.GONE
         vlcView.visibility = if (engine == Engine.VLC) View.VISIBLE else View.GONE
@@ -582,10 +616,11 @@ class PlayerActivity : AppCompatActivity() {
         try {
             // TCP é a primeira tentativa; UDP é a segunda, sem forçar rtsp-tcp.
             val coreOptions = arrayListOf("--network-caching=500", "--stats")
-            if (rtspTransport == RtspTransport.TCP) coreOptions.add("--rtsp-tcp")
+            if (CameraStreamProtocol.isRtsp(url) && rtspTransport == RtspTransport.TCP)
+                coreOptions.add("--rtsp-tcp")
             val core = LibVLC(this, coreOptions); vlcCore = core
             val next = VlcMediaPlayer(core); vlcPlayer = next
-            lastVlcState = "Inicializando ${rtspTransport.name}"
+            lastVlcState = "Inicializando ${CameraStreamProtocol.description(url)}"
             next.setEventListener { event ->
                 // Recording close events must be handled even while leaving the screen.
                 val eventType = event.type
@@ -609,7 +644,7 @@ class PlayerActivity : AppCompatActivity() {
                         }
                         VlcMediaPlayer.Event.EncounteredError -> {
                             lastVlcStats = vlcStatsSnapshot(next)
-                            lastVlcState = "Erro nativo: ${rtspTransport.name}"
+                            lastVlcState = "Erro nativo: ${CameraStreamProtocol.description(url)}"
                             onAttemptFailed("LibVLC", "Erro nativo. $lastVlcStats")
                         }
                         VlcMediaPlayer.Event.EndReached -> {
@@ -626,7 +661,7 @@ class PlayerActivity : AppCompatActivity() {
             // Live555 aceita rtsp-user/rtsp-pwd. Repassar as credenciais decodificadas
             // evita incompatibilidade com senhas que contêm caracteres reservados.
             // Nunca incluir os valores no relatório ou em logs.
-            parsedRtsp.encodedUserInfo?.takeIf { it.isNotBlank() }?.let { info ->
+            if (CameraStreamProtocol.isRtsp(url)) parsedRtsp.encodedUserInfo?.takeIf { it.isNotBlank() }?.let { info ->
                 val user = Uri.decode(info.substringBefore(':'))
                 val pass = Uri.decode(info.substringAfter(':', ""))
                 if (user.isNotBlank()) {
@@ -634,7 +669,8 @@ class PlayerActivity : AppCompatActivity() {
                     media.addOption(":rtsp-pwd=$pass")
                 }
             }
-            if (rtspTransport == RtspTransport.TCP) media.addOption(":rtsp-tcp")
+            if (CameraStreamProtocol.isRtsp(url) && rtspTransport == RtspTransport.TCP)
+                media.addOption(":rtsp-tcp")
             media.addOption(":network-caching=500")
             next.setMedia(media); media.release(); next.play(); applyDisplayMode()
             // Playing means input is running; actual displayed pictures gate the loading screen.
@@ -744,11 +780,11 @@ class PlayerActivity : AppCompatActivity() {
             vlcPlayer?.let { lastVlcStats = vlcStatsSnapshot(it) }
             event("Estado VLC: $lastVlcState · $lastVlcStats")
         }
-        val via = if (engine == Engine.VLC) ", ${rtspTransport.name}" else ""
+        val via = if (engine == Engine.VLC && CameraStreamProtocol.isRtsp(urls.getOrNull(index).orEmpty())) ", ${rtspTransport.name}" else ""
         failures.add("$from (fluxo ${index+1}$via): ${maskCredentials(detail)}")
         event("Falha $from fluxo ${index+1}$via: ${maskCredentials(detail)}")
         val next = if (engine == Engine.VLC)
-            RtspPlaybackPolicy.next(RtspAttempt(index, rtspTransport), urls.size) else null
+            CameraStreamProtocol.nextAttempt(index, rtspTransport, urls) else null
         when {
             next != null -> { index = next.urlIndex; rtspTransport = next.transport }
             engine == Engine.MEDIA3 && media3RtspEnabled -> {
@@ -762,21 +798,26 @@ class PlayerActivity : AppCompatActivity() {
     private fun showFailure() {
         releasePlayers(); recordPending = false; videoReady = false; loadingBox.visibility = View.GONE
         engineText.setText(R.string.status_conectando)
-        errorText.setText(if (hevcSeen) R.string.erro_h265 else R.string.erro_generico)
+        if (urls.none { CameraStreamProtocol.isRtsp(it) })
+            errorText.text = "Não foi possível abrir o vídeo. Confira a URL e o formato transmitido."
+        else errorText.setText(if (hevcSeen) R.string.erro_h265 else R.string.erro_generico)
         val initial = failures.takeLast(8).joinToString("\n")
             .ifBlank { getString(R.string.erro_sem_fluxos) }
-        rtspAnalysis = getString(R.string.rtsp_diagnostic_running)
+        rtspAnalysis = if (urls.any { CameraStreamProtocol.isRtsp(it) })
+            getString(R.string.rtsp_diagnostic_running)
+        else "Conexão não-RTSP: verifique URL, conteúdo do servidor e logs VLC."
         errorDetail.text = initial + "\n" + rtspAnalysis
         diagnosticDialog?.takeIf { it.isShowing }?.update(reportSnapshot())
         errorBox.visibility = View.VISIBLE; updateRecordButton()
         pendingRecovered = null
         event("Nenhum fluxo produziu imagem após as tentativas")
-        diagnoseRtspAsync(generation, initial)
+        if (urls.any { CameraStreamProtocol.isRtsp(it) })
+            diagnoseRtspAsync(generation, initial)
     }
 
     /** Diagnóstico DESCRIBE independente do decoder; nunca mostra URL, usuário ou senha. */
     private fun diagnoseRtspAsync(checkedGeneration: Int, originalMessage: String) {
-        val addresses = urls.take(2)
+        val addresses = urls.filter { CameraStreamProtocol.isRtsp(it) }.take(2)
         Thread({
             val lines = addresses.mapIndexed { i, address ->
                 val result = try {
@@ -800,7 +841,8 @@ class PlayerActivity : AppCompatActivity() {
                         val resultDetail = when (probe.status) {
                             ProbeStatus.OK -> getString(R.string.rtsp_diagnostic_describe_ok,
                                 probe.videoCodec ?: "codec não identificado") + " (${probe.detail})"
-                            ProbeStatus.AUTH_FAIL -> getString(R.string.rtsp_diagnostic_auth) + " (${probe.detail})"
+                            ProbeStatus.AUTH_FAIL -> getString(R.string.rtsp_diagnostic_auth) +
+                                " (${probe.detail}). Confira usuário e senha de acesso NVR/RTSP nas configurações da câmera."
                             ProbeStatus.NOT_FOUND -> getString(R.string.rtsp_diagnostic_path)
                             ProbeStatus.ERROR -> "DESCRIBE: ${probe.detail}. " +
                                 getString(R.string.rtsp_diagnostic_no_describe)

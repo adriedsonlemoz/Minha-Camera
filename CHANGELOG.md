@@ -1,3 +1,11 @@
+## 1.4.52+62 — 2026-10-16
+- Aceita URLs diretas RTSP, HTTP(S)/MJPEG, HLS (.m3u8), MPEG-DASH (.mpd), RTMP/RTMPS e RTP/UDP experimental, via LibVLC. Fluxos que não sejam RTSP não recebem tentativas RTSP.
+- Cadastro manual/edição permite URLs diretas para várias marcas sem perder câmeras salvas. As credenciais dos campos separados são adicionadas à URL RTSP se ainda não houver login embutido. Apenas URL HTTP com token válido MCRP é tratada como celular.
+- Varredura acrescenta portas TCP 80, 8080 e 5000 para identificar serviços HTTP e ONVIF, mantendo descoberta ONVIF/WS-Discovery.
+- Nova explicação dos métodos disponíveis no menu do player. Não promete WebRTC ou P2P proprietário sem SDK/sinalização.
+- Diagnóstico exige faixa de vídeo no SDP para confirmar DESCRIBE 200; inclui orientação para conferir senha NVR/RTSP diante de autenticação recusada.
+- Verificações locais e simuladas aprovadas; a compatibilidade final de cada formato depende do VLC compilado, da câmera e de testes no APK.
+
 ## 1.4.51+61 — 2026-10-16
 - Evidência da câmera 209: OPTIONS 200 confirma um servidor RTSP; DESCRIBE retorna desafio de autenticação sem conclusão; VLC não recebe quadros.
 - RtspProbe agora tenta reaproveitar desafio Digest após fechamento do socket (reconexão no mesmo host) e considera URI-base nos firmwares legados, sem inventar senhas ou alterar endereços.

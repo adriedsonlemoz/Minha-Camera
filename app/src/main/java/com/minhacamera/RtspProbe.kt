@@ -189,7 +189,9 @@ object RtspProbe {
                     .append('\n')
             }
             when (r1.code) {
-                200 -> return ProbeResult(ProbeStatus.OK, "DESCRIBE 200; SDP recebido", dbg.toString(), RtspCodec.videoCodec(r1.sdp))
+                200 -> return if (r1.sdp.contains("m=video", ignoreCase = true))
+                    ProbeResult(ProbeStatus.OK, "DESCRIBE 200; SDP com vídeo", dbg.toString(), RtspCodec.videoCodec(r1.sdp))
+                    else ProbeResult(ProbeStatus.ERROR, "DESCRIBE 200 sem faixa de vídeo no SDP", dbg.toString())
                 404, 454 -> return ProbeResult(ProbeStatus.NOT_FOUND, "caminho recusado (${r1.code})", dbg.toString())
                 401 -> hadChallenge = true
                 403 -> return ProbeResult(ProbeStatus.AUTH_FAIL, "acesso proibido (403)", dbg.toString())
@@ -203,8 +205,10 @@ object RtspProbe {
             }
             dbg.append("tentativa ${variant+1}: DESCRIBE ").append(r2.code).append('\n')
             when (r2.code) {
-                200 -> return ProbeResult(ProbeStatus.OK,
-                    "DESCRIBE 200 autenticado (tentativa ${variant+1})", dbg.toString(), RtspCodec.videoCodec(r2.sdp))
+                200 -> return if (r2.sdp.contains("m=video", ignoreCase = true))
+                    ProbeResult(ProbeStatus.OK,
+                        "DESCRIBE 200 autenticado com vídeo (tentativa ${variant+1})", dbg.toString(), RtspCodec.videoCodec(r2.sdp))
+                    else ProbeResult(ProbeStatus.ERROR, "DESCRIBE 200 autenticado sem faixa de vídeo", dbg.toString())
                 401, 403 -> loginRefused = true
                 404, 454 -> return ProbeResult(ProbeStatus.NOT_FOUND,
                     "caminho recusado após autenticação (${r2.code})", dbg.toString())

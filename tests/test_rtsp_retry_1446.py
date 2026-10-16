@@ -7,7 +7,7 @@ S = (R/'app/src/main/res/values/strings.xml').read_text()
 
 class RtspRetryTests(unittest.TestCase):
     def test_per_url_tcp_then_udp(self):
-        self.assertIn('RtspPlaybackPolicy.next(', P)
+        self.assertIn('CameraStreamProtocol.nextAttempt(', P)
         self.assertIn('rtspTransport == RtspTransport.TCP', P)
         self.assertIn('coreOptions.add("--rtsp-tcp")', P)
         self.assertIn('media.addOption(":rtsp-tcp")', P)

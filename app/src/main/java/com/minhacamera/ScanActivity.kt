@@ -33,7 +33,7 @@ class ScanActivity : AppCompatActivity() {
     }
 
     // Busca TCP complementar; dispositivos ONVIF são encontrados independentemente da porta.
-    private val ports = listOf(554, 8554, 10554, 8555, 7447)
+    private val ports = listOf(554, 8554, 10554, 8555, 7447, 80, 8080, 5000)
     private lateinit var status: TextView
     private lateinit var progress: ProgressBar
     private lateinit var listView: ListView
@@ -82,8 +82,11 @@ class ScanActivity : AppCompatActivity() {
             val services = mutableListOf<String>()
             if (f.onvifUrls.isNotEmpty()) services.add("ONVIF")
             if (f.ports.isNotEmpty()) services.add(f.ports.joinToString(" · ") { port ->
-                if (f.services[port] == RtspServiceKind.RTSP) "RTSP:$port"
-                else "TCP:$port (não confirmado)"
+                when (f.services[port]) {
+                    RtspServiceKind.RTSP -> "RTSP:$port"
+                    RtspServiceKind.HTTP -> "HTTP:$port"
+                    else -> "TCP:$port (não confirmado)"
+                }
             })
             "${f.ip}   •   ${services.joinToString(" + ").ifEmpty { "Dispositivo" }}"
         }
@@ -239,12 +242,15 @@ class ScanActivity : AppCompatActivity() {
             val ipText = etIp.text?.toString()?.trim().orEmpty()
             val name = etName.text?.toString()?.trim().orEmpty()
 
-            // Aceita também uma URL RTSP completa no campo IP.
-            if (ipText.startsWith("rtsp://", ignoreCase = true)) {
+            // URL direta para RTSP, HTTP/MJPEG, HLS, DASH, RTMP e RTP.
+            if (CameraStreamProtocol.isSupported(ipText)) {
+                val user = etUser.text?.toString()?.trim().orEmpty()
+                val password = etPass.text?.toString().orEmpty()
+                val directUrl = CameraFormUi.attachRtspCredentials(ipText, user, password)
                 val list = store.load()
-                list.add(Camera(name.ifEmpty { "Câmera" }, ipText))
+                list.add(Camera(name.ifEmpty { "Câmera" }, directUrl))
                 store.save(list)
-                Toast.makeText(this, getString(R.string.salva, name.ifEmpty { "Câmera" }), Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "URL cadastrada. Abra a câmera para testar a reprodução.", Toast.LENGTH_LONG).show()
                 dlg.dismiss()
                 finish()
                 return@setOnClickListener
@@ -342,8 +348,10 @@ class ScanActivity : AppCompatActivity() {
             // No caso de detecção exclusivamente ONVIF, usar portas RTSP padrão como fallback.
             if (okUrl == null) {
                 val candidatePorts = (f.ports.filter { f.services[it] == RtspServiceKind.RTSP } +
-                    listOf(554, 8554, 10554) + f.ports.filter { f.services[it] != RtspServiceKind.RTSP })
+                    listOf(554, 8554, 10554) + f.ports.filter { f.services[it] == null })
                     .distinct()
+                // HTTP, ONVIF e portas com outro serviço não devem receber
+                // varredura invasiva de caminhos RTSP. Porta manual permanece elegível.
                 portLoop@ for (rtspPort in candidatePorts) {
                     noReply = 0
                     authFails = 0
