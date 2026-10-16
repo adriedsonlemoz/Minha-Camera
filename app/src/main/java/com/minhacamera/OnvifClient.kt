@@ -77,7 +77,7 @@ object OnvifClient {
                 "Identidade fornecida pelo firmware, que pode ser genérica. Serviço anunciado não comprova operação: controle e histórico precisam de testes adicionais. Esta consulta não identifica automaticamente qual lente se move."
         }
         return if (refused) "A câmera recusou o login ONVIF. As credenciais podem ser diferentes das usadas no RTSP. Não foi possível identificar os serviços."
-        else "Não foi possível identificar a câmera via ONVIF. Isso não prova ausência de PTZ ou histórico: o Yoosee pode usar outro protocolo. Nenhum modelo foi presumido."
+        else "Não foi possível identificar a câmera via ONVIF. Isso não prova ausência de PTZ ou histórico: a câmera pode usar outro protocolo. Nenhum modelo foi presumido."
     }
 
     // H.264 primeiro (o player abre direto), depois os outros formatos; maior resolução antes.

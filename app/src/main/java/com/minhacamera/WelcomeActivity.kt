@@ -34,19 +34,25 @@ class WelcomeActivity : AppCompatActivity() {
         }
         val scroll = ScrollView(this).apply { addView(content) }
         setContentView(scroll)
-        val fullHistory = intent.getBooleanExtra("full_history", false)
-        content.addView(TextView(this).apply { text = getString(R.string.welcome_latest_title); textSize = 28f; setTextColor(getColor(R.color.app_text)); setPadding(0,0,0,dp(4)) })
-        content.addView(TextView(this).apply { text = "Agora, a câmera funciona na vertical e na horizontal, em casa ou na bicicleta."; textSize = 14f; setTextColor(getColor(R.color.ui_muted)); setPadding(0,0,0,dp(16)) })
-        addHighlight(content, "Visual renovado", "Configurações, sobre, apoio e novidades agora têm telas próprias, sem depender de pop-ups para tudo.")
-        addHighlight(content, "Tela inicial mais clara", "Os dispositivos ficam mais organizados em cartões com ações visíveis para abrir, copiar, editar e excluir.")
-        addHighlight(content, "Central multimídia reorganizada", "A biblioteca local e a do outro celular foram agrupadas em áreas mais claras, com foco em gravações, fotos, vídeos e rede local.")
-        addHighlight(content, "Transmissão simplificada", "No transmissor, o topo fica mais limpo com o ícone de rede no lugar do texto de status fixo.")
+        val version = packageManager.getPackageInfo(packageName, 0).versionName ?: "1.4.48"
         content.addView(TextView(this).apply {
-            text = if (fullHistory) getString(R.string.novidades_text) else getString(R.string.welcome_latest_summary)
-            textSize = 13.5f
-            setTextColor(getColor(R.color.ui_muted))
-            setPadding(0, dp(10), 0, dp(14))
+            text = "Novidades $version"
+            textSize = 27f
+            setTextColor(getColor(R.color.app_text))
+            setPadding(0, 0, 0, dp(8))
         })
+        content.addView(TextView(this).apply {
+            text = "Melhorias desta atualização"
+            textSize = 14f
+            setTextColor(getColor(R.color.ui_muted))
+            setPadding(0, 0, 0, dp(18))
+        })
+        addHighlight(content, "RTSP e detecção mais claros",
+            "Diferencia porta aberta de serviço RTSP confirmado e oferece recuperação de fluxo na rede local.")
+        addHighlight(content, "Diagnóstico completo",
+            "Botão discreto no visualizador para consultar, copiar e exportar os eventos de conexão.")
+        addHighlight(content, "Interface mais limpa",
+            "Mensagens técnicas em janela compacta e tela de novidades sem textos acumulados de outras versões.")
         content.addView(MaterialButton(this).apply {
             text = getString(R.string.welcome_latest_continue)
             isAllCaps = false

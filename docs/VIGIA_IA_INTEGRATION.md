@@ -115,3 +115,7 @@ O transmissor permite MJPEG legado em `/live/TOKEN` e H.264/AVC experimental Ann
 
 ## Metadados e controles em 1.4.33+43
 O GET /control/<token>/status inclui X-Device-Model e X-Resolution quando disponibilizados e sanitizados pelo transmissor. Comandos POST podem responder 409 com X-Control-Reason: recording-active / unsupported-mode / command-rejected. O futuro receptor Vigia IA deve mostrar a causa sem reexecutar automaticamente ações destrutivas. Acessos continuam exclusivamente na LAN e exigem token.
+
+## Aprendizado RTSP da versão 1.4.48
+
+Separar detecção de porta TCP de confirmação do serviço RTSP. `OPTIONS` com resposta `RTSP/` indica serviço reconhecível; ausência de resposta não prova RTSP e HTTP não deve ser classificado como vídeo. O `DESCRIBE` válido confirma metadados SDP, mas **não garante decodificação**: confirmar o primeiro quadro real antes de atualizar um cadastro. Preservar credenciais e endereços privados nos diagnósticos exportados. ONVIF é opcional e sua ausência não confirma falta de serviços proprietários.

@@ -1,3 +1,11 @@
+# Minha Câmera 1.4.48 (versionCode 58)
+
+- RTSP: diagnóstico próprio acessível pelo botão de bug, com Fechar, Copiar e Exportar TXT no Android.
+- Recuperação manual e segura de conexões: consulta portas e caminhos locais conhecidos e só aplica nova URL depois de um quadro real.
+- Detecção diferencia serviços RTSP de portas TCP simplesmente abertas; identificação ONVIF aprimorada sem inferir marca, PTZ ou gravações.
+- Boas-vindas exibem somente os destaques desta atualização e menos texto, sem empilhar históricos.
+- Compilação e validação em câmera física ainda necessárias; não é possível afirmar que o serviço RTSP da câmera está ativo.
+
 # Minha Câmera 1.4.47 (versionCode 57)
 
 - O visualizador agora abre a imagem automaticamente em tela cheia na horizontal, quando a orientação está configurada para seguir a rotação do Android. Mostra somente Voltar, Gravar, Foto, Girar e PiP em fundo semitransparente.

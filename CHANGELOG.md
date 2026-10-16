@@ -1,3 +1,11 @@
+## 1.4.48+58 — 2026-10-16
+- Diagnóstico RTSP com botão discreto no topo e relatório local em modal minimalista com Fechar, Copiar e Exportar TXT (Android SAF).
+- Relatórios de informação de transmissão e identificação ONVIF/serviços em janelas próprias, sem pressupor marca ou capacidades que não responderam.
+- Detecção diferencia resposta RTSP, HTTP, outro protocolo e porta TCP silenciosa; lista sinaliza quando RTSP NÃO foi confirmado.
+- Em caso de falha, permite recuperar o fluxo em portas/caminhos RTSP conhecidos da rede privada sem substituir automaticamente a configuração. Só salva o novo endereço após confirmação do usuário e primeiro quadro real.
+- Boas-vindas redesenhadas com apenas 3 destaques desta versão, sem juntar histórico longo nem conteúdo antigo.
+- Mantidos MJPEG/H.264 entre celulares, gravação opcional, orientação e modo retrovisor. Compilação APK/testes físicos pendentes.
+
 ## 1.4.47+57 — 2026-10-16
 - Visualizador: orientação automática (Seguir rotação do Android) entra em tela cheia em paisagem, com apenas cinco ações num painel semitransparente sobre o vídeo. Em retrato restaura o painel completo de 19 cards. Sem reiniciar a conexão ou a gravação.
 - Mantém saída manual da tela cheia no horizontal; rotação fixa vertical/horizontal não aciona esta passagem automática. Preservados foto, gravação, PiP e o botão Girar para ajuste manual.

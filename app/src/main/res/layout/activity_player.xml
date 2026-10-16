@@ -17,8 +17,9 @@
   <LinearLayout android:id="@+id/errorBox" android:layout_width="match_parent" android:layout_height="match_parent" android:gravity="center" android:orientation="vertical" android:padding="24dp" android:background="@color/player_background" android:visibility="gone">
    <TextView android:id="@+id/errorText" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:textColor="@color/player_text" android:textSize="16sp" />
    <com.google.android.material.button.MaterialButton android:id="@+id/btnRetry" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/tentar_novamente" />
-   <com.google.android.material.button.MaterialButton android:id="@+id/btnCopyRtspDiagnostic" style="@style/Widget.Material3.Button.TextButton" android:layout_width="wrap_content" android:layout_height="wrap_content" android:minHeight="48dp" android:layout_marginTop="6dp" android:text="@string/rtsp_copy_diagnostic" />
-   <ScrollView android:layout_width="match_parent" android:layout_height="130dp" android:layout_marginTop="12dp"><TextView android:id="@+id/errorDetail" android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center" android:textColor="@color/player_muted" android:textSize="11sp" /></ScrollView>
+   <com.google.android.material.button.MaterialButton android:id="@+id/btnRecoverRtsp" style="@style/Widget.Material3.Button.OutlinedButton" android:layout_width="wrap_content" android:layout_height="48dp" android:layout_marginTop="8dp" android:text="Localizar fluxo RTSP" android:textAllCaps="false" />
+   <com.google.android.material.button.MaterialButton android:id="@+id/btnCopyRtspDiagnostic" style="@style/Widget.Material3.Button.TextButton" android:layout_width="wrap_content" android:layout_height="48dp" android:layout_marginTop="6dp" android:text="Ver diagnóstico" android:textAllCaps="false" />
+   <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:visibility="gone"><TextView android:id="@+id/errorDetail" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/player_muted" android:textSize="12sp" /></ScrollView>
   </LinearLayout>
  </FrameLayout>
  <include layout="@layout/player_controls" />

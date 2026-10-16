@@ -1,6 +1,13 @@
 package com.minhacamera
 
 import android.content.Intent
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.os.Build
+import androidx.activity.result.contract.ActivityResultContracts
+import java.text.SimpleDateFormat
+import java.util.Date
 import android.content.res.Configuration
 import android.net.Uri
 import android.os.Bundle
@@ -91,6 +98,61 @@ class PlayerActivity : AppCompatActivity() {
     private val finalizingSessions = mutableSetOf<String>()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val failures = mutableListOf<String>()
+    private val diagnosticEvents = ArrayDeque<String>()
+    private var reportDialog: CameraReportDialog? = null
+    private var reportTextPending = ""
+    private var recoveryRunning = false
+    private var recoveryThread: Thread? = null
+    private var pendingRecovered: Pair<String, String>? = null
+    private val exportLauncher = registerForActivityResult(ActivityResultContracts.CreateDocument("text/plain")) { uri ->
+        if (uri != null) {
+            val done = runCatching {
+                contentResolver.openOutputStream(uri)?.use { out ->
+                    out.write(reportTextPending.toByteArray(Charsets.UTF_8))
+                } ?: error("Não foi possível abrir o arquivo")
+            }.isSuccess
+            Toast.makeText(this, if (done) "Relatório exportado" else "Falha ao exportar relatório", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun event(message: String) {
+        val stamp = SimpleDateFormat("HH:mm:ss", Locale.ROOT).format(Date())
+        diagnosticEvents.addLast("$stamp · ${maskCredentials(message)}")
+        while (diagnosticEvents.size > 80) diagnosticEvents.removeFirst()
+    }
+
+    private fun exportReport(report: String) {
+        reportTextPending = maskCredentials(report)
+        exportLauncher.launch("Minha-Camera-RTSP-diagnostico.txt")
+    }
+
+    private fun reportSnapshot(): String {
+        val safeAddresses = urls.mapIndexed { i, address ->
+            val u = Uri.parse(address)
+            "Fluxo ${i + 1}: ${u.host ?: "?"}:${u.port.takeIf { it > 0 } ?: 554}${u.encodedPath ?: "/"}"
+        }
+        val lines = mutableListOf(
+            "Minha Câmera · RTSP",
+            "Android ${Build.VERSION.RELEASE} · SDK ${Build.VERSION.SDK_INT}",
+            "Motor: ${engine.name} · transporte: ${rtspTransport.name}",
+            "Vídeo recebido: ${if (videoReady) "sim" else "não"}",
+            "Endereços configurados: ${urls.size}"
+        )
+        lines.addAll(safeAddresses)
+        lines.add("\nTentativas")
+        lines.addAll(failures)
+        lines.add("\nAnálise RTSP")
+        lines.add(if (::errorDetail.isInitialized) errorDetail.text.toString() else "")
+        lines.add("\nEventos desta sessão")
+        lines.addAll(diagnosticEvents)
+        lines.add("\nObservação: uma porta TCP aberta não comprova serviço RTSP.")
+        return maskCredentials(lines.joinToString("\n"))
+    }
+
+    private fun showReport(title: String, report: String): CameraReportDialog {
+        return CameraReportDialog(this, title, maskCredentials(report), ::exportReport).show().also { reportDialog = it }
+    }
+    private fun showDiagnosticReport() { showReport("Diagnóstico RTSP", reportSnapshot()) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -122,12 +184,9 @@ class PlayerActivity : AppCompatActivity() {
         displayMode = (savedInstanceState?.getInt("displayMode") ?: 0).coerceIn(0, 2)
         fullscreen = savedInstanceState?.getBoolean("fullscreen") ?: false
         findViewById<View>(R.id.btnRetry).setOnClickListener { resetAndPlay(Engine.VLC) }
-        findViewById<View>(R.id.btnCopyRtspDiagnostic).setOnClickListener {
-            val text = (errorText.text.toString() + "\n" + errorDetail.text.toString()).trim()
-            val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
-            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Diagnóstico RTSP Minha Câmera", text))
-            Toast.makeText(this, R.string.rtsp_diagnostic_copied, Toast.LENGTH_SHORT).show()
-        }
+        findViewById<View>(R.id.btnCopyRtspDiagnostic).setOnClickListener { showDiagnosticReport() }
+        findViewById<View>(R.id.btnRecoverRtsp).setOnClickListener { recoverRtsp() }
+        event("Visualizador iniciado; sessão local")
         recordButton.setOnClickListener { onRecordClick() }
         findViewById<View>(R.id.btnRecordings).setOnClickListener { startActivity(Intent(this, RecordingsActivity::class.java)) }
         findViewById<View>(R.id.btnDisplay).setOnClickListener {
@@ -190,15 +249,20 @@ class PlayerActivity : AppCompatActivity() {
         menu.add(0, 2003, 2, R.string.informacoes_tecnicas)
         menu.add(0, 2004, 3, R.string.identificar_camera)
         menu.add(0, 2005, 4, R.string.pip_window)
+        menu.add(0, 2007, 5, "Localizar fluxo RTSP")
+        menu.add(0, 2006, 0, "Diagnóstico").apply {
+            setIcon(R.drawable.ic_ui_bug)
+            setShowAsAction(MenuItem.SHOW_AS_ACTION_ALWAYS)
+        }
         return true
     }
     override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
         2002 -> { resetAndPlay(Engine.VLC); true }
-        2003 -> { AlertDialog.Builder(this).setTitle(R.string.informacoes_tecnicas).setMessage(getString(
-            R.string.engine_fluxo, if (engine == Engine.MEDIA3) "Media3" else "LibVLC", index+1, urls.size
-        )).setPositiveButton(android.R.string.ok, null).show(); true }
+        2003 -> { showReport("Informações da transmissão", reportSnapshot()); true }
         2004 -> { identifyCamera(); true }
         2005 -> { enterPip(); true }
+        2006 -> { showDiagnosticReport(); true }
+        2007 -> { recoverRtsp(); true }
         else -> super.onOptionsItemSelected(item)
     }
     override fun onSupportNavigateUp(): Boolean { if (fullscreen) { fullscreen=false; applyFullscreen() } else finish(); return true }
@@ -213,7 +277,11 @@ class PlayerActivity : AppCompatActivity() {
         releasePlayers()
         super.onStop()
     }
-    override fun onDestroy() { identityThread?.interrupt(); identityThread = null; super.onDestroy() }
+    override fun onDestroy() {
+        identityThread?.interrupt(); identityThread = null
+        recoveryThread?.interrupt(); recoveryThread = null
+        super.onDestroy()
+    }
     private fun applyFullscreen() {
         toolbar.visibility = if (fullscreen || pipVisible) View.GONE else View.VISIBLE
         val controller = WindowInsetsControllerCompat(window, window.decorView)
@@ -275,23 +343,63 @@ class PlayerActivity : AppCompatActivity() {
         val uri = Uri.parse(urls.getOrNull(index) ?: return)
         val host = uri.host ?: return
         val auth = uri.encodedUserInfo.orEmpty()
-        val user = Uri.decode(auth.substringBefore(':'))
+        val user = Uri.decode(auth.substringBefore(':', ""))
         val pass = Uri.decode(auth.substringAfter(':', ""))
         identifying = true
-        val dialog = AlertDialog.Builder(this).setTitle(R.string.identificar_camera)
-            .setMessage(R.string.identificando_camera).setPositiveButton(android.R.string.ok, null).show()
-        val app = applicationContext
+        val panel = showReport("Câmera e serviços", "Consultando serviços locais por ONVIF e RTSP…")
         identityThread = Thread {
-            val result = runCatching {
-                val endpoints = WsDiscovery.search(app).filter { it.ip == host }.flatMap { it.xaddrs }
-                OnvifClient.identify(host, user, pass, endpoints)
-            }.getOrElse { getString(R.string.identificacao_indisponivel) }
+            NetUtil.bindToWifi(applicationContext)
+            val service = RtspServiceDetector.inspect(host, uri.port.takeIf { it in 1..65535 } ?: 554)
+            val endpoints = runCatching { WsDiscovery.search(applicationContext)
+                .filter { it.ip == host }.flatMap { it.xaddrs } }.getOrDefault(emptyList())
+            val identity = runCatching { OnvifClient.identify(host, user, pass, endpoints) }
+                .getOrElse { "Consulta ONVIF não concluída; serviço opcional." }
+            val result = "SERVIÇO RTSP\n${service.detail}\n\nONVIF\n$identity\n\n" +
+                "Descoberta WS-Discovery: ${if (endpoints.isNotEmpty()) "resposta encontrada" else "sem anúncio detectado"}\n" +
+                "Porta aberta não garante vídeo. ONVIF ausente não prova ausência de funções proprietárias."
             runOnUiThread {
                 identifying = false
-                if (!isFinishing && !isDestroyed && dialog.isShowing) dialog.setMessage(result)
+                event("Identificação: ${service.kind}; ONVIF ${if (endpoints.isNotEmpty()) "anunciado" else "não anunciado"}")
+                if (!isFinishing && !isDestroyed) panel.update(result)
             }
-        }.also { it.start() }
+        }.also { it.name = "rtsp-services"; it.start() }
     }
+
+    private fun recoverRtsp() {
+        if (recoveryRunning) {
+            Toast.makeText(this, "Busca de fluxo em andamento", Toast.LENGTH_SHORT).show()
+            return
+        }
+        val original = intent.getStringExtra("url").orEmpty()
+        if (!original.startsWith("rtsp://", true)) return
+        recoveryRunning = true
+        val panel = showReport("Localizar fluxo RTSP", "Consultando portas e caminhos conhecidos na rede local…")
+        recoveryThread = Thread {
+            NetUtil.bindToWifi(applicationContext)
+            val result = RtspRecovery.find(original) { progress ->
+                runOnUiThread { if (!isFinishing && !isDestroyed) panel.update(progress) }
+            }
+            runOnUiThread {
+                recoveryRunning = false
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                event("Recuperação: ${if (result.match != null) "DESCRIBE OK" else "sem resposta válida"}")
+                panel.update(result.report + if (result.match != null)
+                    "\nEncontrado: ${result.match.port}${result.match.path.substringBefore('?')} (${result.match.codec ?: "codec não informado"}).\nA reprodução ainda precisa ser confirmada."
+                    else "")
+                val matched = result.match ?: return@runOnUiThread
+                AlertDialog.Builder(this)
+                    .setTitle("Fluxo RTSP identificado")
+                    .setMessage("A câmera respondeu ao DESCRIBE na porta ${matched.port}${matched.path.substringBefore('?')}. Testar o vídeo? O endereço só será atualizado se um quadro real for exibido.")
+                    .setNegativeButton("Cancelar", null)
+                    .setPositiveButton("Testar vídeo") { _, _ ->
+                        pendingRecovered = original to matched.url
+                        urls = listOf(matched.url, original).distinct()
+                        resetAndPlay(Engine.VLC)
+                    }.show()
+            }
+        }.also { it.name = "rtsp-recovery"; it.start() }
+    }
+
     private fun resetAndPlay(startEngine: Engine) {
         recordPending = false; index = 0; rtspTransport = RtspTransport.TCP
         // Centraliza a política: nenhum botão/tentativa inicia Media3 RTSP nesta release.
@@ -320,6 +428,23 @@ class PlayerActivity : AppCompatActivity() {
         val first = !videoReady
         videoReady = true; loadingBox.visibility = View.GONE; errorBox.visibility = View.GONE
         engineText.setText(R.string.status_ao_vivo); updateRecordButton()
+        if (first) {
+            event("Primeiro quadro de vídeo exibido")
+            val recovered = pendingRecovered
+            pendingRecovered = null
+            if (index == 0 && recovered != null && urls.firstOrNull() == recovered.second) {
+                val savedCameras = CameraStore(this).load()
+                val position = savedCameras.indexOfFirst { it.url == recovered.first }
+                if (position >= 0) {
+                    val old = savedCameras[position]
+                    savedCameras[position] = old.copy(url = recovered.second,
+                        alts = (listOf(recovered.first) + old.alts).filter { it != recovered.second }.distinct())
+                    CameraStore(this).save(savedCameras)
+                    event("Novo endereço aplicado após primeiro quadro real")
+                    Toast.makeText(this, "Vídeo confirmado; endereço atualizado", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
         if (first && recordPending) { recordPending = false; beginRecording() }
     }
     private fun playCurrent() {
@@ -327,7 +452,9 @@ class PlayerActivity : AppCompatActivity() {
         if (!media3RtspEnabled) engine = Engine.VLC
         val current = ++generation; failedGeneration = -1
         releasePlayers(); videoReady = false; videoAspect = 0.0; applyDisplayMode(); errorBox.visibility = View.GONE
-        if (url == null) { showFailure(); return }
+        if (url == null) { event("Nenhum endereço RTSP disponível"); showFailure(); return }
+        val u = Uri.parse(url)
+        event("Tentativa ${index + 1}/${urls.size}: ${u.host ?: "?"}:${u.port.takeIf { it in 1..65535 } ?: 554}${u.encodedPath ?: "/"} (${rtspTransport.name})")
         loading(if (failures.isEmpty()) R.string.aguarde_imagem else R.string.conexao_alternativa)
         exoView.visibility = if (engine == Engine.MEDIA3) View.VISIBLE else View.GONE
         vlcView.visibility = if (engine == Engine.VLC) View.VISIBLE else View.GONE
@@ -506,6 +633,7 @@ class PlayerActivity : AppCompatActivity() {
         failedGeneration = generation
         val via = if (engine == Engine.VLC) ", ${rtspTransport.name}" else ""
         failures.add("$from (fluxo ${index+1}$via): ${maskCredentials(detail)}")
+        event("Falha $from fluxo ${index+1}$via: ${maskCredentials(detail)}")
         val next = if (engine == Engine.VLC)
             RtspPlaybackPolicy.next(RtspAttempt(index, rtspTransport), urls.size) else null
         when {
@@ -526,6 +654,8 @@ class PlayerActivity : AppCompatActivity() {
             .ifBlank { getString(R.string.erro_sem_fluxos) }
         errorDetail.text = initial + "\n" + getString(R.string.rtsp_diagnostic_running)
         errorBox.visibility = View.VISIBLE; updateRecordButton()
+        pendingRecovered = null
+        event("Nenhum fluxo produziu imagem após as tentativas")
         diagnoseRtspAsync(generation, initial)
     }
 
@@ -539,9 +669,13 @@ class PlayerActivity : AppCompatActivity() {
                     val host = parsed.host
                     val port = parsed.port.takeIf { it in 1..65535 } ?: 554
                     if (host.isNullOrBlank()) getString(R.string.rtsp_diagnostic_bad_url)
-                    else if (!RtspProbe.isPortOpen(host, port, 1600))
-                        getString(R.string.rtsp_diagnostic_port_closed, port)
                     else {
+                        val service = RtspServiceDetector.inspect(host, port)
+                        if (service.kind == RtspServiceKind.CLOSED) {
+                            getString(R.string.rtsp_diagnostic_port_closed, port)
+                        } else if (service.kind == RtspServiceKind.HTTP || service.kind == RtspServiceKind.OTHER) {
+                            "Porta $port: ${service.detail}. Confira o endereço RTSP."
+                        } else {
                         val auth = parsed.encodedUserInfo.orEmpty()
                         val user = Uri.decode(auth.substringBefore(':'))
                         val password = Uri.decode(auth.substringAfter(':', ""))
@@ -553,7 +687,8 @@ class PlayerActivity : AppCompatActivity() {
                                 probe.videoCodec ?: "codec não identificado")
                             ProbeStatus.AUTH_FAIL -> getString(R.string.rtsp_diagnostic_auth)
                             ProbeStatus.NOT_FOUND -> getString(R.string.rtsp_diagnostic_path)
-                            ProbeStatus.ERROR -> getString(R.string.rtsp_diagnostic_no_describe)
+                            ProbeStatus.ERROR -> "${service.detail}. ${getString(R.string.rtsp_diagnostic_no_describe)}"
+                        }
                         }
                     }
                 } catch (_: Exception) {
@@ -566,11 +701,14 @@ class PlayerActivity : AppCompatActivity() {
                     !isFinishing && !isDestroyed && errorBox.visibility == View.VISIBLE) {
                     errorDetail.text = originalMessage + "\n\n" +
                         getString(R.string.rtsp_diagnostic_title) + "\n" + lines.joinToString("\n")
+                    event("Diagnóstico DESCRIBE concluído")
                 }
             }
         }, "rtsp-diagnostic").apply { isDaemon = true; start() }
     }
     private fun causeSummary(error: Throwable): String = generateSequence(error) { it.cause }.take(6)
         .joinToString("; ") { "${it.javaClass.simpleName}: ${it.message.orEmpty()}" }
-    private fun maskCredentials(input: String): String = input.replace(Regex("""(?i)rtsp://[^\s"'<>]+"""), "rtsp://[endereço oculto]")
+    private fun maskCredentials(input: String): String = input
+        .replace(Regex("""(?i)rtsp://[^\s"'<>]+"""), "rtsp://[endereço oculto]")
+        .replace(Regex("""(?i)(Authorization:|WWW-Authenticate:|Password:|token=)[^\r\n]+"""), "$1 [oculto]")
 }

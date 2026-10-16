@@ -40,7 +40,10 @@ class AboutActivity : AppCompatActivity() {
         content.addView(TextView(this).apply { text = "Minha Câmera $version"; textSize = 25f; setTextColor(getColor(R.color.app_text)); setPadding(0, 0, 0, dp(4)) })
         content.addView(TextView(this).apply { text = "Transmissão e visualização de câmera por rede local, sem nuvem obrigatória."; textSize = 14f; setTextColor(getColor(R.color.ui_muted)); setPadding(0, 0, 0, dp(16)) })
         addBlock(content, "O que é o app", "Projeto auxiliar do Vigia IA voltado para transmissão local entre celulares, MJPEG/H.264 experimental, modo de tela apagada, gravação opcional e acesso remoto à multimídia.")
-        addBlock(content, "Últimas versões", """1.4.47+57
+        addBlock(content, "Últimas versões", """1.4.48+58
+• Diagnóstico RTSP exportável, identificação de serviços mais precisa e boas-vindas resumidas.
+
+1.4.47+57
 • Tela cheia automática ao girar o visualizador em orientação automática; correção matemática da rotação da câmera transmissora.
 
 1.4.46+56
@@ -52,7 +55,7 @@ class AboutActivity : AppCompatActivity() {
         content.addView(MaterialButton(this).apply {
             text = getString(R.string.novidades)
             isAllCaps = false
-            setOnClickListener { startActivity(Intent(this@AboutActivity, WelcomeActivity::class.java).putExtra("full_history", true)) }
+            setOnClickListener { startActivity(Intent(this@AboutActivity, WelcomeActivity::class.java)) }
         })
     }
 

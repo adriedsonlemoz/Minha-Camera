@@ -25,9 +25,11 @@ class ScanActivity : AppCompatActivity() {
     private data class Found(
         val ip: String,
         val ports: MutableSet<Int> = linkedSetOf(),
-        val onvifUrls: MutableSet<String> = linkedSetOf()
+        val onvifUrls: MutableSet<String> = linkedSetOf(),
+        val services: MutableMap<Int, RtspServiceKind> = linkedMapOf()
     ) {
-        val port: Int? get() = ports.firstOrNull()
+        val port: Int? get() = services.entries.firstOrNull { it.value == RtspServiceKind.RTSP }?.key
+            ?: ports.firstOrNull()
     }
 
     // Busca TCP complementar; dispositivos ONVIF são encontrados independentemente da porta.
@@ -79,19 +81,29 @@ class ScanActivity : AppCompatActivity() {
         val items = found.map { f ->
             val services = mutableListOf<String>()
             if (f.onvifUrls.isNotEmpty()) services.add("ONVIF")
-            if (f.ports.isNotEmpty()) services.add("TCP ${f.ports.joinToString(", ")}")
+            if (f.ports.isNotEmpty()) services.add(f.ports.joinToString(" · ") { port ->
+                if (f.services[port] == RtspServiceKind.RTSP) "RTSP:$port"
+                else "TCP:$port (não confirmado)"
+            })
             "${f.ip}   •   ${services.joinToString(" + ").ifEmpty { "Dispositivo" }}"
         }
         listView.adapter = ArrayAdapter(this, android.R.layout.simple_list_item_1, items)
     }
 
-    private fun addFound(ip: String, port: Int? = null, xaddrs: List<String> = emptyList()) {
+    private fun addFound(ip: String, port: Int? = null, xaddrs: List<String> = emptyList(),
+                         protocol: RtspServiceKind? = null) {
         val entry = found.firstOrNull { it.ip == ip }
         if (entry != null) {
-            if (port != null) entry.ports.add(port)
+            if (port != null) {
+                entry.ports.add(port)
+                if (protocol != null) entry.services[port] = protocol
+            }
             entry.onvifUrls.addAll(xaddrs)
         } else {
-            found.add(Found(ip, if (port == null) linkedSetOf() else linkedSetOf(port), xaddrs.toMutableSet()))
+            found.add(Found(ip, if (port == null) linkedSetOf() else linkedSetOf(port),
+                xaddrs.toMutableSet(), linkedMapOf<Int, RtspServiceKind>().apply {
+                    if (port != null && protocol != null) put(port, protocol)
+                }))
         }
         found.sortWith(compareBy { it.ip.split('.').fold(0L) { a, b -> (a shl 8) + (b.toLongOrNull() ?: 0L) } })
         refreshList()
@@ -155,10 +167,13 @@ class ScanActivity : AppCompatActivity() {
                 val openPorts = ports.filter { port ->
                     RtspProbe.isPortOpen(ip, port, if (port == 554) 900 else 500)
                 }
+                val detected = openPorts.associateWith { port ->
+                    RtspServiceDetector.inspect(ip, port).kind
+                }
                 val count = done.incrementAndGet()
                 runOnUiThread {
                     if (pool !== worker || isFinishing || isDestroyed) return@runOnUiThread
-                    openPorts.forEach { addFound(ip, port = it) }
+                    openPorts.forEach { addFound(ip, port = it, protocol = detected[it]) }
                     progress.progress = count
                     completeIfReady()
                 }
@@ -326,7 +341,9 @@ class ScanActivity : AppCompatActivity() {
             // 2) Teste dos caminhos conhecidos em TODAS as portas encontradas.
             // No caso de detecção exclusivamente ONVIF, usar portas RTSP padrão como fallback.
             if (okUrl == null) {
-                val candidatePorts = f.ports.toList().ifEmpty { listOf(554, 8554) }
+                val candidatePorts = (f.ports.filter { f.services[it] == RtspServiceKind.RTSP } +
+                    listOf(554, 8554, 10554) + f.ports.filter { f.services[it] != RtspServiceKind.RTSP })
+                    .distinct()
                 portLoop@ for (rtspPort in candidatePorts) {
                     noReply = 0
                     authFails = 0
