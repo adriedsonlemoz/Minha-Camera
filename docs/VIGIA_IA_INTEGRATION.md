@@ -132,3 +132,12 @@ Separar detecção de porta TCP de confirmação do serviço RTSP. `OPTIONS` com
 A troca de uma câmera mantida pela Activity para um serviço de câmera em segundo plano pode bloquear a UI se a superfície EGL for preparada na thread principal e pode falhar na reabertura imediata de recurso/porta. Preparar EGL em worker, habilitar SO_REUSEADDR **antes** do bind, limitar retries, registrar a classe do erro sem credenciais e não confundir visualização local com publicação de quadros. São mitigadores, não garantia de acesso à câmera sob restrições do Android.
 
 O receptor MJPEG deve atualizar periodicamente capacidades do transmissor após handoff, especialmente zoom. Zoom aplicado por Camera.Parameters altera o quadro na origem; quando a API ou o modo não suportar o controle, ampliar apenas no receptor identificando explicitamente "zoom local". Priorizar consumo mínimo no Redmi A3 e confirmar com o aparelho real.
+
+## Biblioteca local e mídia autorizada (Minha Câmera 1.4.61)
+
+- O `MediaStore` deve ser tratado como índice de mídias autorizadas, sem converter `content://` em caminhos absolutos nem tentar acesso a arquivos não concedidos. Incluir tanto as coleções de Imagens/Vídeos quanto Downloads, porque o MP4 da câmera pode ser publicado em `Downloads/MinhaCamera`.
+- Gravações RTSP privadas devem ser listadas de uma raiz própria, com URIs `FileProvider`; ao excluir arquivos privados, validar `canonicalFile.parentFile` contra a pasta permitida e exigir confirmação explícita.
+- Android 13+ usa permissões separadas de fotos/vídeos; Android 14 também pode fornecer acesso parcial (`READ_MEDIA_VISUAL_USER_SELECTED`). Seleção de arquivos por SAF é alternativa sem acesso amplo.
+- Manter indexação, miniaturas e cópias no executor de IO, com cache de imagens limitado; reutilizar instâncias de player apenas durante visualização, liberando-as ao sair da tela.
+- Para exclusão de mídia compartilhada no Android 11+, usar `MediaStore.createDeleteRequest` e aceitar cancelamento. A cópia por `ACTION_OPEN_DOCUMENT_TREE` preserva arquivos de origem.
+- A implementação 1.4.61 tem testes estáticos e sintáticos locais, mas a execução Android (permissões parciais, codecs, EXIF e exclusões) ainda precisa de validação real antes de reutilizar no Vigia IA.

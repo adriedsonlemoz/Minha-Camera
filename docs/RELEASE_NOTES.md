@@ -1,3 +1,11 @@
+# Minha Câmera 1.4.61 (versionCode 71)
+
+- Central Multimídia agora é uma galeria interna de fotos e vídeos reais do aparelho, incluindo gravações privadas do aplicativo.
+- Player Media3 integrado para vídeos, fotos com pinça e navegação, miniaturas, filtros, busca e ordenação.
+- Seleção múltipla para compartilhar, salvar cópias, ver detalhes e excluir somente após confirmação e, quando necessário, autorização do Android.
+- Acesso à biblioteca do outro celular preservado pela aba Wi-Fi. Permissões de fotos/vídeos limitadas ao que o Android conceder.
+- Nenhum arquivo é removido automaticamente. Reprodução e leitura em aparelho ainda precisam de validação Android real.
+
 # Minha Câmera 1.4.60 (versionCode 70)
 
 - Ampliação/redução por gesto de pinça no vídeo de Assistir, tanto vertical quanto horizontal/tela cheia.

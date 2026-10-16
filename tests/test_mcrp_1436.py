@@ -24,7 +24,8 @@ class McrpTests(unittest.TestCase):
         self.assertIn('setOnClickListener',s)
         self.assertIn('inputStream.use',s)
     def test_views_route_to_media(self):
-        self.assertIn('RemoteMultimediaActivity::class.java',(SRC/'MultimediaActivity.kt').read_text())
+        self.assertIn('GalleryActivity::class.java',(SRC/'MultimediaActivity.kt').read_text())
+        self.assertIn('RemoteMultimediaActivity::class.java',(SRC/'GalleryActivity.kt').read_text())
         self.assertIn('RemoteMultimediaActivity::class.java',(SRC/'PhoneCameraViewerActivity.kt').read_text())
         self.assertIn('RemoteMultimediaActivity', (ROOT/'app/src/main/AndroidManifest.xml').read_text())
     def test_documented_shared_protocol(self):

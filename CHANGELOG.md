@@ -1,3 +1,13 @@
+## 1.4.61+71 — 2026-10-16
+- Central Multimídia passa a abrir diretamente a galeria local em grade; removidos os três cartões intermediários.
+- Indexação assíncrona pelo MediaStore dos arquivos autorizados e das gravações RTSP privadas, com cache de miniaturas limitado e reciclagem de células RecyclerView.
+- Busca por nome, filtros Todas/Fotos/Vídeos/Gravações e ordenação por data, nome ou tamanho.
+- Visualizador nativo de fotos com gesto de pinça, arraste e navegação entre mídias; player de vídeo Media3/ExoPlayer integrado com controles e reprodução interrompida ao sair.
+- Seleção múltipla para compartilhar, copiar via Storage Access Framework para pasta escolhida, consultar detalhes e excluir após confirmação. Para mídias do MediaStore no Android 11+, exclusão por MediaStore.createDeleteRequest; gravações privadas limitadas à pasta do aplicativo.
+- Android 13+/14: permissões READ_MEDIA_IMAGES, READ_MEDIA_VIDEO e READ_MEDIA_VISUAL_USER_SELECTED; alternativa de arquivos escolhidos pelo seletor SAF, sem acesso irrestrito ao armazenamento.
+- Aba Outro celular continua abrindo a biblioteca remota autenticada existente; não amplia permissões nem concede acesso geral ao armazenamento do transmissor.
+- Testes estruturais e parser Kotlin locais; compilação APK e testes no dispositivo ainda pendentes.
+
 ## 1.4.60+70 — 2026-10-16
 - Pinça de dois dedos no vídeo do receptor, tela normal e horizontal/tela cheia: afastar amplia, aproximar reduz; toque simples continua acionando os controles.
 - Zoom real da câmera MJPEG por comandos autenticados e coalescidos a cada ~230 ms; no máximo uma requisição pendente em voo, com envio do último nível ao soltar os dedos.

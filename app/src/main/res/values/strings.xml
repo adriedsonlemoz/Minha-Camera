@@ -144,7 +144,12 @@ Experimente habilitar H.264 ou outro perfil na câmera e refazer a busca.</strin
     <string name="phone_reconnecting">Sinal perdido. Reconectando…</string>
     <string name="phone_access_denied">Acesso negado. Escaneie o novo QR.</string>
     <string name="viewer_remote_zoom_requested">Zoom solicitado à câmera</string>
-    <string name="novidades_text">Versão 1.4.60 (código 70)
+    <string name="novidades_text">Versão 1.4.61 (código 71)
+- Central Multimídia agora abre uma galeria real, com miniaturas locais e gravações do aplicativo.
+- Player de vídeo integrado; fotos com zoom por pinça e navegação entre arquivos.
+- Busca, filtros e ordenação; compartilhar, copiar, detalhes e excluir com confirmação.
+- Permissões Android respeitadas, inclusive acesso parcial a fotos e vídeos.
+- Aba de biblioteca remota por Wi-Fi preservada.
 - Zoom por pinça com dois dedos na imagem do modo Assistir, vertical ou horizontal.
 - Afastar aumenta e aproximar diminui: zoom da câmera MJPEG quando disponível, local caso contrário.
 - Os gestos têm limite e não enviam pedidos a cada quadro; último ajuste aplicado ao soltar.
