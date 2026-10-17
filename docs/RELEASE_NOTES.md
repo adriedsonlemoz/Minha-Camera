@@ -1,3 +1,18 @@
+# Minha Câmera 1.4.69 (versionCode 79)
+
+- Biblioteca remota com miniaturas, botões menores e downloads diretos à galeria MinhaCamera (Fotos/Vídeos).
+- Correção de orientação de JPEG e suporte a EXIF da imagem remota.
+- Zoom com nível máximo reportado pela câmera e atalhos condicionais 1×/2×/3×/5×/10×, Restaurar.
+- Tela cheia com saída superior, detalhes e indicador de FPS real/meta, atraso, hora, resolução efetiva.
+- H.264 experimental com preferência por I420 (planar); artefatos verdes e FPS real dependem de testes físicos.
+
+# Minha Câmera 1.4.68 (versionCode 78)
+
+- Evita disputa de câmera entre Activity e serviço durante a ativação de tela apagada; só retoma a câmera local quando o serviço terminar de liberar recursos.
+- Estado de captura distingue abrindo câmera, esperando primeiro quadro, transmitindo e liberando; interrupções são registradas no diagnóstico exportável.
+- Handoff testável sem aparelho via `PhoneBackgroundHandoffPolicy` e novo teste de regressão Kotlin/JVM.
+- Falha no Redmi A3 não foi reproduzida diretamente; build Android e teste físico pendentes.
+
 # Minha Câmera 1.4.67 (versionCode 77)
 
 - Corrigido erro de compilação Kotlin `fillViewport` da barra inferior da galeria (Build APK 66).

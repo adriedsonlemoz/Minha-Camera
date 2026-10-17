@@ -30,7 +30,8 @@ internal object PhoneStreamDiagnostics {
         // Persistência apenas para eventos relevantes, nunca a cada quadro.
         if (event.contains("falha", true) || event.contains("erro", true) ||
             event.contains("quadros", true) || event.contains("watchdog", true) ||
-            event.contains("codec", true) || event.contains("encerrada", true)) {
+            event.contains("codec", true) || event.contains("encerrada", true) ||
+            event.contains("Tela apagada:", true)) {
             runCatching {
                 app?.getSharedPreferences("private_stream_diagnostics", Context.MODE_PRIVATE)?.edit()
                     ?.putString("events", events.joinToString("\n"))?.apply()

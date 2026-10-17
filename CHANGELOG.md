@@ -1,3 +1,22 @@
+## 1.4.69+79 — 2026-10-17
+
+- Galeria remota compacta com miniaturas assíncronas de JPEG e tentativa de quadro de vídeo via HTTP Range, mantendo fallback por ícone; concorrência máxima de duas requisições.
+- Baixar salva automaticamente fotos em Pictures/MinhaCamera e vídeos em Movies/MinhaCamera (MediaStore), criando a pasta automaticamente sem solicitar acesso geral. Atualização aparece na galeria depois de atualizar a listagem.
+- Definida rotação de fotos JPEG nativas no Camera.Parameters, sem girar duas vezes os quadros de transmissão; visualização de JPEG remoto respeita EXIF quando presente.
+- Resposta autenticada de zoom inclui máximo real em unidades ×100; diálogo oferece Restaurar e presets 1×, 2×, 3×, 5× ou 10× até o limite anunciado, com fallback local limitado a 3×.
+- Tela cheia com botão superior Sair; nomes Tela inteira / Ajustar; painel detalhado fica acima da grade de configurações e indicador mostra FPS recebido/meta, atraso e hora local, com resolução efetiva separada do perfil solicitado.
+- Encoder AVC experimental passa a preferir YUV420 planar quando anunciado pelo driver para investigar artefatos verdes; não há confirmação de correção em hardware real, MJPEG segue alternativa estável.
+- Não foi acrescentada uma lente ultra-wide fictícia: a câmera extra só poderá ser selecionada quando o Android a expuser como câmera acessível; futura enumeração Camera2/Camera1 precisa ser validada no hardware.
+- Testes estáticos e regressões; compilação Android e comportamento no Redmi A3 pendentes.
+
+## 1.4.68+78 — 2026-10-17
+
+- Investigada condição de corrida ao ativar captura em serviço com tela apagada: a Activity podia reabrir a câmera após 14 segundos enquanto o serviço ainda preparava/segurava o dispositivo.
+- Handoff usa estados explícitos `starting`, `running`, `releasing`, `firstFramePublished` e `startupPhase`, com retomada local somente após liberação do serviço.
+- Adicionados timeouts separados (30s abertura, 45s primeiro quadro), cancelamento controlado e diagnóstico persistente das fases Camera.open, Camera.startPreview, publicação e liberação; sem gravar URLs nem credenciais.
+- Adicionados seis testes de regressão Python e 13 asserções Kotlin/JVM com execução na CI; testes no aparelho Redmi A3 e compilação Release pendentes.
+- Recursos da galeria, do zoom remoto e dos modos MJPEG/H.264 preservados.
+
 ## 1.4.67+77 — 2026-10-17
 - Corrige falha do Build APK 66 na tarefa `:app:compileReleaseKotlin`, `GalleryActivity.kt:259` (`Unresolved reference 'fillViewport'`).
 - Substitui atribuição inválida por `setFillViewport(true)` na `HorizontalScrollView` das ações inferiores; mantém o comportamento de rolagem e os botões, incluindo Renomear.

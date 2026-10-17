@@ -128,7 +128,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         val recordSeconds: Long?, val recording: Boolean?, val battery: Int?, val temp: Int?,
         val charging: Boolean?, val eco: Boolean?, val quality: Int?, val fps: Int?, val facing: Int?,
         val resolution: String? = null,
-        val zoomPercent: Int? = null, val zoomRatio100: Int? = null)
+        val zoomPercent: Int? = null, val zoomRatio100: Int? = null,
+        val zoomMaxRatio100: Int? = null, val measuredFps: Int? = null)
     private lateinit var batteryPill: TextView
     private lateinit var temperatureLabel: TextView
     private lateinit var resolutionLabel: TextView
@@ -165,6 +166,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     private var remoteFps: Int? = null
     private var remoteZoomPercent: Int? = null
     private var remoteZoomRatio100: Int? = null
+    private var remoteZoomMaxRatio100: Int? = null
     /** Fallback explícito, não enviado ao transmissor e nunca apresentado como zoom remoto. */
     private var localZoomFactor = 1f
     private lateinit var remoteZoomLabel: TextView
@@ -349,6 +351,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             findViewById<View>(id).setOnClickListener { resetZoom() }
         findViewById<View>(R.id.viewerRemoteFacing).setOnClickListener { chooseRemoteFacing() }
         findViewById<View>(R.id.viewerFullBack).setOnClickListener { if (focusMode) toggleFocusMode() }
+        findViewById<View>(R.id.viewerFullscreenExitTop).setOnClickListener { if (focusMode) toggleFocusMode() }
         findViewById<View>(R.id.viewerFullRecord).setOnClickListener { setRemoteRecording(remoteRecording != true) }
         findViewById<View>(R.id.viewerFullPhoto).setOnClickListener { requestRemotePhoto() }
         findViewById<View>(R.id.viewerFullRotate).setOnClickListener { rotateVideo() }
@@ -568,6 +571,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
     private fun setViewerLocked(locked: Boolean) {
         viewerControlsLocked = locked
         fullControls.visibility = if (locked) View.GONE else View.VISIBLE
+        findViewById<View>(R.id.viewerFullscreenExitTop).visibility = if (locked) View.GONE else View.VISIBLE
         viewerUnlock.visibility = if (locked && focusMode) View.VISIBLE else View.GONE
     }
 
@@ -867,50 +871,72 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             ?: "Remoto ${remoteZoomPercent}%"
     }
 
+    /** Atalhos proporcionais ao limite real informado pela câmera, sem presumir 10×. */
     private fun chooseRemoteZoom() {
-        val current = remoteZoomPercent
-        val container = LinearLayout(this).apply {
+        val remote = remoteZoomPercent != null && remoteZoomMaxRatio100 != null
+        val maxRatio = if (remote) (remoteZoomMaxRatio100 ?: 100).coerceAtLeast(100) / 100f else 3f
+        val currentRatio = if (remote) (remoteZoomRatio100 ?: 100) / 100f else localZoomFactor
+        val panel = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            val pad = (20 * resources.displayMetrics.density).toInt()
-            setPadding(pad, pad / 2, pad, pad / 2)
+            val pad = (16 * resources.displayMetrics.density + .5f).toInt()
+            setPadding(pad, pad, pad, pad)
         }
         val label = TextView(this).apply {
-            textSize = 18f
+            textSize = 17f
             setTextColor(getColor(R.color.app_text))
-            text = if (current == null) "Zoom local (somente neste celular)"
-                else remoteZoomRatio100?.let { String.format(Locale.US, "Zoom da câmera: %.1f×", it / 100f) }
-                    ?: "Zoom remoto: $current%"
+            text = String.format(Locale.US, "Atual: %.1f× · máximo: %.1f×", currentRatio, maxRatio)
         }
-        container.addView(label)
+        panel.addView(label)
         val slider = SeekBar(this).apply {
             max = 100
-            progress = current ?: (((localZoomFactor - 1f) / 2f) * 100).toInt()
-            contentDescription = if (current == null) "Ampliação local" else "Zoom remoto da câmera"
+            progress = if (remote) remoteZoomPercent ?: 0
+                else (((localZoomFactor - 1f) / (maxRatio - 1f)) * 100).toInt().coerceIn(0, 100)
+            contentDescription = "Nível de zoom"
         }
-        container.addView(slider)
-        container.addView(TextView(this).apply {
-            text = if (current == null) "Amplia apenas a imagem no receptor (1× a 3×). Não altera o vídeo enviado."
-                else "0% é 1× na câmera. O máximo depende do hardware, sem ganho de resolução real."
-            textSize = 13f
+        panel.addView(slider)
+        val presets = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        val actualPresets = listOf(1f, 2f, 3f, 5f, 10f).filter { it <= maxRatio + .005f }
+        for (ratio in actualPresets) {
+            val preset = TextView(this).apply {
+                text = "${ratio.toInt()}×"; textSize = 15f
+                setTextColor(getColor(R.color.brand_primary))
+                gravity = Gravity.CENTER
+                background = androidx.core.content.ContextCompat.getDrawable(this@PhoneCameraViewerActivity,
+                    R.drawable.bg_ui_card)
+                setOnClickListener {
+                    slider.progress = if (maxRatio <= 1f) 0 else
+                        (((ratio - 1f) / (maxRatio - 1f)) * 100).toInt().coerceIn(0, 100)
+                }
+            }
+            presets.addView(preset, LinearLayout.LayoutParams(0, (42 * resources.displayMetrics.density).toInt(), 1f).apply {
+                val margin = (3 * resources.displayMetrics.density).toInt()
+                marginStart = margin; marginEnd = margin
+            })
+        }
+        panel.addView(presets)
+        val description = TextView(this).apply {
+            textSize = 12f
             setTextColor(getColor(R.color.ui_muted))
-        })
+            text = if (remote) "Zoom na câmera transmissora; valores intermediários são aproximados."
+                else "H.264 ou câmera sem zoom remoto: ampliação apenas neste celular, até 3×."
+        }
+        panel.addView(description)
         slider.setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
             override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
             override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) label.text = if (current == null) "Ampliação local: ${1f + progress / 50f}×"
-                    else "Zoom remoto solicitado: $progress%"
+                if (fromUser) label.text = String.format(Locale.US, "Solicitado: ~%.1f×", 1f + progress / 100f * (maxRatio - 1f))
             }
             override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
         })
         AlertDialog.Builder(this)
-            .setTitle(if (current == null) "Zoom local" else "Zoom remoto")
-            .setView(container)
+            .setTitle(if (remote) "Zoom da câmera" else "Zoom local")
+            .setView(panel)
             .setNegativeButton("Cancelar", null)
-            .setNeutralButton("1×") { _, _ -> resetZoom() }
+            .setNeutralButton("Restaurar 1×") { _, _ -> resetZoom() }
             .setPositiveButton("Aplicar") { _, _ ->
-                if (current != null) sendRemoteZoom(slider.progress)
+                if (remote) sendRemoteZoom(slider.progress)
                 else {
-                    localZoomFactor = 1f + slider.progress / 50f
+                    localZoomFactor = 1f + slider.progress / 100f * (maxRatio - 1f)
                     applyLocalZoom()
                 }
             }.show()
@@ -989,7 +1015,9 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                     bool("X-Eco"),int("X-Quality-Profile"),int("X-FPS-Target"),int("X-Camera-Facing"),
                     conn.getHeaderField("X-Resolution"),
                     if (bool("X-Zoom-Supported") == true) int("X-Zoom-Percent") else null,
-                    if (bool("X-Zoom-Supported") == true) int("X-Zoom-Ratio-100") else null)
+                    if (bool("X-Zoom-Supported") == true) int("X-Zoom-Ratio-100") else null,
+                    if (bool("X-Zoom-Supported") == true) int("X-Zoom-Max-Ratio-100") else null,
+                    int("X-FPS-Measured"))
             } finally { conn.disconnect() }
         } catch (_: Exception) { RemoteStatus(null,null,null,null,null,null,null,null,null,null,null) }
     }
@@ -1017,6 +1045,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                 if (lastGestureZoomSent != state.zoomPercent) lastGestureZoomSent = null
                 remoteZoomPercent = state.zoomPercent
                 remoteZoomRatio100 = state.zoomRatio100
+                remoteZoomMaxRatio100 = state.zoomMaxRatio100
                 updateZoomLabel()
             }
         }
@@ -1032,7 +1061,14 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         updateEcoUi()
         if (state.resolution != null) resolutionLabel.text = state.resolution.replace('x', '×')
         else if (remoteQuality != null) resolutionLabel.text = "${remoteQuality}p"
-        if (remoteFps != null) fpsLabel.text = "$remoteFps FPS"
+        if (state.measuredFps != null) {
+            fpsLabel.text = "${state.measuredFps} / ${remoteFps ?: "?"} FPS"
+            if (viewerCodec == "h264") {
+                val hora = java.text.SimpleDateFormat("HH:mm:ss", Locale.forLanguageTag("pt-BR"))
+                    .format(java.util.Date())
+                performance.text = "H.264: ${state.measuredFps} FPS (meta ${remoteFps ?: "?"}) · atraso não medido · $hora"
+            }
+        } else if (remoteFps != null && viewerCodec == "h264") fpsLabel.text = "Meta: $remoteFps"
         if (remoteFacing != null) facingLabel.text = if (remoteFacing == 1) "Frontal" else "Traseira"
     }
 
@@ -1077,7 +1113,8 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             media.release()
             player.play()
             viewerCodec = "h264"
-            codecButton.text = "H.264"
+            codecButton.text = "H.264 ⚠"
+            PhoneStreamDiagnostics.add("H264 experimental: conferir artefatos cromáticos; utilizar MJPEG se houver imagem verde")
             remoteClock.visibility = View.VISIBLE
             statusHandler.post(codecStatusTick)
         } catch (e: Exception) {
@@ -1114,7 +1151,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                 R.drawable.ic_ui_screen, R.drawable.ic_ui_video),
             options.indexOf(remoteQuality ?: -1)) { index ->
             postRemote(PhoneCameraUrls.qualityCommandUrl(intent.getStringExtra("url").orEmpty(), options[index]),
-                R.string.viewer_remote_quality_requested) { remoteQuality = options[index] }
+                R.string.viewer_remote_quality_requested) { resolutionLabel.text = "Aplicando…" }
         }
     }
 
@@ -1125,7 +1162,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
             options.map { "$it FPS" }.toTypedArray(),
             IntArray(options.size) { R.drawable.ic_ui_video }, options.indexOf(remoteFps ?: -1)) { index ->
             postRemote(PhoneCameraUrls.fpsCommandUrl(intent.getStringExtra("url").orEmpty(), options[index]),
-                R.string.viewer_remote_fps_updated) { remoteFps = options[index] }
+                R.string.viewer_remote_fps_updated) { fpsLabel.text = "Aplicando…" }
         }
     }
 
@@ -1271,6 +1308,7 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
         remoteFacing = null
         remoteQuality = null
         remoteFps = null
+        remoteZoomMaxRatio100 = null
         recordingClock.visibility = View.GONE
         facingLabel.text = getString(R.string.viewer_unknown)
         lastShownFps = null
@@ -1495,9 +1533,11 @@ class PhoneCameraViewerActivity : AppCompatActivity() {
                     if (measured != null) {
                         val lag = lastDeliveryMs?.let { getString(R.string.phone_delay_estimate, it) }
                             ?: getString(R.string.phone_delay_unavailable)
-                        performance.text = getString(R.string.phone_performance_values, measured, lag)
+                        val hora = java.text.SimpleDateFormat("HH:mm:ss", Locale.forLanguageTag("pt-BR"))
+                            .format(java.util.Date())
+                        performance.text = "${measured} FPS (meta ${remoteFps ?: "?"}) · $lag · $hora"
                         lastShownFps = measured
-                        fpsLabel.text = getString(R.string.viewer_fps_value, measured)
+                        fpsLabel.text = "${measured} / ${remoteFps ?: "?"} FPS"
                     }
                 } else newest.bitmap.recycle()
             }

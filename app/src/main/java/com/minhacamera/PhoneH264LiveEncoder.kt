@@ -31,10 +31,12 @@ internal class PhoneH264LiveEncoder(
                 val caps = runCatching { codecInfo.getCapabilitiesForType(MediaFormat.MIMETYPE_VIDEO_AVC) }.getOrNull()
                     ?: return@mapNotNull null
                 val color = when {
-                    caps.colorFormats.contains(MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar) ->
-                        MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar
+                    // Em alguns drivers, SemiPlanar anuncia NV12 mas trata cromas de forma
+                    // incompatível; priorizar I420 explícito quando disponível.
                     caps.colorFormats.contains(MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar) ->
                         MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420Planar
+                    caps.colorFormats.contains(MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar) ->
+                        MediaCodecInfo.CodecCapabilities.COLOR_FormatYUV420SemiPlanar
                     else -> return@mapNotNull null
                 }
                 if (!caps.videoCapabilities.areSizeAndRateSupported(width, height, fps.toDouble())) return@mapNotNull null

@@ -14,7 +14,7 @@ dependencies {
 val protocolClasses = layout.buildDirectory.dir("protocol-tests/classes")
 val protocolSources = files(
     fileTree("tests") { include("**/*.kt") },
-    listOf("NetUtil", "OnvifClient", "RtspProbe", "RtspCodec", "WsDiscovery", "RecordingFiles", "VideoGeometry", "OnvifIdentity", "PhoneCameraUrls", "Nv21Frames", "PhoneCameraServer", "PhoneBatteryReading", "PhoneStreamStats", "PhoneEcoPolicy", "PhonePinchZoom", "PhoneAvcAnnexB", "PhoneOrientationMode", "RtspPlaybackPolicy", "RtspServiceDetector", "CameraStreamProtocol").map {
+    listOf("NetUtil", "OnvifClient", "RtspProbe", "RtspCodec", "WsDiscovery", "RecordingFiles", "VideoGeometry", "OnvifIdentity", "PhoneCameraUrls", "Nv21Frames", "PhoneCameraServer", "PhoneBatteryReading", "PhoneStreamStats", "PhonePublishedFps", "PhoneEcoPolicy", "PhonePinchZoom", "PhoneBackgroundHandoffPolicy", "PhoneAvcAnnexB", "PhoneOrientationMode", "RtspPlaybackPolicy", "RtspServiceDetector", "CameraStreamProtocol").map {
         "app/src/main/java/com/minhacamera/$it.kt"
     }
 )
@@ -31,8 +31,24 @@ val compileProtocolTests by tasks.registering(JavaExec::class) {
             protocolSources.files.sortedBy { it.path }.map { it.absolutePath }
     }
 }
+// Executado também como dependência de testProtocol na CI: valida concorrência sem câmera física.
+tasks.register<JavaExec>("testBackgroundHandoff") {
+    dependsOn(compileProtocolTests)
+    classpath = files(protocolClasses) + protocolRuntime
+    mainClass.set("PhoneBackgroundHandoffSmokeKt")
+}
 tasks.register<JavaExec>("testProtocol") {
     dependsOn(compileProtocolTests)
     classpath = files(protocolClasses) + protocolRuntime
     mainClass.set("com.minhacamera.ProtocolSmokeKt")
 }
+tasks.named("testProtocol") { dependsOn("testBackgroundHandoff") }
+
+
+// Mede quadros realmente publicados, inclusive AVC em tela apagada.
+tasks.register<JavaExec>("testPublishedFps") {
+    dependsOn(compileProtocolTests)
+    classpath = files(protocolClasses) + protocolRuntime
+    mainClass.set("com.minhacamera.PhonePublishedFpsSmokeKt")
+}
+tasks.named("testProtocol") { dependsOn("testPublishedFps") }

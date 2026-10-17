@@ -1,6 +1,10 @@
 # Minha Câmera
 
-**Versão atual: 1.4.67 (versionCode 77)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.69 (versionCode 79)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+
+**Novo em 1.4.69:** galeria remota com miniaturas de fotos, prévia de vídeo quando extração por HTTP é suportada, ações compactas e download diretamente nas coleções Fotos/Vídeos da pasta MinhaCamera. Correção de rotação do JPEG nativo, atalhos de zoom por capacidade anunciada, indicadores de FPS real/meta/resolução e saída superior da tela cheia. H.264 continua experimental: preferência por YUV planar quando anunciado, artefatos verdes exigem validação no Redmi A3. Build Android e teste físico pendentes.
+
+**Novo em 1.4.68:** investigação do travamento na migração da câmera para o serviço de tela apagada. A Activity deixa de tentar reabrir a câmera local antes da liberação do serviço; estados separados de inicialização, publicação do primeiro quadro e encerramento. Timeouts de 30s (abertura) e 45s (primeiro quadro), diagnóstico persistente de fases Camera.open/startPreview, teste determinístico Kotlin/JVM e regressões na CI. Causa em hardware ainda requer confirmação com diagnóstico exportado; não houve build APK ou teste físico neste ambiente.
 
 **Novo em 1.4.67:** correção do Build APK 66: em `GalleryActivity.kt`, a barra horizontal de ações da galeria usa `setFillViewport(true)` no lugar de `fillViewport = true`, evitando `Unresolved reference` no compilador Kotlin. Adicionado preflight e testes de regressão no GitHub Actions. Renomear e dispositivos remotos preservados. Compilação Release e testes em Android físico continuam pendentes.
 

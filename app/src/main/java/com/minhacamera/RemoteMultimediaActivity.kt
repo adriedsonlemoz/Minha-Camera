@@ -5,6 +5,15 @@ import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.graphics.drawable.ColorDrawable
 import android.graphics.Color
+import android.graphics.BitmapFactory
+import android.widget.ImageView
+import android.util.LruCache
+import android.graphics.Bitmap
+import android.graphics.Matrix
+import android.media.ExifInterface
+import android.media.MediaMetadataRetriever
+import java.io.ByteArrayInputStream
+import java.util.concurrent.Executors
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.FrameLayout
@@ -50,6 +59,11 @@ class RemoteMultimediaActivity : AppCompatActivity() {
     private lateinit var info: TextView
     private var busy = false
     private var requestSerial = 0
+    private val thumbnailCache = object : LruCache<String, Bitmap>(4 * 1024 * 1024) {
+        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount
+    }
+    private var thumbnailGeneration = 0
+    private val thumbnailWorker = Executors.newFixedThreadPool(2)
     private var chosenName = "Nenhum aparelho"
     private var chosenUrl = ""
     private lateinit var deviceLabel: TextView
@@ -250,32 +264,146 @@ class RemoteMultimediaActivity : AppCompatActivity() {
         scannerDialog?.dismiss()
         scannerDialog = null
         scanner = null
+        thumbnailWorker.shutdownNow()
         super.onDestroy()
     }
 
     override fun onSupportNavigateUp(): Boolean { finish(); return true }
 
-    private fun makeCard(title: String, subtitle: String, openAction: () -> Unit, downloadAction: () -> Unit): LinearLayout {
+    /** Miniaturas somente das fotos publicadas no MCRP, sem expor a galeria do transmissor. */
+    private fun orientJpeg(bitmap: Bitmap, jpeg: ByteArray): Bitmap {
+        val orientation = runCatching { ExifInterface(ByteArrayInputStream(jpeg))
+            .getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL) }
+            .getOrDefault(ExifInterface.ORIENTATION_NORMAL)
+        val matrix = Matrix()
+        when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+            ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+            ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+            else -> return bitmap
+        }
+        return runCatching {
+            Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true).also {
+                if (it !== bitmap) bitmap.recycle()
+            }
+        }.getOrDefault(bitmap)
+    }
+
+    private fun loadVideoThumbnail(image: ImageView, url: String, generation: Int) {
+        val cached = thumbnailCache.get(url)
+        if (cached != null && !cached.isRecycled) { image.setImageBitmap(cached); return }
+        thumbnailWorker.execute {
+            val frame = runCatching {
+                NetUtil.bindToWifi(applicationContext)
+                val media = MediaMetadataRetriever()
+                try {
+                    media.setDataSource(url, HashMap<String, String>())
+                    media.getFrameAtTime(0, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+                } finally { media.release() }
+            }.getOrNull()
+            runOnUiThread {
+                if (frame != null && !isFinishing && !isDestroyed &&
+                    generation == thumbnailGeneration && image.tag == url) {
+                    val bitmap = if (frame.width > 320 || frame.height > 320) {
+                        val factor = 320f / maxOf(frame.width, frame.height)
+                        Bitmap.createScaledBitmap(frame, (frame.width * factor).toInt().coerceAtLeast(1),
+                            (frame.height * factor).toInt().coerceAtLeast(1), true).also { if (it !== frame) frame.recycle() }
+                    } else frame
+                    thumbnailCache.put(url, bitmap); image.setImageBitmap(bitmap)
+                } else frame?.recycle()
+            }
+        }
+    }
+
+    private fun loadThumbnail(image: ImageView, url: String, size: Long, generation: Int) {
+        val cached = thumbnailCache.get(url)
+        if (cached != null && !cached.isRecycled) { image.setImageBitmap(cached); return }
+        if (size <= 0 || size > 8_000_000L) return
+        thumbnailWorker.execute {
+            val bitmap = runCatching {
+                NetUtil.bindToWifi(applicationContext)
+                val conn = URL(url).openConnection() as HttpURLConnection
+                try {
+                    conn.connectTimeout = 3500; conn.readTimeout = 7000
+                    require(conn.responseCode == 200)
+                    // Limite de memória/rede; não carrega foto original de tamanho arbitrário.
+                    val bytes = java.io.ByteArrayOutputStream()
+                    conn.inputStream.use { input ->
+                        val buf = ByteArray(8192)
+                        while (true) {
+                            val n = input.read(buf)
+                            if (n < 0) break
+                            require(bytes.size() + n <= 8_000_000)
+                            bytes.write(buf, 0, n)
+                        }
+                    }
+                    val jpeg = bytes.toByteArray()
+                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                    BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, bounds)
+                    var sample = 1
+                    while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 320) sample *= 2
+                    val decoded = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size,
+                        BitmapFactory.Options().apply { inSampleSize = sample.coerceAtLeast(1) })
+                    if (decoded != null) orientJpeg(decoded, jpeg) else null
+                } finally { conn.disconnect() }
+            }.getOrNull()
+            runOnUiThread {
+                if (bitmap != null && !isFinishing && !isDestroyed &&
+                    generation == thumbnailGeneration && image.tag == url) {
+                    thumbnailCache.put(url, bitmap)
+                    image.setImageBitmap(bitmap)
+                } else bitmap?.recycle()
+            }
+        }
+    }
+
+    private fun makeCard(title: String, subtitle: String, url: String, mime: String, size: Long,
+        openAction: () -> Unit, downloadAction: () -> Unit): LinearLayout {
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(16), dp(14), dp(16), dp(14))
+            setPadding(dp(9), dp(9), dp(9), dp(9))
             setBackgroundResource(R.drawable.bg_ui_card)
-            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) }
-            addView(TextView(context).apply { text = title; textSize = 17f; setTextColor(getColor(R.color.app_text)) })
-            addView(TextView(context).apply { text = subtitle; textSize = 12.5f; setTextColor(getColor(R.color.ui_muted)); setPadding(0, dp(5), 0, dp(12)) })
+            layoutParams = LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(7) }
+            val line = LinearLayout(context).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+            val thumb = ImageView(context).apply {
+                layoutParams = LinearLayout.LayoutParams(dp(80), dp(80)).apply { marginEnd = dp(11) }
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                setBackgroundColor(getColor(R.color.app_background))
+                setImageResource(if (mime.startsWith("video/")) R.drawable.ic_ui_video else R.drawable.ic_ui_camera)
+                tag = url
+                setOnClickListener { openAction() }
+            }
+            line.addView(thumb)
+            line.addView(LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                addView(TextView(context).apply {
+                    text = title; textSize = 14f; maxLines = 2
+                    ellipsize = TextUtils.TruncateAt.END
+                    setTextColor(getColor(R.color.app_text))
+                })
+                addView(TextView(context).apply {
+                    text = subtitle; textSize = 12f; setTextColor(getColor(R.color.ui_muted))
+                })
+            }, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(line)
             addView(LinearLayout(context).apply {
-                orientation = LinearLayout.HORIZONTAL
+                orientation = LinearLayout.HORIZONTAL; gravity = Gravity.END
                 addView(Button(context).apply {
-                    text = "Abrir"
-                    isAllCaps = false
+                    text = "Abrir"; textSize = 12f; isAllCaps = false
+                    setMinimumHeight(dp(40))
                     setOnClickListener { openAction() }
-                }, LinearLayout.LayoutParams(0, -2, 1f))
+                }, LinearLayout.LayoutParams(dp(100), dp(42)))
                 addView(Button(context).apply {
-                    text = "Baixar"
-                    isAllCaps = false
+                    text = "Baixar"; textSize = 12f; isAllCaps = false
+                    setMinimumHeight(dp(40))
                     setOnClickListener { downloadAction() }
-                }, LinearLayout.LayoutParams(0, -2, 1f).apply { marginStart = dp(8) })
+                }, LinearLayout.LayoutParams(dp(100), dp(42)).apply { marginStart = dp(6) })
             })
+            if (mime.startsWith("image/")) loadThumbnail(thumb, url, size, thumbnailGeneration)
+            else if (mime.startsWith("video/") && size < 100_000_000L)
+                loadVideoThumbnail(thumb, url, thumbnailGeneration)
         }
     }
 
@@ -288,6 +416,7 @@ class RemoteMultimediaActivity : AppCompatActivity() {
             return
         }
         val serial = ++requestSerial
+        thumbnailGeneration++
         busy = true
         connectionStatus.text = "● Conectando…"
         info.text = "Consultando biblioteca remota…"
@@ -336,6 +465,7 @@ class RemoteMultimediaActivity : AppCompatActivity() {
                         list.addView(makeCard(
                             name,
                             "$typeLabel • ${size / 1024} KB",
+                            fileUrl, mime, size,
                             { openItem(fileUrl, mime, size) },
                             { download(fileUrl, name, mime) }
                         ))
@@ -389,7 +519,19 @@ class RemoteMultimediaActivity : AppCompatActivity() {
                 try {
                     conn.connectTimeout = 4000; conn.readTimeout = 6000
                     require(conn.responseCode == 200)
-                    conn.inputStream.use { android.graphics.BitmapFactory.decodeStream(it) }
+                    val bytes = java.io.ByteArrayOutputStream()
+                    conn.inputStream.use { stream ->
+                        val data = ByteArray(8192)
+                        while (true) {
+                            val n = stream.read(data)
+                            if (n < 0) break
+                            require(bytes.size() + n <= 12_000_000) { "Imagem excedeu limite" }
+                            bytes.write(data, 0, n)
+                        }
+                    }
+                    val jpeg = bytes.toByteArray()
+                    val raw = BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size)
+                    if (raw != null) orientJpeg(raw, jpeg) else null
                 } finally { conn.disconnect() }
             }.getOrNull()
             runOnUiThread {
@@ -412,13 +554,18 @@ class RemoteMultimediaActivity : AppCompatActivity() {
                     val values = ContentValues().apply {
                         put(MediaStore.MediaColumns.DISPLAY_NAME, safeName)
                         put(MediaStore.MediaColumns.MIME_TYPE, mime)
-                        put(MediaStore.MediaColumns.RELATIVE_PATH, "Download/MinhaCameraRecebidos")
+                        put(MediaStore.MediaColumns.RELATIVE_PATH,
+                            (if (mime.startsWith("image/")) Environment.DIRECTORY_PICTURES
+                             else Environment.DIRECTORY_MOVIES) + "/MinhaCamera")
                         put(MediaStore.MediaColumns.IS_PENDING, 1)
                     }
-                    contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    contentResolver.insert(if (mime.startsWith("image/"))
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI else
+                        MediaStore.Video.Media.EXTERNAL_CONTENT_URI, values)
                         ?: error("Falha ao criar arquivo")
                 } else {
-                    val folder = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "MinhaCameraRecebidos")
+                    val folder = File(getExternalFilesDir(if (mime.startsWith("image/"))
+                        Environment.DIRECTORY_PICTURES else Environment.DIRECTORY_MOVIES), "MinhaCamera")
                     check(folder.isDirectory || folder.mkdirs())
                     val file = File.createTempFile("mcrp_", "_${safeName.takeLast(40)}", folder)
                     legacyFile = file
@@ -434,6 +581,8 @@ class RemoteMultimediaActivity : AppCompatActivity() {
                     if (Build.VERSION.SDK_INT >= 29) {
                         contentResolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
                     }
+                    legacyFile?.let { file -> android.media.MediaScannerConnection.scanFile(this,
+                        arrayOf(file.absolutePath), arrayOf(mime), null) }
                     legacyFile?.absolutePath ?: uri.toString()
                 } catch (e: Exception) {
                     if (Build.VERSION.SDK_INT >= 29) runCatching { contentResolver.delete(uri, null, null) }
@@ -441,7 +590,7 @@ class RemoteMultimediaActivity : AppCompatActivity() {
                 }
             }
             runOnUiThread {
-                saved.onSuccess { Toast.makeText(this, "Salvo: $it", Toast.LENGTH_LONG).show() }
+                saved.onSuccess { Toast.makeText(this, "Salvo na galeria MinhaCamera", Toast.LENGTH_LONG).show() }
                     .onFailure { Toast.makeText(this, "Falha ao baixar: ${it.message}", Toast.LENGTH_LONG).show() }
             }
         }, "mcrp-download").start()

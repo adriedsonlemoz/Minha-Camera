@@ -40,7 +40,7 @@ class HandoffAndZoom59(unittest.TestCase):
         self.assertIn('localZoomFactor =',source)
         self.assertIn('"Zoom local"',source)
         self.assertIn('sendRemoteZoom((current + direction * 10)',source)
-        self.assertIn('1f + slider.progress / 50f',source)
+        self.assertIn('1f + slider.progress / 100f * (maxRatio - 1f)',source)
 
     def test_fullscreen_only_landscape_remains(self):
         viewer=(SRC/'PhoneCameraViewerActivity.kt').read_text()

@@ -60,3 +60,13 @@ java -jar "$BUILD/rtsp-session.jar"
 kotlinc "$ROOT/app/src/main/java/com/minhacamera/PhonePinchZoom.kt" \
   "$ROOT/tests/PhonePinchZoomSmoke.kt" -include-runtime -d "$BUILD/pinch-zoom.jar"
 java -jar "$BUILD/pinch-zoom.jar"
+
+# Regressão da troca Activity -> serviço com tela apagada, sem hardware Android.
+kotlinc "$ROOT/app/src/main/java/com/minhacamera/PhoneBackgroundHandoffPolicy.kt" \
+  "$ROOT/tests/PhoneBackgroundHandoffSmoke.kt" -include-runtime -d "$BUILD/background-handoff.jar"
+java -jar "$BUILD/background-handoff.jar"
+
+# FPS realmente publicado pelo transmissor, independente da meta configurada.
+kotlinc "$ROOT/app/src/main/java/com/minhacamera/PhonePublishedFps.kt" \
+  "$ROOT/tests/PhonePublishedFpsSmoke.kt" -include-runtime -d "$BUILD/published-fps.jar"
+java -jar "$BUILD/published-fps.jar"

@@ -157,3 +157,15 @@ O erro real do Build APK 62 ocorreu porque `0x990A1422` tem o bit 31 definido e 
 - Separar aparelho cadastrado de aparelho efetivamente conectado: confirmar biblioteca autenticada via HTTP 200 antes do estado conectado.
 - Renomeação deve usar MediaStore com autorização do Android, SAF quando permitido e diretório privado sob controle do app.
 - Barras de ações com rolagem horizontal e botões sem insets/sombras padrão evitam cortes em telas pequenas.
+
+## Aprendizado 1.4.68: condição de corrida no modo tela apagada
+
+Distinguir serviço **iniciando**, **publicando primeiro quadro** e **liberando câmera**. O estado `running` sozinho não prova que houve frame publicado; a Activity não deve chamar `Camera.open()` enquanto há inicialização/liberação em progresso. Usar tempos monotônicos e dois limites de espera independentes, registrar a duração de `Camera.open` e `startPreview` e persistir a fase de falha antes da possível morte do processo. Testar a política pura em JVM e reproduzir em dispositivo físico antes de considerar resolvido. Não portar automaticamente a correção ao Vigia IA.
+
+## Aprendizados 1.4.69: biblioteca remota e AVC
+
+- Preferir downloads autenticados por ID opaco e com Range; gerar miniaturas limitadas, sem dar acesso geral à galeria do transmissor. JPEG pode exigir EXIF, inclusive após `Camera.Parameters.setRotation`.
+- MediaStore em Pictures/MinhaCamera e Movies/MinhaCamera indexa os downloads feitos pelo aplicativo sem permissões amplas. Não escrever em Downloads se a biblioteca local depende da coleção de fotos/vídeos.
+- Separar FPS de captura solicitado de FPS medido no receptor, e resolução efetiva de perfil pretendido. Em MJPEG 1080p há custo de CPU e Wi-Fi; metas não equivalem a garantias.
+- Alguns drivers MediaCodec divergem nas configurações YUV420 semiplanar; testar planar I420 com padrões de cor conhecidos e registrar configurações/codec do encoder. Não classificar artefatos verdes como apenas problema de rede.
+- Expor capacidade de zoom máxima e presets apenas dentro do limite real; nem toda lente extra do fabricante é acessível via Camera1. Não inventar seleção de ultra-wide antes de enumerar os IDs e validar acesso.

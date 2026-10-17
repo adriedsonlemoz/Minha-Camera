@@ -25,9 +25,11 @@ class PhoneCameraServer(
     private val qualityStatus: (() -> Int)? = null,
     private val changeFps: ((Int) -> Boolean)? = null,
     private val fpsStatus: (() -> Int)? = null,
+    private val measuredFpsStatus: (() -> Int)? = null,
     private val changeZoom: ((Int) -> Boolean)? = null,
     private val zoomStatus: (() -> Int?)? = null,
     private val zoomRatioStatus: (() -> Int?)? = null,
+    private val zoomMaxRatioStatus: (() -> Int?)? = null,
     private val changeFacing: ((Int) -> Boolean)? = null,
     private val facingStatus: (() -> Int)? = null,
     private val takePhoto: (() -> Boolean)? = null,
@@ -219,9 +221,11 @@ class PhoneCameraServer(
                     ecoStatus?.let { append("X-Eco: ${if (it()) 1 else 0}\r\n") }
                     qualityStatus?.let { append("X-Quality-Profile: ${it()}\r\n") }
                     fpsStatus?.let { append("X-FPS-Target: ${it()}\r\n") }
+                    measuredFpsStatus?.let { append("X-FPS-Measured: ${it()}\r\n") }
                     append("X-Zoom-Supported: ${if (changeZoom != null && zoomStatus?.invoke() != null) 1 else 0}\r\n")
                     zoomStatus?.let { it()?.let { percent -> append("X-Zoom-Percent: $percent\r\n") } }
                     zoomRatioStatus?.let { it()?.let { ratio -> append("X-Zoom-Ratio-100: $ratio\r\n") } }
+                    zoomMaxRatioStatus?.let { it()?.let { ratio -> append("X-Zoom-Max-Ratio-100: $ratio\r\n") } }
                     facingStatus?.let { append("X-Camera-Facing: ${it()}\r\n") }
                     append("Content-Length: 0\r\nConnection: close\r\n\r\n")
                 }

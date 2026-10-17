@@ -57,6 +57,7 @@ jobs:
           python3 scripts/check_kotlin_argb_literals.py
           python3 scripts/check_kotlin_view_minimum_size.py
           python3 scripts/check_kotlin_scroll_fill_viewport.py
+          python3 -m unittest discover -s tests -p test_background_handoff_1468.py -q
           python3 -m unittest discover -s tests -p test_gallery_build_fix_1467.py -q
           python3 -m unittest discover -s tests -p test_gallery_build_fix_1465.py -q
           python3 -m unittest discover -s tests -p test_kotlin_strings_preflight.py -q

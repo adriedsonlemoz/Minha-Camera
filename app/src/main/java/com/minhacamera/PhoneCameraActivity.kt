@@ -68,6 +68,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     @Volatile private var heatState = PhoneHeatState.NORMAL
     private var lastHeatText = ""
     private val streamStats = PhoneStreamStats()
+    private val publishedFps = PhonePublishedFps()
     private val performanceTick = object : Runnable {
         override fun run() {
             if (!visible) return
@@ -118,6 +119,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     @Volatile private var zoomAvailable = false
     @Volatile private var zoomPercent = 0
     @Volatile private var zoomRatio100 = 100
+    @Volatile private var maxZoomRatio100 = 100
     /** Media só reporta valores de câmera confirmados, sem ampliador no receptor. */
     private fun applyCameraZoom(percent: Int): Boolean {
         val c = camera ?: return false
@@ -127,6 +129,12 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             if (!params.isZoomSupported || params.maxZoom <= 0) return false
             val step = ((params.maxZoom.toLong() * percent + 50) / 100).toInt().coerceIn(0,params.maxZoom)
             params.zoom = step
+            // A rotação da foto nativa é independente da rotação de quadros MJPEG.
+            val nativePhotoInfo = Camera.CameraInfo()
+            Camera.getCameraInfo(deviceId, nativePhotoInfo)
+            params.setRotation(PhoneOrientationMode.frameDegrees(nativePhotoInfo.orientation,
+                nativePhotoInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT,
+                PhoneOrientationMode.deviceDegrees(orientationMode(), physicalDegrees)))
             c.parameters = params
             val verified = c.parameters
             zoomPercent = if (params.maxZoom > 0) (verified.zoom * 100 / params.maxZoom).coerceIn(0,100) else 0
@@ -283,27 +291,44 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private val backgroundTick = object : Runnable {
         override fun run() {
             if (!visible || !backgroundMode) return
+            val elapsed = SystemClock.elapsedRealtime() - backgroundRequestedAt
             val service = PhoneCameraBackgroundService
-            if (!service.running) {
-                if (SystemClock.elapsedRealtime() - backgroundRequestedAt < 14_000L && service.lastError == null) {
-                    uiHandler.postDelayed(this, 600)
+            when (PhoneBackgroundHandoffPolicy.evaluate(
+                service.running, service.starting, service.releasing,
+                service.firstFramePublished, service.lastError != null, elapsed)) {
+                PhoneBackgroundHandoffPolicy.Decision.WAIT_START,
+                PhoneBackgroundHandoffPolicy.Decision.WAIT_RELEASE -> {
+                    status.text = "Tela apagada: ${service.startupPhase}"
+                    uiHandler.postDelayed(this, 700)
                     return
                 }
-                backgroundMode = false
-                refreshTransmissionButton()
-                window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                backgroundPreview.visibility = View.GONE
-                val failure = service.lastError ?: getString(R.string.phone_background_ended)
-                status.text = failure
-                PhoneStreamDiagnostics.add("Tela apagada: serviço não assumiu a câmera ($failure)")
-                Toast.makeText(this@PhoneCameraActivity, "Falha no modo tela apagada: $failure", Toast.LENGTH_LONG).show()
-                lastBackgroundJpeg = null
-                tryStart()
-                return
+                PhoneBackgroundHandoffPolicy.Decision.WAIT_FRAMES -> {
+                    status.text = "Tela apagada: aguardando quadros da câmera"
+                    uiHandler.postDelayed(this, 700)
+                    return
+                }
+                PhoneBackgroundHandoffPolicy.Decision.FAILED -> {
+                    val failure = service.lastError ?: "sem quadros após ${elapsed / 1000}s (${service.startupPhase})"
+                    PhoneStreamDiagnostics.add("Tela apagada: inicialização falhou: $failure")
+                    // Cancelar uma inicialização atrasada antes de devolver a câmera à Activity.
+                    if (service.starting || service.running || service.releasing)
+                        PhoneCameraBackgroundService.command(this@PhoneCameraActivity, PhoneCameraBackgroundService.ACTION_STOP)
+                    backgroundMode = false
+                    refreshTransmissionButton()
+                    window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+                    backgroundPreview.visibility = View.GONE
+                    lastBackgroundJpeg = null
+                    status.text = "Falha no modo tela apagada: $failure"
+                    Toast.makeText(this@PhoneCameraActivity,
+                        "Falha no modo tela apagada: $failure", Toast.LENGTH_LONG).show()
+                    resumePreviewAfterBackgroundRelease()
+                    return
+                }
+                PhoneBackgroundHandoffPolicy.Decision.READY -> Unit
             }
             service.latestJpeg?.let { jpeg ->
                 if (jpeg !== lastBackgroundJpeg) {
-                    // Miniatura local reduzida: não decodificar Full HD na UI a cada segundo.
+                    // Não decodifica o quadro em resolução completa na interface.
                     val opts = BitmapFactory.Options().apply { inSampleSize = 4 }
                     BitmapFactory.decodeByteArray(jpeg, 0, jpeg.size, opts)?.let { bitmap ->
                         backgroundPreview.setImageBitmap(bitmap)
@@ -323,6 +348,21 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                 showRecordState(recordingRequested)
             }
             uiHandler.postDelayed(this, 1000)
+        }
+    }
+
+    /** Evita concorrência entre Camera.open() da Activity e Camera.release() do serviço. */
+    private fun resumePreviewAfterBackgroundRelease(attempt: Int = 0) {
+        if (!visible || backgroundMode) return
+        if (PhoneBackgroundHandoffPolicy.canResumeLocal(
+                PhoneCameraBackgroundService.starting, PhoneCameraBackgroundService.running,
+                PhoneCameraBackgroundService.releasing)) {
+            PhoneStreamDiagnostics.add("Tela apagada: serviço liberou câmera; retomando prévia local")
+            tryStart()
+        } else if (attempt < 100) {
+            uiHandler.postDelayed({ resumePreviewAfterBackgroundRelease(attempt + 1) }, 400L)
+        } else {
+            PhoneStreamDiagnostics.add("Tela apagada: serviço não liberou câmera após espera")
         }
     }
 
@@ -436,7 +476,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                     try {
                         PhoneCameraAccess.revoke(this)
                         // O token anterior e o servidor são encerrados antes de abrir o novo.
-                        uiHandler.postDelayed({ if (visible) tryStart() }, 650)
+                        resumePreviewAfterBackgroundRelease()
                     } catch (_: Exception) { status.setText(R.string.phone_start_failed) }
                 }
                 .setNegativeButton(R.string.cancelar, null).show()
@@ -715,7 +755,8 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     }
 
     private fun tryStart() {
-        if (backgroundMode || PhoneCameraBackgroundService.running || !visible ||
+        if (backgroundMode || PhoneCameraBackgroundService.running ||
+            PhoneCameraBackgroundService.starting || PhoneCameraBackgroundService.releasing || !visible ||
             (!dualMode && (!surfaceReady || !preview.isAvailable)) || camera != null || dualController != null) return
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             if (!permissionRequested) {
@@ -765,6 +806,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                 params.focusMode = Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO
             c.parameters = params
             zoomAvailable = params.isZoomSupported && params.maxZoom > 0
+            maxZoomRatio100 = if (zoomAvailable) params.zoomRatios?.lastOrNull()?.coerceAtLeast(100) ?: 100 else 100
             zoomPercent = 0
             zoomRatio100 = 100
             previewWidth = size.width
@@ -882,9 +924,11 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
                         true
                     }
                 }, fpsStatus = { fpsTarget },
+                measuredFpsStatus = { publishedFps.measured(SystemClock.elapsedRealtime()) },
                 changeZoom = { percent -> setZoomFromRemote(percent) },
                 zoomStatus = { if (zoomAvailable && !dualMode && !backgroundMode) zoomPercent else null },
                 zoomRatioStatus = { if (zoomAvailable && !dualMode && !backgroundMode) zoomRatio100 else null },
+                zoomMaxRatioStatus = { if (zoomAvailable && !dualMode && !backgroundMode) maxZoomRatio100 else null },
                 diagnostics = { PhoneStreamDiagnostics.report("Transmissão em primeiro plano; quadros=$receivedCameraFrames; modo=MJPEG") })
             lastTelemetryLabel = ""
             cachedTelemetryLabel = ""
@@ -1078,6 +1122,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
         if (!transmissionPaused) {
             session.publish(encoded, battery)
             streamStats.frame()
+            publishedFps.mark(SystemClock.elapsedRealtime())
             if (!publishedStreamFrame) {
                 publishedStreamFrame = true
                 runOnUiThread { if (visible && server === session && !recordingRequested) status.setText(R.string.phone_online) }
@@ -1217,7 +1262,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             telemetryPreview.visibility = View.GONE
             uiHandler.removeCallbacks(backgroundTick)
             // Aguarda a liberação da câmera e da porta pelo serviço.
-            uiHandler.postDelayed({ if (visible) tryStart() }, 650)
+            resumePreviewAfterBackgroundRelease()
             return
         }
         if (dualMode) {
@@ -1242,7 +1287,9 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             return
         }
         transmissionEnabled = false
+        val releasedAt = SystemClock.elapsedRealtime()
         stopStreaming()
+        PhoneStreamDiagnostics.add("Tela apagada: liberação da Activity em ${SystemClock.elapsedRealtime() - releasedAt}ms")
         // O serviço assumirá a câmera após a liberação da prévia e da porta HTTP.
         backgroundMode = true
         PhoneStreamDiagnostics.add("Mudança para tela apagada solicitada; aguardando câmera do serviço")
@@ -1261,7 +1308,7 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
             backgroundMode = false
             window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             status.text = e.javaClass.simpleName
-            tryStart()
+            resumePreviewAfterBackgroundRelease()
         }
     }
 
@@ -1462,6 +1509,10 @@ class PhoneCameraActivity : AppCompatActivity(), TextureView.SurfaceTextureListe
     private fun showDiagnostic() {
         val report = PhoneStreamDiagnostics.report("tela=${if (backgroundMode) "apagável" else "normal"}, " +
             "transmissão=${if (backgroundMode) PhoneCameraBackgroundService.running else server != null}, " +
+            "fase=${PhoneCameraBackgroundService.startupPhase}, " +
+            "iniciando=${PhoneCameraBackgroundService.starting}, " +
+            "liberando=${PhoneCameraBackgroundService.releasing}, " +
+            "primeiroQuadro=${PhoneCameraBackgroundService.firstFramePublished}, " +
             "últimoErro=${PhoneCameraBackgroundService.lastError ?: "nenhum"}")
         val safe = report.replace(Regex("(?i)(token|password|secret|apikey)=([^\\s&]+)"), "$1=[REDACTED]")
         CameraReportDialog(this, getString(R.string.phone_diagnostic_title), safe, { text ->

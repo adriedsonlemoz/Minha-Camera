@@ -50,7 +50,7 @@ class ZoomAndPreview58(unittest.TestCase):
         self.assertIn('if (percent in 0..100)',urls)
         self.assertIn('controlUrl(input, "zoom/$percent")',urls)
         viewer=(KOT/'PhoneCameraViewerActivity.kt').read_text()
-        self.assertIn('if (current == null)',viewer)
+        self.assertIn('remoteZoomMaxRatio100',viewer)
         self.assertIn('Zoom local',viewer)
         self.assertIn('private fun stepZoom(direction: Int)',viewer)
 

@@ -87,6 +87,15 @@ class PhoneCameraBackgroundService : Service() {
             private set
         @Volatile var lastError: String? = null
             private set
+        /** A Activity nunca deve retomar a câmera enquanto o serviço inicia ou libera recursos. */
+        @Volatile var starting: Boolean = false
+            private set
+        @Volatile var releasing: Boolean = false
+            private set
+        @Volatile var firstFramePublished: Boolean = false
+            private set
+        @Volatile var startupPhase: String = "parado"
+            private set
 
         fun command(context: Context, action: String, facing: Int = Camera.CameraInfo.CAMERA_FACING_BACK) {
             val intent = Intent(context, PhoneCameraBackgroundService::class.java).apply {
@@ -107,6 +116,7 @@ class PhoneCameraBackgroundService : Service() {
     @Volatile private var zoomAvailable = false
     @Volatile private var zoomPercent = 0
     @Volatile private var zoomRatio100 = 100
+    @Volatile private var maxZoomRatio100 = 100
     /** Zoom da câmera do serviço: funciona com a tela apagada, sem depender da Activity. */
     private fun applyServiceZoom(percent: Int): Boolean {
         val current = camera ?: return false
@@ -141,6 +151,7 @@ class PhoneCameraBackgroundService : Service() {
     private var selectedFacing = Camera.CameraInfo.CAMERA_FACING_BACK
     @Volatile private var remoteResolution = ""
     @Volatile private var requestedQuality = 480
+    private val publishedFps = PhonePublishedFps()
     @Volatile private var fpsLimit = 10
     @Volatile private var switching = false
     @Volatile private var takingPhoto = false
@@ -259,9 +270,16 @@ class PhoneCameraBackgroundService : Service() {
                 if (!changeStreamCodec(desired)) PhoneStreamDiagnostics.add("Troca de codec rejeitada durante outra operação")
             }
             ACTION_START -> {
-                if (running || closing || pendingCameraStart) return START_NOT_STICKY
+                if (running || closing || pendingCameraStart || starting || releasing) return START_NOT_STICKY
+                starting = true
+                lastError = null
+                firstFramePublished = false
+                startupPhase = "permissão de câmera"
+                PhoneStreamDiagnostics.add("Tela apagada: serviço recebeu solicitação de início")
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
                     lastError = getString(R.string.phone_permission_denied)
+                    starting = false
+                    startupPhase = "permissão negada"
                     stopSelf()
                     return START_NOT_STICKY
                 }
@@ -270,6 +288,8 @@ class PhoneCameraBackgroundService : Service() {
                     lastError = null
                     startCameraForegroundNotification()
                     foregroundStarted = true
+                    startupPhase = "preparando superfície EGL"
+                    PhoneStreamDiagnostics.add("Tela apagada: foreground iniciado; preparando EGL")
                     ecoEnabled = getSharedPreferences("phone_video", MODE_PRIVATE).getBoolean("eco_enabled", false)
                     requestedQuality = getSharedPreferences("phone_video", MODE_PRIVATE).getInt("remote_quality", 480)
                     fpsLimit = getSharedPreferences("phone_video", MODE_PRIVATE).getInt("remote_fps", 10)
@@ -306,6 +326,8 @@ class PhoneCameraBackgroundService : Service() {
                             if (closing || generation != startGeneration) {
                                 prepared.close()
                             } else {
+                                startupPhase = "abrindo câmera do serviço"
+                                PhoneStreamDiagnostics.add("Tela apagada: EGL pronto; abrindo câmera")
                                 startPreparedCapture(facing, prepared, generation)
                             }
                         }
@@ -329,6 +351,9 @@ class PhoneCameraBackgroundService : Service() {
         try {
             startCapture(facing, prepared)
             pendingCameraStart = false
+            starting = false
+            startupPhase = "aguardando primeiro quadro"
+            PhoneStreamDiagnostics.add("Tela apagada: câmera aberta; aguardando quadro publicado")
         } catch (e: Exception) {
             // Se falhou antes de anexar à câmera, a prévia ainda precisa ser liberada.
             prepared.close()
@@ -429,9 +454,11 @@ class PhoneCameraBackgroundService : Service() {
                     true
                 }
             }, fpsStatus = { fpsLimit },
+            measuredFpsStatus = { publishedFps.measured(SystemClock.elapsedRealtime()) },
             changeZoom = { percent -> setServiceZoom(percent) },
             zoomStatus = { if (running && liveCodec == "mjpeg" && zoomAvailable && !switching) zoomPercent else null },
             zoomRatioStatus = { if (running && liveCodec == "mjpeg" && zoomAvailable && !switching) zoomRatio100 else null },
+            zoomMaxRatioStatus = { if (running && liveCodec == "mjpeg" && zoomAvailable && !switching) maxZoomRatio100 else null },
             changeFacing = { desired ->
                 if (!running || closing || switching || recording || takingPhoto ||
                     desired !in listOf(Camera.CameraInfo.CAMERA_FACING_BACK, Camera.CameraInfo.CAMERA_FACING_FRONT) ||
@@ -517,7 +544,10 @@ class PhoneCameraBackgroundService : Service() {
             Camera.getCameraInfo(id, info)
             info.facing == facing
         } ?: throw IllegalStateException("Câmera indisponível")
+        val cameraOpeningAt = SystemClock.elapsedRealtime()
+        PhoneStreamDiagnostics.add("Tela apagada: Camera.open solicitada")
         val opened = Camera.open(deviceId)
+        PhoneStreamDiagnostics.add("Tela apagada: Camera.open concluiu em ${SystemClock.elapsedRealtime() - cameraOpeningAt}ms")
         camera = opened
         val params = opened.parameters
         val sizes = params.supportedPreviewSizes.orEmpty().filter { it.width > 0 && it.height > 0 && it.width * it.height <= 1920 * 1080 }
@@ -530,6 +560,12 @@ class PhoneCameraBackgroundService : Service() {
         val photo = params.supportedPictureSizes.orEmpty().maxByOrNull { it.width.toLong() * it.height }
         if (photo != null) params.setPictureSize(photo.width, photo.height)
         params.jpegQuality = 95
+        // Somente JPEG nativo: a prévia/stream NV21 já tem sua rotação própria.
+        val pictureInfo = Camera.CameraInfo()
+        Camera.getCameraInfo(deviceId, pictureInfo)
+        params.setRotation(PhoneOrientationMode.frameDegrees(pictureInfo.orientation,
+            pictureInfo.facing == Camera.CameraInfo.CAMERA_FACING_FRONT,
+            PhoneOrientationMode.deviceDegrees(currentOrientationMode, physicalDegrees)))
         val range = params.supportedPreviewFpsRange.orEmpty().minByOrNull {
             kotlin.math.abs(it[0] - fpsLimit * 1000) + kotlin.math.abs(it[1] - fpsLimit * 1000)
         }
@@ -538,6 +574,7 @@ class PhoneCameraBackgroundService : Service() {
             params.focusMode = Camera.Parameters.FOCUS_MODE_CONTINUOUS_VIDEO
         opened.parameters = params
         zoomAvailable = params.isZoomSupported && params.maxZoom > 0
+        maxZoomRatio100 = if (zoomAvailable) params.zoomRatios?.lastOrNull()?.coerceAtLeast(100) ?: 100 else 100
         zoomPercent = 0
         zoomRatio100 = 100
         val info = Camera.CameraInfo()
@@ -581,7 +618,10 @@ class PhoneCameraBackgroundService : Service() {
             try { if (bytes != null) source.addCallbackBuffer(bytes) } catch (_: Exception) { }
         }
         repeat(3) { opened.addCallbackBuffer(ByteArray(byteCount)) }
+        val previewStartAt = SystemClock.elapsedRealtime()
+        PhoneStreamDiagnostics.add("Tela apagada: Camera.startPreview solicitado")
         opened.startPreview()
+        PhoneStreamDiagnostics.add("Tela apagada: Camera.startPreview concluiu em ${SystemClock.elapsedRealtime() - previewStartAt}ms")
         selectedFacing = facing
         requestedQuality = quality
         getSharedPreferences("phone_video", MODE_PRIVATE).edit().putInt("remote_quality", quality).apply()
@@ -664,7 +704,9 @@ class PhoneCameraBackgroundService : Service() {
                     liveEncoder = PhoneH264LiveEncoder(width, height, fpsLimit,
                         (if (ecoEnabled) 750_000 else if (requestedQuality >= 720) 2_000_000 else 1_250_000)) { bytes, _ ->
                         server?.publishAvc(bytes)
+                        publishedFps.mark(SystemClock.elapsedRealtime())
                         lastPublishedAtMs = SystemClock.elapsedRealtime()
+                        markFirstPublishedFrame()
                         watchdogRestarts = 0
                     }
                     PhoneStreamDiagnostics.add("Encoder AVC inicializado: ${width}x$height, $fpsLimit fps")
@@ -694,9 +736,19 @@ class PhoneCameraBackgroundService : Service() {
         val encoded = jpeg.toByteArray()
         latestJpeg = encoded
         lastPublishedAtMs = SystemClock.elapsedRealtime()
-        watchdogRestarts = 0
-        session.publish(encoded, reading) // Dados da bateria nos headers, nunca gravados nos pixels.
+        session.publish(encoded, reading)
+        publishedFps.mark(SystemClock.elapsedRealtime())
+        markFirstPublishedFrame()
+        watchdogRestarts = 0 // Dados da bateria nos headers, nunca gravados nos pixels.
         appendRecording(frame, width, height)
+    }
+
+    private fun markFirstPublishedFrame() {
+        if (!firstFramePublished) {
+            firstFramePublished = true
+            startupPhase = "transmitindo quadros"
+            PhoneStreamDiagnostics.add("Tela apagada: primeiro quadro publicado")
+        }
     }
 
     private fun appendRecording(frame: ByteArray, width: Int, height: Int) {
@@ -749,6 +801,10 @@ class PhoneCameraBackgroundService : Service() {
     private fun stopCaptureAndFinish() {
         if (closing) return
         closing = true
+        releasing = true
+        starting = false
+        startupPhase = "liberando câmera"
+        PhoneStreamDiagnostics.add("Tela apagada: liberando serviço/câmera")
         startGeneration++
         pendingCameraStart = false
         orientationSensor.disable()
@@ -776,6 +832,9 @@ class PhoneCameraBackgroundService : Service() {
                     wakeLock = null
                     if (foregroundStarted) stopForeground(STOP_FOREGROUND_REMOVE)
                     foregroundStarted = false
+                    releasing = false
+                    startupPhase = "parado"
+                    PhoneStreamDiagnostics.add("Tela apagada: serviço liberado")
                     stopSelf()
                 }
             }
@@ -810,11 +869,13 @@ class PhoneCameraBackgroundService : Service() {
         "modo=${if (running) "ativo" else "parado"}, codec=$liveCodec, gravando=$recording, " +
             "eco=$ecoEnabled, capturados=$frameCount, ultimoCallbackMs=${SystemClock.elapsedRealtime()-lastCaptureAtMs}, " +
             "ultimoCodificadoMs=${SystemClock.elapsedRealtime()-lastPublishedAtMs}, tentativas=$watchdogRestarts, " +
+            "fase=$startupPhase, iniciando=$starting, liberando=$releasing, primeiroQuadro=$firstFramePublished, " +
             (headlessPreview?.health() ?: "surface=inativa")
     )
 
     override fun onDestroy() {
         if (!closing) stopCaptureAndFinish()
+        starting = false
         super.onDestroy()
     }
 }
