@@ -144,7 +144,9 @@ Experimente habilitar H.264 ou outro perfil na câmera e refazer a busca.</strin
     <string name="phone_reconnecting">Sinal perdido. Reconectando…</string>
     <string name="phone_access_denied">Acesso negado. Escaneie o novo QR.</string>
     <string name="viewer_remote_zoom_requested">Zoom solicitado à câmera</string>
-    <string name="novidades_text">Versão 1.4.66 (código 76)
+    <string name="novidades_text">Versão 1.4.67 (código 77)
+- Corrigida compilação Kotlin da barra horizontal de ações da Central Multimidia (Build 66).
+- Mantidos Renomear, opções da galeria e conexões remotas.
 - Galeria: título Central Multimidia e controles sem cortes, com ação Renomear.
 - Remoto: lista de celulares salvos, status de conexão confirmado, QR e endereço manual.
 - Corrigido Build APK 64: altura mínima do LinearLayout no seletor Lista/Miniaturas, resolvendo erro Kotlin minHeight.

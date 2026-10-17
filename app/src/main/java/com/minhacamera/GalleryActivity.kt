@@ -256,7 +256,7 @@ class GalleryActivity : AppCompatActivity() {
         footer = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(10), dp(6), dp(10), dp(8)) }
         val footerScroll = HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
-            fillViewport = true
+            setFillViewport(true)
             visibility = View.GONE
             addView(footer, android.widget.FrameLayout.LayoutParams(-2, -2))
         }

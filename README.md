@@ -1,8 +1,10 @@
 # Minha Câmera
 
-**Versão atual: 1.4.66 (versionCode 76)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.67 (versionCode 77)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
 
-**Novo em 1.4.66:** Central Multimidia com título padronizado, botões superiores planos e barra inferior de gerenciamento com rolagem horizontal sem cortes; ação Renomear para arquivo único, com proteção da extensão e autorização MediaStore/SAF quando necessária. Biblioteca remota exibe celular selecionado e estado real de conexão, lista celulares pareados do CameraStore, entrada manual validada e leitor QR, sem descoberta não autorizada. Build APK Android e teste no dispositivo ainda pendentes.
+**Novo em 1.4.67:** correção do Build APK 66: em `GalleryActivity.kt`, a barra horizontal de ações da galeria usa `setFillViewport(true)` no lugar de `fillViewport = true`, evitando `Unresolved reference` no compilador Kotlin. Adicionado preflight e testes de regressão no GitHub Actions. Renomear e dispositivos remotos preservados. Compilação Release e testes em Android físico continuam pendentes.
+
+**Histórico 1.4.66:** Central Multimidia com título padronizado, botões superiores planos e barra inferior de gerenciamento com rolagem horizontal sem cortes; ação Renomear para arquivo único, com proteção da extensão e autorização MediaStore/SAF quando necessária. Biblioteca remota exibe celular selecionado e estado real de conexão, lista celulares pareados do CameraStore, entrada manual validada e leitor QR, sem descoberta não autorizada. Build APK Android e teste no dispositivo ainda pendentes.
 
 **Histórico 1.4.65:** Corrigido o erro de compilação Kotlin do Build APK 64: `LinearLayout` não possui propriedade Kotlin `minHeight`; agora usa `setMinimumHeight(dp(84))` no seletor Lista/Miniaturas. Preflight adicionado para impedir esse padrão em layouts. Preservadas as melhorias da 1.4.64; **build Android e teste real ainda pendentes.**
 

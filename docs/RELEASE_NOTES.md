@@ -1,3 +1,9 @@
+# Minha Câmera 1.4.67 (versionCode 77)
+
+- Corrigido erro de compilação Kotlin `fillViewport` da barra inferior da galeria (Build APK 66).
+- Rolagem dos controles da galeria mantida; recursos de renomeação e conexão remota da 1.4.66 preservados.
+- Verificação preventiva do código adicionada ao workflow. Build APK Release e testes em dispositivos pendentes.
+
 # Minha Câmera 1.4.66 (versionCode 76)
 
 - Central Multimidia: cabeçalho padronizado, ações inferiores que não são cortadas e botão Renomear.

@@ -1,3 +1,9 @@
+## 1.4.67+77 — 2026-10-17
+- Corrige falha do Build APK 66 na tarefa `:app:compileReleaseKotlin`, `GalleryActivity.kt:259` (`Unresolved reference 'fillViewport'`).
+- Substitui atribuição inválida por `setFillViewport(true)` na `HorizontalScrollView` das ações inferiores; mantém o comportamento de rolagem e os botões, incluindo Renomear.
+- Novo preflight de propriedades de ScrollView Kotlin no GitHub Actions e regressões específicas para evitar o erro.
+- Validação estática e testes locais registrados em `docs/VALIDATION_1_4_67.md`. Build Release e teste físico pendentes.
+
 ## 1.4.66+76 — 2026-10-17
 - Corrigido título "Central Multimidia" e removidas elevações/bordas implícitas dos botões superiores.
 - Ações inferiores com faixa horizontal e espaçamento real, sem cortes; adicionado Renomear com seleção única.
