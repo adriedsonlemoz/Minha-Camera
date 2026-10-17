@@ -152,3 +152,8 @@ O receptor MJPEG deve atualizar periodicamente capacidades do transmissor após 
 ## 1.4.63: cores ARGB Kotlin em UI Android
 
 O erro real do Build APK 62 ocorreu porque `0x990A1422` tem o bit 31 definido e é inferido como `Long` pelo Kotlin, porém `View.setBackgroundColor` exige `Int`. Usar `0x990A1422.toInt()` ou `Color.argb()` e testar essa classe de erro no preflight da CI. Essa nota é para aprendizado técnico; nenhuma alteração foi feita no Vigia IA.
+
+## Aprendizado da Central Multimídia 1.4.66
+- Separar aparelho cadastrado de aparelho efetivamente conectado: confirmar biblioteca autenticada via HTTP 200 antes do estado conectado.
+- Renomeação deve usar MediaStore com autorização do Android, SAF quando permitido e diretório privado sob controle do app.
+- Barras de ações com rolagem horizontal e botões sem insets/sombras padrão evitam cortes em telas pequenas.

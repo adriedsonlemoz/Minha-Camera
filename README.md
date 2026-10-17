@@ -1,8 +1,10 @@
 # Minha Câmera
 
-**Versão atual: 1.4.65 (versionCode 75)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
+**Versão atual: 1.4.66 (versionCode 76)** · Kotlin / Android · Projeto auxiliar de investigação técnica para o **Vigia IA**. Veja [integração técnica com o Vigia IA](docs/VIGIA_IA_INTEGRATION.md).
 
-**Novo em 1.4.65:** Corrigido o erro de compilação Kotlin do Build APK 64: `LinearLayout` não possui propriedade Kotlin `minHeight`; agora usa `setMinimumHeight(dp(84))` no seletor Lista/Miniaturas. Preflight adicionado para impedir esse padrão em layouts. Preservadas as melhorias da 1.4.64; **build Android e teste real ainda pendentes.**
+**Novo em 1.4.66:** Central Multimidia com título padronizado, botões superiores planos e barra inferior de gerenciamento com rolagem horizontal sem cortes; ação Renomear para arquivo único, com proteção da extensão e autorização MediaStore/SAF quando necessária. Biblioteca remota exibe celular selecionado e estado real de conexão, lista celulares pareados do CameraStore, entrada manual validada e leitor QR, sem descoberta não autorizada. Build APK Android e teste no dispositivo ainda pendentes.
+
+**Histórico 1.4.65:** Corrigido o erro de compilação Kotlin do Build APK 64: `LinearLayout` não possui propriedade Kotlin `minHeight`; agora usa `setMinimumHeight(dp(84))` no seletor Lista/Miniaturas. Preflight adicionado para impedir esse padrão em layouts. Preservadas as melhorias da 1.4.64; **build Android e teste real ainda pendentes.**
 
 **Novo em 1.4.64:** Galeria abre por padrão em **Lista**, com miniatura à esquerda e nome, tamanho, resolução, duração e data (configuráveis) à direita. A opção **Miniaturas** mantém a grade existente, com preferência de layout persistente. O menu Configurações foi reorganizado em uma única tela com seleção visual Lista/Miniaturas, opções de metadados e ferramentas para ordenar, selecionar, escolher mídias e atualizar. Permissões e gerenciamento de arquivos preservados. **Build Release e testes no aparelho pendentes.**
 

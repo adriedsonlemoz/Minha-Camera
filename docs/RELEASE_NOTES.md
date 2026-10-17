@@ -1,3 +1,10 @@
+# Minha Câmera 1.4.66 (versionCode 76)
+
+- Central Multimidia: cabeçalho padronizado, ações inferiores que não são cortadas e botão Renomear.
+- Renomeação local com confirmação de autorização do Android quando exigida; extensão e proteção de arquivos privados preservadas.
+- Conexão da galeria remota: nome/status verificado, lista de celulares pareados, pareamento QR e endereço manual.
+- Código-fonte; build APK e teste em aparelhos ainda pendentes.
+
 # Minha Câmera 1.4.65 (versionCode 75)
 
 - Corrigido Build APK 64: `Unresolved reference 'minHeight'` em `GalleryActivity.kt:313`, alterando a altura mínima do `LinearLayout` para a chamada Android `setMinimumHeight(dp(84))`.

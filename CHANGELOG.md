@@ -1,3 +1,11 @@
+## 1.4.66+76 — 2026-10-17
+- Corrigido título "Central Multimidia" e removidas elevações/bordas implícitas dos botões superiores.
+- Ações inferiores com faixa horizontal e espaçamento real, sem cortes; adicionado Renomear com seleção única.
+- Renomeação real de mídia com MediaStore e pedido de escrita quando exigido no Android 10+, provedor SAF quando autorizado, ou gravações privadas mantendo prefixo Camera_ e extensão; não sobrescreve nomes existentes.
+- Tela Remoto: celular selecionado, estado conectado somente após HTTP 200 autenticado, lista de celulares salvos do CameraStore, nova conexão via QR ou endereço e mensagens claras para aparelho offline/sem autorização.
+- Evita mostrar token privado na tela e não presume acesso ao armazenamento de aparelhos apenas por estarem no Wi-Fi.
+- Validações locais registradas em docs/VALIDATION_1_4_66.md; compilação Android/visuais pendentes.
+
 ## 1.4.65+75 — 2026-10-16
 - Corrigido `:app:compileReleaseKotlin` do Build APK 64: `GalleryActivity.kt:313` usava `minHeight = dp(84)` em `LinearLayout` e gerava `Unresolved reference 'minHeight'`.
 - Substituído por `setMinimumHeight(dp(84))`, preservando a altura mínima e o layout do seletor Lista/Miniaturas.

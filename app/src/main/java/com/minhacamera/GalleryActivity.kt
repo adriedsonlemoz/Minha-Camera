@@ -5,6 +5,11 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
+import android.content.ContentValues
+import android.content.res.ColorStateList
+import android.graphics.drawable.RippleDrawable
+import android.provider.MediaStore
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -29,6 +34,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.HorizontalScrollView
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -76,11 +82,17 @@ class GalleryActivity : AppCompatActivity() {
     private var showDate = false
     private var deleteAfterApproval: List<GalleryItem> = emptyList()
     private var legacyDeleteConsent = false
+    private var renamePending: Pair<GalleryItem, String>? = null
 
     private val permissionResult = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { refresh() }
     private val documents = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         uris.forEach { uri ->
-            runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            runCatching {
+                contentResolver.takePersistableUriPermission(uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            }.onFailure {
+                runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+            }
             val mime = contentResolver.getType(uri) ?: return@forEach
             if (!mime.startsWith("image/") && !mime.startsWith("video/")) return@forEach
             val name = queryName(uri) ?: "Arquivo selecionado"
@@ -101,6 +113,13 @@ class GalleryActivity : AppCompatActivity() {
         } else { legacyDeleteConsent = false; toast("Exclusão cancelada. Arquivos preservados.") }
         refresh()
     }
+    private val renameApproval = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { outcome ->
+        val pending = renamePending
+        renamePending = null
+        if (outcome.resultCode == Activity.RESULT_OK && pending != null) renameFile(pending.first, pending.second, true)
+        else toast("Renomeação cancelada. Arquivo preservado.")
+    }
+
     private fun queryName(uri: Uri): String? = runCatching {
         contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
             if (it.moveToFirst()) it.getString(0) else null
@@ -138,7 +157,7 @@ class GalleryActivity : AppCompatActivity() {
         val back = iconAction(R.drawable.ic_back, "Voltar") { finish() }
         top.addView(back, LinearLayout.LayoutParams(dp(44), dp(48)))
         title = TextView(this).apply {
-            text = "Central multimídia"
+            text = "Central Multimidia"
             textSize = 16f
             typeface = Typeface.DEFAULT_BOLD
             setTextColor(getColor(R.color.app_text))
@@ -166,7 +185,9 @@ class GalleryActivity : AppCompatActivity() {
             textSize = 11.5f
             isAllCaps = false
             setTextColor(getColor(R.color.app_text))
-            setBackgroundResource(R.drawable.bg_gallery_filter)
+            background = subtleActionBackground()
+            elevation = 0f
+            stateListAnimator = null
             compoundDrawablePadding = dp(3)
             val symbol = ContextCompat.getDrawable(this@GalleryActivity, R.drawable.ic_ui_smartphone)?.mutate()
             symbol?.setBounds(0, 0, dp(17), dp(17))
@@ -193,6 +214,8 @@ class GalleryActivity : AppCompatActivity() {
                 textSize = 11f
                 setPadding(dp(2), 0, dp(2), 0)
                 setBackgroundResource(R.drawable.bg_gallery_filter)
+                elevation = 0f
+                stateListAnimator = null
                 minWidth = 0
                 minHeight = 0
                 compoundDrawablePadding = dp(3)
@@ -230,11 +253,42 @@ class GalleryActivity : AppCompatActivity() {
         center.addView(message, FrameLayout.LayoutParams(-1, -1))
         progress = ProgressBar(this).apply { visibility = View.GONE }
         center.addView(progress, FrameLayout.LayoutParams(dp(34), dp(34), Gravity.CENTER))
-        footer = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(8), dp(6), dp(8), dp(8)); visibility = View.GONE }
-        content.addView(footer)
+        footer = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; setPadding(dp(10), dp(6), dp(10), dp(8)) }
+        val footerScroll = HorizontalScrollView(this).apply {
+            isHorizontalScrollBarEnabled = false
+            fillViewport = true
+            visibility = View.GONE
+            addView(footer, android.widget.FrameLayout.LayoutParams(-2, -2))
+        }
+        footer.tag = footerScroll
+        content.addView(footerScroll)
         // Escolher arquivos, atualizar, ordenar e selecionar ficam no menu de configurações.
         maybeRequestAccess()
         refresh()
+    }
+
+    /** Ações planas com espaçamento real, sem os insets e sombras implícitos do Button. */
+    private fun subtleActionBackground(): android.graphics.drawable.Drawable {
+        val shape = GradientDrawable().apply {
+            shape = GradientDrawable.RECTANGLE
+            cornerRadius = dp(13).toFloat()
+            setColor(getColor(R.color.app_surface))
+        }
+        return RippleDrawable(ColorStateList.valueOf(0x22000000), shape, null)
+    }
+
+    private fun footerAction(label: String, icon: Int, action: () -> Unit): TextView = TextView(this).apply {
+        text = label
+        textSize = 12f
+        gravity = Gravity.CENTER
+        setTextColor(getColor(R.color.app_text))
+        setPadding(dp(10), dp(9), dp(10), dp(9))
+        setCompoundDrawablesWithIntrinsicBounds(icon, 0, 0, 0)
+        compoundDrawablePadding = dp(5)
+        background = subtleActionBackground()
+        isClickable = true
+        isFocusable = true
+        setOnClickListener { action() }
     }
 
     private fun iconAction(iconId: Int, description: String, action: () -> Unit): ImageButton =
@@ -479,20 +533,104 @@ class GalleryActivity : AppCompatActivity() {
             button.isSelected = label == category
         }
         footer.removeAllViews()
-        footer.visibility = if (selectMode) View.VISIBLE else View.GONE
+        (footer.tag as? View)?.visibility = if (selectMode) View.VISIBLE else View.GONE
         if (selectMode) {
-            listOf("Compartilhar", "Copiar", "Detalhes", "Excluir").forEach { label ->
-                footer.addView(chip(label) {
-                    when (label) {
-                        "Compartilhar" -> share()
-                        "Copiar" -> if (selection().isNotEmpty()) tree.launch(null)
-                        "Detalhes" -> showDetails()
-                        "Excluir" -> confirmDelete()
-                    }
-                }, LinearLayout.LayoutParams(0, dp(52), 1f))
+            val actions = listOf(
+                Triple("Compartilhar", R.drawable.ic_ui_link, { share() }),
+                Triple("Copiar", R.drawable.ic_ui_folder, { if (selection().isNotEmpty()) tree.launch(null) }),
+                Triple("Renomear", R.drawable.ic_ui_edit, { promptRename() }),
+                Triple("Detalhes", R.drawable.ic_ui_list, { showDetails() }),
+                Triple("Excluir", R.drawable.ic_ui_trash, { confirmDelete() })
+            )
+            actions.forEach { (label, icon, action) ->
+                footer.addView(footerAction(label, icon, action), LinearLayout.LayoutParams(dp(112), dp(52)).apply {
+                    marginEnd = dp(7)
+                })
             }
         }
     }
+
+    /** Altera o arquivo real, respeitando MediaStore/SAF; uma única seleção por vez. */
+    private fun promptRename() {
+        val items = selection()
+        if (items.size != 1) { toast("Selecione somente um arquivo para renomear."); return }
+        val item = items.first()
+        val extension = item.name.substringAfterLast('.', "").takeIf { it.matches(Regex("[A-Za-z0-9]{1,8}")) }.orEmpty()
+        val originalStem = if (extension.isBlank()) item.name else item.name.dropLast(extension.length + 1)
+        val input = EditText(this).apply {
+            setSingleLine(true)
+            setText(if (item.privateFile != null) originalStem.removePrefix("Camera_") else originalStem)
+            selectAll()
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+        }
+        AlertDialog.Builder(this).setTitle("Renomear arquivo")
+            .setMessage("O nome será alterado no armazenamento. A extensão .$extension será preservada.")
+            .setView(input)
+            .setPositiveButton("Renomear") { _, _ ->
+                val newName = GalleryRenamePolicy.buildName(input.text.toString(), extension, item.privateFile != null)
+                if (newName == null) toast("Nome inválido. Use letras, números e evite barras ou pontos no início.")
+                else if (item.name == newName) toast("O nome não mudou.")
+                else renameFile(item, newName)
+            }
+            .setNegativeButton("Cancelar", null).show()
+    }
+
+    private fun renameFile(item: GalleryItem, name: String, approved: Boolean = false) {
+        io.execute {
+            var renamedDocument: Uri? = null
+            val result = runCatching {
+                if (item.privateFile != null) {
+                    val root = RecordingStore.root(applicationContext).canonicalFile
+                    val source = item.privateFile.canonicalFile
+                    require(source.parentFile == root && source.isFile && source.name.startsWith("Camera_")) {
+                        "Arquivo privado não pertence à biblioteca"
+                    }
+                    val destination = File(root, name).canonicalFile
+                    require(destination.parentFile == root && !destination.exists()) { "Nome já existente" }
+                    require(source.renameTo(destination)) { "Não foi possível renomear a gravação" }
+                } else if (item.uri.authority?.startsWith("media") == true) {
+                    val values = ContentValues().apply { put(MediaStore.MediaColumns.DISPLAY_NAME, name) }
+                    require(contentResolver.update(item.uri, values, null, null) > 0) { "Alteração não autorizada" }
+                } else if (item.uri.scheme == "content" && DocumentsContract.isDocumentUri(this, item.uri)) {
+                    renamedDocument = DocumentsContract.renameDocument(contentResolver, item.uri, name)
+                    require(renamedDocument != null) { "O provedor de arquivos não permite renomear" }
+                } else error("Este arquivo não oferece permissão de renomeação")
+            }
+            ui.post {
+                if (isFinishing || isDestroyed) return@post
+                result.onSuccess {
+                    if (renamedDocument != null) {
+                        picked.remove(item.key)
+                        val uri = renamedDocument!!
+                        picked[uri.toString()] = item.copy(uri = uri, name = name)
+                    }
+                    selected.clear(); selectMode = false
+                    toast("Arquivo renomeado.")
+                    refresh()
+                }.onFailure { failure ->
+                    if (!approved && item.privateFile == null && item.uri.authority?.startsWith("media") == true &&
+                        failure is SecurityException) {
+                        requestRenamePermission(item, name, failure)
+                    } else toast("Não foi possível renomear: ${failure.message ?: "permissão insuficiente"}")
+                }
+            }
+        }
+    }
+
+    private fun requestRenamePermission(item: GalleryItem, name: String, failure: SecurityException) {
+        val request = runCatching {
+            when {
+                Build.VERSION.SDK_INT >= 30 -> MediaStore.createWriteRequest(contentResolver, listOf(item.uri)).intentSender
+                Build.VERSION.SDK_INT == 29 && failure is android.app.RecoverableSecurityException ->
+                    failure.userAction.actionIntent.intentSender
+                else -> null
+            }
+        }.getOrNull()
+        if (request == null) { toast("Este arquivo não autorizou alteração de nome."); return }
+        renamePending = item to name
+        renameApproval.launch(IntentSenderRequest.Builder(request).build())
+    }
+
     private fun chooseOrder() {
         AlertDialog.Builder(this).setTitle("Ordenar por")
             .setSingleChoiceItems(arrayOf("Mais recentes", "Nome", "Tamanho"), sort) { dialog, position ->
